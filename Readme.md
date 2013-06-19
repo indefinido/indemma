@@ -1,7 +1,7 @@
 
 # indemma
 
-  Indemma (mind picture → memory), client side ES5 observable REST model.
+  Indemma (mind picture → memory), client side, ES5 observable and REST, extensible modular data model.
 
 ## Summary
 
@@ -20,7 +20,7 @@
 
 ### Basic Functionality (Query, Observable, Advisable)
 
-Basic functionality, just copy (https://github.com/rails/rails/blob/master/activerecord)[ActiveRecord Interface API] on javascript
+Basic functionality, just copy [ActiveRecord Interface API](https://github.com/rails/rails/blob/master/activerecord) on javascript
 
 #### Model
 
@@ -336,8 +336,8 @@ With setter on steroids
 
 ## License
 
-  WTFPL
+  [WTFPL](http://www.wtfpl.net)
 
 ## Credits
 
-  Built upon the lovely coffeescript language
+  Built upon the lovely [coffeescript](http://coffeescript.org/) language
