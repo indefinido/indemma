@@ -1,8 +1,12 @@
 # Emacs Temporary Files
 *~
 *#
+.*#
 
 # Eclipse
 .directory
 .project
 .loadpath
+
+# Mac OS X Files
+# .DS_*
