@@ -1,0 +1,8 @@
+# Emacs Temporary Files
+*~
+*#
+
+# Eclipse
+.directory
+.project
+.loadpath

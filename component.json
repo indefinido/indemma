@@ -1,0 +1,30 @@
+{
+  "name": "indemma",
+  "repo": "indefinido/indemma",
+  "description": "Indemma (mind picture = memory), client side ES5 observable REST model",
+  "version": "0.0.1",
+  "keywords": [],
+  "dependencies": {
+    "segmentio/extend": "*",
+    "component/type": "*",
+    "component/bind": "*"
+  },
+  "development": {
+    "chaijs/chai": "*"
+  },
+  "local": ["observable"],
+  "paths": ["/Users/heitor/Development/Workspace/Javascript"],
+  "license": "WTFPL",
+  "scripts": [
+	"components/cjohansen-sinon.js/sinon.js",
+
+    "index.js",
+    "lib/record.js",
+    "lib/record/associations.js",
+    "lib/record/resource.js",
+    "lib/record/restful.js",
+    "lib/record/maid.js",
+    "lib/record/validators/base.js",
+    "lib/extensions/rivets.js"
+  ]
+}
