@@ -1,12 +1,3 @@
-model = window.model
-
-model.resourceable = ->
-  model.mix (modelable) ->
-    modelable.record.after_initialize.unshift resource.initialize
-    modelable.after_mix.unshift resource.initialize
-  model.pluralize = resource.pluralize
-
-
 resource =
   pluralize: (word) ->
     return word + 's'
@@ -27,3 +18,11 @@ resource =
 
     unless @route
       @route = '/' + resource.pluralize @resource
+
+# Extend indemma
+model = window.model # TODO better way to get parent
+model.mix (modelable) ->
+  modelable.record.after_initialize.unshift resource.initialize
+  modelable.after_mix.unshift resource.initialize
+
+model.pluralize = resource.pluralize

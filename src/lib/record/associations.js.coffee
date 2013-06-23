@@ -1,13 +1,3 @@
-model = window.model
-
-model.associable = ->
-  model.mix (modelable) ->
-    modelable.after_mix.unshift associable.model
-    modelable.record.after_initialize.unshift associable.record
-
-model.associable.mix = (blender) ->
-  blender singular, plural
-
 
 # Store association methods
 # TODO Implement setter for route
@@ -140,3 +130,14 @@ associable =
   record: (options) ->
     console.error 'resource must be defined in order to associate' unless @resource?
     model[@resource].create_associations.call @
+
+
+# Extend indemma
+model  = window.model     # TODO better way to get parent
+model.mix (modelable) ->
+  modelable.after_mix.unshift associable.model
+  modelable.record.after_initialize.unshift associable.record
+
+# WTF this do?
+# model.associable.mix = (blender) ->
+#   blender singular, plural

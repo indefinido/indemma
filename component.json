@@ -5,19 +5,18 @@
   "version": "0.0.1",
   "keywords": [],
   "dependencies": {
-    "segmentio/extend": "*",
+    "pluma/assimilate": "*",
     "component/type": "*",
-    "component/bind": "*"
+    "component/bind": "*",
+	"component/jquery": "*"
   },
   "development": {
     "chaijs/chai": "*"
   },
-  "local": ["observable"],
+  "local": ["observable", "advisable"],
   "paths": ["/Users/heitor/Development/Workspace/Javascript"],
   "license": "WTFPL",
   "scripts": [
-	"components/cjohansen-sinon.js/sinon.js",
-
     "index.js",
     "lib/record.js",
     "lib/record/associations.js",

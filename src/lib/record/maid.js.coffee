@@ -1,11 +1,3 @@
-model = window.model
-
-model.maid = ->
-  model.mix (modelable) ->
-    modelable.after_mix.unshift maid.model
-
-
-
 maid =
 
   model : ->
@@ -17,3 +9,8 @@ maid =
       dirty && setTimeout ->
         self.save()
       , 500
+
+# Extend indemma
+model = window.model
+model.mix (modelable) ->
+  modelable.after_mix.unshift maid.model

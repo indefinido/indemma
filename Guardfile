@@ -12,7 +12,7 @@ guard 'coffeescript', :input => 'src', :output => '.', :bare => true
 #   watch(%r{file/path}) { `command(s)` }
 #
 guard 'shell' do
-  watch(/(.*).coffee/) { |m|
+  watch(/src\/lib\/(.*).coffee/) { |m|
     puts '  Building release component'
     puts `component-build --verbose --name release`
 

@@ -1,7 +1,10 @@
-# TODO = advisable = require indefinido-advisable
-extend = require 'extend'
-type   = require 'type'
-bind   = require 'bind'
+$          = require 'jquery'
+type       = require 'type'
+bind       = require 'bind'
+observable = require('observable').mixin
+advisable  = require('advisable' ).mixin
+extend     = require 'assimilate'
+merge      = require('assimilate').withStrategy 'deep'
 
 # TODO support other type of associations
 @model = do -> # mixin
@@ -52,7 +55,7 @@ bind   = require 'bind'
 
     instance = bind @, initialize_record
 
-    extend instance, extend true, @, modelable
+    extend instance, merge @, modelable
 
     callback.call instance, instance for callback in modelable.after_mix
 
@@ -89,11 +92,14 @@ bind   = require 'bind'
     throw "Mixin called incorrectly, call mixin with call method: record.call(object, data)" if @ == window
 
     data ||= {}
-    after_initialize = @after_initialize.concat(data.after_initialize || []).concat(recordable.after_initialize)
-    extend @, recordable, advisable.call(observable.call data), after_initialize: after_initialize
+    after_initialize = (@after_initialize || []).concat(data.after_initialize || []).concat(recordable.after_initialize)
+    extend @, recordable, advisable(observable data), after_initialize: after_initialize
 
 
   that.mix = (blender) ->
     blender recordable
 
   that
+
+exports.record = @record
+exports.model  = @model

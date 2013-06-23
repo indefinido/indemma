@@ -1,18 +1,39 @@
-(function() {
-  require('indemma');
+var jQuery, model, record, root;
 
-  require('indemma/lib/record/restful');
+require('indemma/lib/record/restful');
 
-  describe('restfulable', function() {
-    var model;
+root = typeof exports !== "undefined" && exports !== null ? exports : window;
 
-    model = null;
-    before(function() {
-      return model = window.model;
-    });
-    return it('provides the restfulable configuration option for model', function() {
-      return model.restfulable.should.be["function"];
+model = root.model;
+
+record = root.record;
+
+jQuery = require('component-jquery');
+
+describe('restfulable', function() {
+  describe('when included', function() {
+    return it('sets te restufulable loaded flag on model', function() {
+      return model.restfulable.should.be["true"];
     });
   });
+  describe('record', function() {
+    var arthur;
 
-}).call(this);
+    arthur = null;
+    beforeEach(function() {
+      arthur = record.call({
+        resource: 'person',
+        name: 'Arthur Philip Dent'
+      });
+      return arthur.dirty = true;
+    });
+    return describe('#save', function() {
+      return it('sends correct parameters', function() {
+        sinon.stub(jQuery, "ajax").returns(jQuery.Deferred());
+        arthur.save();
+        return jQuery.ajax.called.should.be["true"];
+      });
+    });
+  });
+  return describe('model', function() {});
+});

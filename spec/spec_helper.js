@@ -1,8 +1,7 @@
-(function() {
-  var chai;
+var chai, indemma;
 
-  chai = require('chaijs-chai');
+indemma = require('indemma');
 
-  window.should = chai.should();
+chai = require('chaijs-chai');
 
-}).call(this);
+window.should = chai.should();

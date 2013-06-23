@@ -11,6 +11,7 @@ files = [
   // Test environment
   MOCHA,
   MOCHA_ADAPTER,
+  'components/cjohansen-sinon/sinon.js',
 
   // Test dependencies
   'build/test.js',
@@ -23,7 +24,7 @@ files = [
 
 // list of files to exclude
 exclude = [
-
+  'spec/coverage'
 ];
 
 
@@ -65,7 +66,7 @@ browsers = ['Chrome'];
 
 
 // If browser does not capture in given timeout [ms], kill it
-captureTimeout = 60000;
+captureTimeout = 600000;
 
 
 // Continuous Integration mode
@@ -80,5 +81,5 @@ preprocessors = {
 // Converage configuration
 coverageReporter = {
   type : 'html',
-  dir : 'spec/'
+  dir  : 'spec/coverage'
 }
