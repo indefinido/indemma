@@ -1,7 +1,11 @@
-var chai, indemma;
+var chai, indemma, root;
+
+root = typeof exports !== "undefined" && exports !== null ? exports : window;
 
 indemma = require('indemma');
 
 chai = require('chaijs-chai');
 
-window.should = chai.should();
+root.expect = chai.expect;
+
+root.should = chai.should();

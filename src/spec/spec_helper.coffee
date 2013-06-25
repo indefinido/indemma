@@ -1,6 +1,9 @@
+root = exports ? window
+
 indemma = require 'indemma'
 chai    = require 'chaijs-chai'
 
 # sinon is included on karma.conf.js
 
-window.should = chai.should()
+root.expect = chai.expect
+root.should = chai.should()

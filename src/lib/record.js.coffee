@@ -18,7 +18,8 @@ merge      = require('assimilate').withStrategy 'deep'
       @cache
     # TODO better find support
     create: (params...) ->
-      @(attributes).save for attributes in params # TODO move to restful and after_create
+      # Implementat non restful model creation
+      throw 'model.create not implemented yet, try using the restful.model.create method'
     find: (id) ->
       @where id: id, true
     where: (conditions, first = false) ->

@@ -11,10 +11,12 @@ describe 'record',  ->
 describe 'model',  ->
   model = root.model
 
-  it 'should create a record factory', ->
-    person = model.call resource: 'person'
-    person.should.be.object
+  describe '#()', ->
 
-    john = person()
-    john.should.be.object
-    john.should.have.property 'resource', 'person'
+    it 'should create a record factory', ->
+      person = model.call resource: 'person'
+      person.should.be.object
+
+      john = person()
+      john.should.be.object
+      john.should.have.property 'resource', 'person'

@@ -20,15 +20,17 @@ describe('model', function() {
   var model;
 
   model = root.model;
-  return it('should create a record factory', function() {
-    var john, person;
+  return describe('#()', function() {
+    return it('should create a record factory', function() {
+      var john, person;
 
-    person = model.call({
-      resource: 'person'
+      person = model.call({
+        resource: 'person'
+      });
+      person.should.be.object;
+      john = person();
+      john.should.be.object;
+      return john.should.have.property('resource', 'person');
     });
-    person.should.be.object;
-    john = person();
-    john.should.be.object;
-    return john.should.have.property('resource', 'person');
   });
 });
