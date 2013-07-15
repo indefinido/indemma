@@ -3,6 +3,8 @@
 
   Indemma (mind picture → memory), client side, ES5 observable and REST, extensible modular data model.
 
+  Current version 0.0.1
+
 ## Summary
 
  - We are tired of calling .attr on my models.
@@ -221,7 +223,7 @@ TODO make documentation
   // Activate restful support
   // Requires observer-shim
   // Compatible with default rails json rendering e.g. render :json => @person
-  require('indemma/lib/record/rivets); // Working on to be require('indemma/adapters/rivets')
+  require('indemma/lib/record/rivets'); // Working on to be require('indemma/adapters/rivets')
   model.rivets();
 
   var person = model.call({resource: 'person'}),

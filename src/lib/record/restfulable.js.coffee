@@ -2,6 +2,12 @@ merge      = require('assimilate').withStrategy 'deep'
 type       = require 'type'
 observable = require('observable').mixin
 $          = require 'jquery'
+rest       = require './rest.js'
+
+util =
+  model:
+    map: (models) ->
+      @ model for model in models
 
 restful =
   model:
@@ -12,12 +18,32 @@ restful =
       params.unshift {} unless params.length
 
       for attributes in params
-        # TODO accept dirty as attribute on record creation
-        record       = @(attributes)
-        record.dirty = true
-        record.save(callback)
+  # TODO accept dirty as attribute on record creation
+  record       = @ attributes
+  record.dirty = true
+  record.save callback
+
+    all: (callback, conditions = {}) ->
+
+      $.when(rest.get.call @, conditions)
+       .then(util.model.map             )
+       .done callback
 
   record:
+    reload: () ->
+      promise = rest.get.call @
+      promise.done @assign_attributes
+      promise.fail @failed
+
+      # Bind one time save callbacks
+      promise.done argument for argument in arguments when type(argument) is 'function'
+
+      promise
+
+    assign_attributes: (attributes) ->
+      # TODO parsear de forma melhor a resposta do servidor e popular dados no modelo atual
+      @[attribute] = attributes[attribute] for attribute of attributes
+
     save: () ->
       # TODO remove jquery dependency
       unless @dirty
@@ -42,8 +68,7 @@ restful =
       else
         @save()
 
-      # TODO parsear de forma melhor a resposta do servidor e popular dados no modelo atual
-      @[property] = data[property] for property of data
+      @assign_attributes data
 
       throw "Not supported after_save callback: " + callback for callback in @after_save if @after_save
 
@@ -65,12 +90,13 @@ restful =
           message += "Status: #{status} (#{payload.status || xhr.status})\n"
           message += "Error : #{payload.error || payload.message || payload}"
 
-          console.error message
+    console.error message
 
     toString: ->
       serialized = {}
       serialized[@resource] = @json()
       JSON.stringify serialized
+
     json: ->
       json = {}
 
@@ -83,38 +109,24 @@ restful =
         else
           json[name] = value
 
-      observable.unobserve json
+            observable.unobserve json
 
-      # TODO Store reserved words in a array
-      # TODO User _.omit functions
-      # Remove model reserved words
-      delete json.dirty
-      delete json.resource
-      delete json.route
-      delete json.after_initialize
-      delete json.parent_resource
-      delete json.nested_attributes
-      delete json.on_save
-      delete json.element
-      delete json.default
-      delete json.lock
+            # TODO Store reserved words in a array
+            # TODO User _.omit functions
+            # Remove model reserved words
+            delete json.dirty
+            delete json.resource
+            delete json.route
+            delete json.after_initialize
+            delete json.parent_resource
+            delete json.nested_attributes
+            delete json.on_save
+            delete json.element
+            delete json.default
+            delete json.lock
 
-      json
+            json
 
-rest =
-  put : -> rest.request.call @, 'put' , "#{@route}/#{@_id}", arguments...
-  post: -> rest.request.call @, 'post', @route, arguments...
-  request: (method, url, data) ->
-    unless data
-     data = {}
-     data[@resource] = @json()
-
-    $.ajax
-      url     : url
-      data    : data
-      type    : method
-      dataType: 'json'
-      context : @
 
 # Extend indemma
 model  = window.model     # TODO better way to get parent
@@ -129,6 +141,12 @@ model.mix  (modelable) ->
   merge modelable , restful.model
 
 model.associable && model.associable.mix (singular_association,  plural_association) ->
+
+  # TODO move route setting to plural_association.after_mix
+  plural_association.get = ->
+    @route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource}" if @parent?
+    rest.get.apply @, arguments
+
   plural_association.post = ->
     @route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource}" if @parent?
     rest.post.apply @, arguments

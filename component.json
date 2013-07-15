@@ -18,10 +18,13 @@
   "license": "WTFPL",
   "scripts": [
     "index.js",
+    "vendor/stampit.js",
     "lib/record.js",
-    "lib/record/associations.js",
+    "lib/record/associable.js",
     "lib/record/resource.js",
-    "lib/record/restful.js",
+    "lib/record/rest.js",
+    "lib/record/restfulable.js",
+    "lib/record/scopable.js",
     "lib/record/maid.js",
     "lib/record/validators/base.js",
     "lib/extensions/rivets.js"

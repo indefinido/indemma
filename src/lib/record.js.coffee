@@ -52,6 +52,7 @@ merge      = require('assimilate').withStrategy 'deep'
 
 
   mixer = (options) ->
+    throw 'Model mixin called incorrectly call with model.call {} instead of model({})' if @ == window
     mixer.stale = true unless mixer.stale # Prevent model changes
 
     instance = bind @, initialize_record
@@ -67,7 +68,6 @@ merge      = require('assimilate').withStrategy 'deep'
     throw "Trying to change model mixin with #{object} but model already used.\nCheck your configuration order" if @stale
 
     blender modelable
-
 
   # window.model
   mixer
@@ -94,7 +94,7 @@ merge      = require('assimilate').withStrategy 'deep'
 
     data ||= {}
     after_initialize = (@after_initialize || []).concat(data.after_initialize || []).concat(recordable.after_initialize)
-    extend @, recordable, advisable(observable data), after_initialize: after_initialize
+    advisable observable(extend(@, recordable, data, after_initialize: after_initialize))
 
 
   that.mix = (blender) ->

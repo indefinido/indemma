@@ -1,7 +1,9 @@
 
+root = window
+
 # Store association methods
 # TODO Implement setter for route
-plural = # has_many
+plural = # has_many ## TODO embeds_many
   add   : (params...) -> @push @build attributes for attributes in params
   create: (params...) ->
     for attributes in params
@@ -16,15 +18,13 @@ plural = # has_many
     throw "associable.has_many: cannot redefine route of association #{@parent_resource}.#{@resource} from #{@route} to #{data.route}" if @route isnt data.route and @route
 
     model[@resource] data
-  push : Array.prototype.push
+  push  : Array.prototype.push
   length : 0
-  # TODO throught:
 
 
-singular = # belongs_to, has_one
+singular = # belongs_to, has_one ## TODO embeds_one, embedded_in
   create: (data) -> model[@resource].create $.extend {}, @, data
   build : (data) -> model[@resource]        $.extend {}, @, data
-
 
 
 # TODO Better association segregation
@@ -62,7 +62,6 @@ associable =
             pluralized_association = model.pluralize association_name
             association = @[pluralized_association]
 
-
             # TODO setter of association.route
             # to automatically update associated records
             unless association.route
@@ -93,10 +92,12 @@ associable =
       if options.has_many
         options.has_many = [options.has_many] unless $.type(options.has_many) == 'array'
 
+        # TODO accept more options on has_many association creation
         for resource in options.has_many
-          # TODO Remember to clear association proxy when object is destroied
-          association_proxy = resource: resource, parent_resource: @resource, parent: @
-          @[model.pluralize resource] = $.extend association_proxy, plural
+          # TODO Remember to clear association proxy when object is destroyed
+          association_proxy   = resource: resource, parent_resource: @resource, parent: @
+          association_name    = model.pluralize resource
+          @[association_name] = $.extend association_proxy, plural
 
         # Update association attribute
         @after 'saved', callbacks.has_many.update_association
@@ -133,11 +134,12 @@ associable =
 
 
 # Extend indemma
-model  = window.model     # TODO better way to get parent
+model  = root.model     # TODO better way to get parent
 model.mix (modelable) ->
   modelable.after_mix.unshift associable.model
   modelable.record.after_initialize.unshift associable.record
 
-# WTF this do?
-# model.associable.mix = (blender) ->
-#   blender singular, plural
+# This allows to extendind the associable mixin
+model.associable =
+  mix : (blender) ->
+    blender singular, plural

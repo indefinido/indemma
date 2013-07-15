@@ -21,6 +21,7 @@ describe('model', function() {
 
   model = root.model;
   return describe('#()', function() {
+    xit('should throw exception if no resource is passed');
     return it('should create a record factory', function() {
       var john, person;
 

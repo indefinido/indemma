@@ -1,4 +1,4 @@
-require 'indemma/lib/record/restful'
+require 'indemma/lib/record/restfulable'
 require 'indemma/lib/record/resource'
 
 root = exports ? window
@@ -32,20 +32,41 @@ describe 'restfulable', ->
         afterEach  -> jQuery.ajax.restore()
 
         it 'sends correct parameters', ->
-
           arthur.save()
-
           jQuery.ajax.called.should.be.true
 
   describe 'model' ,  ->
     describe '#()', ->
+      describe '#all', ->
+        deferred = promises = person = null
+
+        beforeEach ->
+          person   = model.call resource: 'person'
+          deferred = jQuery.Deferred()
+          sinon.stub(jQuery, "ajax").returns deferred
+
+        afterEach  ->
+          jQuery.ajax.restore()
+
+        it 'should return models when promise is resolved', (done) ->
+
+          # Will be called once for each saved record
+          fetched = (people) ->
+            people.should.be.array
+            people[0].name.should.be.string
+            done()
+
+          person.all fetched
+
+          deferred.resolveWith person, [[{name: 'Arthur'}, {name: 'Ford'}]]
+
       describe '#create', ->
         promises = person = null
 
         beforeEach ->
           person   = model.call resource: 'person'
           deferred = jQuery.Deferred()
-          deferred.resolveWith(record.call(name: 'Arthur'))
+          deferred.resolveWith record.call name: 'Arthur'
           sinon.stub(jQuery, "ajax").returns(deferred)
           promises = person.create {name: 'Arthur'}, {name: 'Ford'}
 

@@ -34,6 +34,6 @@ guard 'shell' do
     puts `component-build --verbose --name development --dev`
 
     puts '  Building tests component'
-    puts `component-build --verbose --name test --dev`
+    puts `component-build --verbose --name test`
   }
 end

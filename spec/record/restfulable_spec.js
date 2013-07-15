@@ -1,6 +1,6 @@
 var jQuery, model, record, root;
 
-require('indemma/lib/record/restful');
+require('indemma/lib/record/restfulable');
 
 require('indemma/lib/record/resource');
 
@@ -46,6 +46,40 @@ describe('restfulable', function() {
   });
   return describe('model', function() {
     return describe('#()', function() {
+      describe('#all', function() {
+        var deferred, person, promises;
+
+        deferred = promises = person = null;
+        beforeEach(function() {
+          person = model.call({
+            resource: 'person'
+          });
+          deferred = jQuery.Deferred();
+          return sinon.stub(jQuery, "ajax").returns(deferred);
+        });
+        afterEach(function() {
+          return jQuery.ajax.restore();
+        });
+        return it('should return models when promise is resolved', function(done) {
+          var fetched;
+
+          fetched = function(people) {
+            people.should.be.array;
+            people[0].name.should.be.string;
+            return done();
+          };
+          person.all(fetched);
+          return deferred.resolveWith(person, [
+            [
+              {
+                name: 'Arthur'
+              }, {
+                name: 'Ford'
+              }
+            ]
+          ]);
+        });
+      });
       return describe('#create', function() {
         var person, promises;
 

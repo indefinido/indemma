@@ -13,6 +13,8 @@ describe 'model',  ->
 
   describe '#()', ->
 
+    xit 'should throw exception if no resource is passed'
+
     it 'should create a record factory', ->
       person = model.call resource: 'person'
       person.should.be.object

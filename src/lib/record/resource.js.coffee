@@ -1,9 +1,24 @@
 resource =
   pluralize: (word) ->
-    return word + 's'
+    throw new TypeError "Invalid string passed to pluralize '#{word}'" unless word and word.length
+
+    unless word.indexOf('s') == word.length - 1
+      word + 's'
+    else
+      word
+
+  singularize: (word) ->
+    throw new TypeError "Invalid string passed to singularize '#{word}'" unless word and word.length
+
+    if word.indexOf('s') == word.length - 1
+      word.substring 0, word.length - 1
+    else
+      word
+
   parent_id:
     get: -> @[@parent_resource]._id
     set: -> console.error 'Warning changing associations throught parent_id not allowed for security and style guide purposes' # TODO
+
   initialize: ->
     # TODO route parsing
     @route = "/" + @route if @route and @route.indexOf('/') != 0
@@ -25,4 +40,5 @@ model.mix (modelable) ->
   modelable.record.after_initialize.unshift resource.initialize
   modelable.after_mix.unshift resource.initialize
 
+model.singularize = resource.singularize
 model.pluralize = resource.pluralize
