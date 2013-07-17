@@ -15084,7 +15084,7 @@ this.model = (function() {
     _ref2 = modelable.after_mix;
     for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
       callback = _ref2[_i];
-      Callback.call(instance, instance);
+      callback.call(instance, instance);
     }
     return mixer[this.resource] = instance;
   };

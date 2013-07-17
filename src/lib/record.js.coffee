@@ -64,7 +64,7 @@ merge      = require('assimilate').withStrategy 'deep'
     instance.record.after_initialize = instance.record.after_initialize.concat after_initialize
 
 
-    Callback.call instance, instance for callback in modelable.after_mix
+    callback.call instance, instance for callback in modelable.after_mix
 
     # Store model for later use
     mixer[@resource] = instance
