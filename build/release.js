@@ -1,11 +1,4 @@
 
-
-/**
- * hasOwnProperty.
- */
-
-var has = Object.prototype.hasOwnProperty;
-
 /**
  * Require the given path.
  *
@@ -70,7 +63,6 @@ require.aliases = {};
 
 require.resolve = function(path) {
   if (path.charAt(0) === '/') path = path.slice(1);
-  var index = path + '/index.js';
 
   var paths = [
     path,
@@ -82,11 +74,8 @@ require.resolve = function(path) {
 
   for (var i = 0; i < paths.length; i++) {
     var path = paths[i];
-    if (has.call(require.modules, path)) return path;
-  }
-
-  if (has.call(require.aliases, index)) {
-    return require.aliases[index];
+    if (require.modules.hasOwnProperty(path)) return path;
+    if (require.aliases.hasOwnProperty(path)) return require.aliases[path];
   }
 };
 
@@ -139,7 +128,7 @@ require.register = function(path, definition) {
  */
 
 require.alias = function(from, to) {
-  if (!has.call(require.modules, from)) {
+  if (!require.modules.hasOwnProperty(from)) {
     throw new Error('Failed to alias "' + from + '", it does not exist');
   }
   require.aliases[to] = from;
@@ -201,7 +190,7 @@ require.relative = function(parent) {
    */
 
   localRequire.exists = function(path) {
-    return has.call(require.modules, localRequire.resolve(path));
+    return require.modules.hasOwnProperty(localRequire.resolve(path));
   };
 
   return localRequire;
@@ -9963,7 +9952,7 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
 });
 
 
-require.register("observable/components/cjohansen-sinon/sinon.js", function(exports, require, module){
+require.register("indefinido-observable/components/cjohansen-sinon/sinon.js", function(exports, require, module){
 /**
  * Sinon.JS 1.7.3, 2013/06/20
  *
@@ -14256,182 +14245,197 @@ if (typeof module == "object" && typeof require == "function") {
 return sinon;}.call(typeof window != 'undefined' && window || {}));
 
 });
-require.register("observable/index.js", function(exports, require, module){
+require.register("indefinido-observable/index.js", function(exports, require, module){
 module.exports = require('./lib/observable');
 
 });
-require.register("observable/lib/observable.js", function(exports, require, module){
+require.register("indefinido-observable/lib/observable.js", function(exports, require, module){
 // TODO Better keypath support
 exports.mixin = (function ($) {
 
   var api = function (object) {
-	if (this !== window) throw 'Old api call mode detected! Do not use .call function! instead of observable.call(object) use observable(object).';
-	if (!object.observed) generator.observable_for(object);
+    if (this !== window) throw 'Old api call mode detected! Do not use .call function! instead of observable.call(object) use observable(object).';
+    if (!object.observed) generator.observable_for(object);
 
-	return $.extend(object, mixin);
+    return $.extend(object, mixin);
   },
 
   check = function (keypath, value) {
-	this.observed[keypath] = value;
-	return true;
+    this.observed[keypath] = value;
+    return true;
   },
 
   // TODO implement Object.getOwnPropertyDescriptor
   lookup = {
-	setter: Object.prototype.__lookupSetter__ || function (property) {
-	  return this.observed && this.observed[property + '_setter'];
-	},
-	getter: Object.prototype.__lookupGetter__ || function (property) {
-	  return this.observed && this.observed[property + '_getter'] || lookup.default_getter;
-	},
-	types: {
-	  'undefined': undefined,
-	  'null': null,
-	  'true': true,
-	  'false': false,
-	  'NaN': NaN
-	},
-	overrides: [Object.prototype.toString, String.prototype.toString, Array.prototype.toString, Number.prototype.toString],
-	basic_types: [undefined, null],
-	default_getter: function (property) {
-	  value = this[property] && (this[property].toString.call(this)) || this[property] + '';
-	  if (value in lookup.types) return lookup.types[value];
-	  return value;
-	}
+    setter: Object.prototype.__lookupSetter__ || function (property) {
+      return this.observed && this.observed[property + '_setter'];
+    },
+    getter: Object.prototype.__lookupGetter__ || function (property) {
+      return this.observed && this.observed[property + '_getter'] || lookup.default_getter;
+    },
+    types: {
+      'undefined': undefined,
+      'null': null,
+      'true': true,
+      'false': false,
+      'NaN': NaN
+    },
+    overrides: [Object.prototype.toString, String.prototype.toString, Array.prototype.toString, Number.prototype.toString],
+    basic_types: [undefined, null],
+    default_getter: function (property) {
+      value = this[property] && (this[property].toString.call(this)) || this[property] + '';
+      if (value in lookup.types) return lookup.types[value];
+      return value;
+    }
   },
 
   mixin = {
-	subscribe: function observable_subscribe (keypath, callback) {
-	  if (keypath == 'observed') throw new TypeError('observable.subscribe: cannot observe reserved property observed');
-	  if ($.isArray(this[keypath])) generator.mutations.call(this, keypath);
+    subscribe: function observable_subscribe (keypath, callback) {
+      if (keypath == 'observed') throw new TypeError('observable.subscribe: cannot observe reserved property observed');
+      if ($.isArray(this[keypath])) generator.mutations.call(this, keypath);
 
-	  generator.observe.call(this, keypath, callback);
+      generator.observe.call(this, keypath, callback);
 
-	  return true;
-	},
-	unsubscribe: function (object, keypath, callback) {
-	  console.error("observable.unsubscribe not implemented yet.");
-	  console.log(object, keypath, callback);
-	},
-	publish: function observable_publish (keypath, value) {
-	  // TODO actually call callbacks
-	  return this[keypath] = value;
-	}
+      return true;
+    },
+    unsubscribe: function (object, keypath, callback) {
+      console.error("observable.unsubscribe not implemented yet.");
+      console.log(object, keypath, callback);
+    },
+    publish: function observable_publish (keypath, value) {
+      // TODO actually call callbacks
+      return this[keypath] = value;
+    }
   },
   generator = {
-	observe: function(keypath, callback) {
-	  Object.defineProperty(this, keypath, {
-		get: generator.getter.call(this, keypath),
-		set: generator.setter.call(this, keypath, callback)
-	  });
-	},
-	observable_for: function (object) {
-	  return Object.defineProperty(object, 'observed', {
-		configurable: true,
-		enumerable: false,
-		value: {}
-	  });
-	},
+    observe: function(keypath, callback) {
+      return Object.defineProperty(this, keypath, {
+        get: generator.getter.call(this, keypath),
+        set: generator.setter.call(this, keypath, callback)
+      });
+    },
+    observable_for: function (object) {
+      return Object.defineProperty(object, 'observed', {
+        configurable: true,
+        enumerable: false,
+        value: {}
+      });
+    },
 
-	// TODO improve readability
-	// TODO implement linked list
-	setter: function subscribed_setter (keypath, callback) {
-	  var setter = lookup.setter.call(this, keypath), current, getter, old_setter;
+    // TODO improve readability
+    // TODO implement linked list
+    setter: function subscribed_setter (keypath, callback) {
+      var setter = lookup.setter.call(this, keypath), current, getter, old_setter;
 
-	  // Set value
-	  this.observed[keypath] = lookup.getter.call(this, keypath) && lookup.getter.call(this, keypath)() || this[keypath];
+      // Set value
+      this.observed[keypath] = lookup.getter.call(this, keypath) && lookup.getter.call(this, keypath)() || this[keypath];
 
-	  // First time subscribing
-	  if (!setter) {
-		setter = function setter (value) {
-		  check.call(this, keypath, value) !== false && setter.callback_thread.call(this, value);
-		}
+      // First time subscribing
+      if (!setter) {
+        setter = function setter (value) {
+          check.call(this, keypath, value) !== false && setter.callback_thread.call(this, value);
+        }
 
-		// First time subscribing but does not have callback_thread associated
-	  } else if (!setter.callback_thread) {
-		old_setter = setter;
-		setter = function setter (value) {
-		  check.call(this, keypath, value) !== false && setter.callback_thread.call(this, value);
-		}
+        // First time subscribing but does not have callback_thread associated
+      } else if (!setter.callback_thread) {
+        old_setter = setter;
+        setter = function setter (value) {
+          check.call(this, keypath, value) !== false && setter.callback_thread.call(this, value);
+        }
 
-		setter.callback_thread = old_setter;
-	  }
+        setter.callback_thread = old_setter;
+      }
 
-	  current = setter.callback_thread || $.noop;
+      current = setter.callback_thread || $.noop;
 
-	  setter.callback_thread = function thread (value) {
-		current.call(this, value) !== false && callback.call(this, value);
-	  }
+      setter.callback_thread = function thread (value) {
+        current.call(this, value) !== false && callback.call(this, value);
+      }
 
-	  // TODO remove jquery dependencie
-	  // if ($.browser.msie && $.browser.version <= 8) this.observed[keypath + '_setter'] = setter;
+      // TODO remove jquery dependencie
+      // if ($.browser.msie && $.browser.version <= 8) this.observed[keypath + '_setter'] = setter;
 
-	  return setter;
-	},
-	getter: function subscribed_getter (keypath) {
-	  var object = this, getter;
+      return setter;
+    },
+    getter: function subscribed_getter (keypath) {
+      var object = this, getter;
 
-	  getter = lookup.getter.call(this, keypath) || function root_getter () {
-		return object.observed[keypath];
-	  };
+      getter = lookup.getter.call(this, keypath) || function root_getter () {
+        return object.observed[keypath];
+      };
 
-	  // TODO remove jquery dependencie
-	  // if ($.browser.msie && $.browser.version <= 8) this.observed[keypath + '_getter'] = getter;
+      // TODO remove jquery dependencie
+      // if ($.browser.msie && $.browser.version <= 8) this.observed[keypath + '_getter'] = getter;
 
-	  return getter;
-	},
+      return getter;
+    },
     mutations: function(keypath) {
-	  var setter = lookup.setter.call(this, keypath),
-	  array = this[keypath];
+      var setter = lookup.setter.call(this, keypath),
+      array = this[keypath];
 
-	  // First time subscribing, and it is an array
-	  if (!setter) {
-	    generator.observe.call(this, keypath, function(new_array) {
-	      // Skip this if it is not the first time
-	      if (new_array.object === array.object && new_array.thread === array.thread) return;
-	      var i = new_array.length;
+      // First time subscribing, and it is an array
+      if (!setter) {
+        generator.observe.call(this, keypath, function(new_array) {
+          var i, type, j;
+          // Avoid non push operations!
+          if ($.type(new_array) !== 'array') return;
 
-	      new_array.thread = array.thread;
-	      new_array.object = array.object;
-	      new_array.key = keypath;
+          // Skip this if it is not the first time
+          if (new_array.object === array.object && new_array.thread === array.thread) return;
+          i = new_array.length;
+          j = new_array.length;
 
-	      while (i--) {
-		    if (!new_array[i].observed) observable(new_array[i]);
-	      }
-	      $.extend(new_array, mutations.overrides);
-	    });
+          new_array.thread = array.thread;
+          new_array.object = array.object;
+          new_array.key = keypath;
 
-	    setter = lookup.setter.call(this, keypath);
-	  }
+          while (i--) {
+            type = $.type(arguments[i]);
+            if (!new_array[i].observed
+                && (type != 'object' || type != 'array')) {
+              api(new_array[i]);
+            }
+          }
 
-	  // TODO Transform this code to define property
-	  array.thread = setter.callback_thread;
-	  array.object = this;
-	  array.key = keypath;
+          new_array.length = j;
 
-	  // Override default array methods
-	  $.extend(array, mutations.overrides);
+          // Update internal property value
+          $.extend(new_array, mutations.overrides);
+        });
 
-	  if (!this.observed.mutate) this.observed.mutate = mutations.mutate;
-	}
+        setter = lookup.setter.call(this, keypath);
+      }
+
+      // TODO Transform this code to define property
+      array.thread = setter.callback_thread;
+      array.object = this;
+      array.key = keypath;
+
+      // Override default array methods
+      $.extend(array, mutations.overrides);
+
+      if (!this.observed.mutate) this.observed.mutate = mutations.mutate;
+    }
   },
   mutations = {
-	mutate: function(thread, method, array) {
-	  thread.apply(this, array, method);
-	  this.publish(array.key, array, method); // TODO ver se é uma boa
-	},
-	overrides: {
-	  push: function() {
-	    var i = arguments.length,
-	    operation;
-	    while (i--) {
-	      (!arguments[i].observed) && observable(arguments[i]);
-	    }
-	    operation = Array.prototype.push.apply(this, arguments); // TODO Convert arguments for real array
-	    this.object.observed.mutate.call(this.object, this.thread, 'push', this);
-	    return operation;
-	  }
-	}
+    mutate: function(thread, method, array) {
+      array.method = method;
+      thread.call(this, array);
+      this.publish(array.key, array); // TODO ver se é uma boa
+      delete array.method;
+    },
+    overrides: {
+      push: function() {
+        var i = arguments.length,
+        operation;
+        while (i--) {
+          !arguments[i].observed && $.type(arguments[i]) == 'object' && api(arguments[i]);
+        }
+        operation = Array.prototype.push.apply(this, arguments); // TODO Convert arguments for real array
+        this.object.observed.mutate.call(this.object, this.thread, 'push', this);
+        return operation;
+      }
+    }
   };
 
   // TODO remove jquery dependencie
@@ -14466,29 +14470,29 @@ exports.mixin = (function ($) {
 
 
   $('pop shift unshift'.split(' ')).each(function (i, method) {
-	mutations.overrides[method] = function () {
-	  Array.prototype[method].apply(this, arguments);
-	  this.object.observed.mutate.call(this.object, this.thread, method, this);
-	};
+    mutations.overrides[method] = function () {
+      Array.prototype[method].apply(this, arguments);
+      this.object.observed.mutate.call(this.object, this.thread, method, this);
+    };
   });
 
   api.unobserve = function (object) {
-	var property;
+    var property;
 
-	for (property in mixin) {
-	  delete object[property];
-	}
+    for (property in mixin) {
+      delete object[property];
+    }
 
-	delete object.observed;
+    delete object.observed;
 
-	return true;
+    return true;
   };
 
   return api;
 })(require('jquery'));
 
 });
-require.register("observable/lib/adapters/rivets.js", function(exports, require, module){
+require.register("indefinido-observable/lib/adapters/rivets.js", function(exports, require, module){
 exports.adapter = {
   subscribe: function(record, attribute_path, callback) {
     return record.subscribe(attribute_path, callback);
@@ -14505,11 +14509,11 @@ exports.adapter = {
 };
 
 });
-require.register("advisable/index.js", function(exports, require, module){
+require.register("indefinido-advisable/index.js", function(exports, require, module){
 module.exports = require('./lib/advisable');
 
 });
-require.register("advisable/lib/advisable.js", function(exports, require, module){
+require.register("indefinido-advisable/lib/advisable.js", function(exports, require, module){
 var $, advice, mixin;
 
 $ = require('jquery');
@@ -15065,7 +15069,7 @@ this.model = (function() {
     return instance;
   };
   mixer = function(options) {
-    var callback, instance, _i, _len, _ref;
+    var after_initialize, callback, instance, _i, _len, _ref;
 
     if (this === window) {
       throw 'Model mixin called incorrectly call with model.call {} instead of model({})';
@@ -15074,7 +15078,9 @@ this.model = (function() {
       mixer.stale = true;
     }
     instance = bind(this, initialize_record);
+    after_initialize = this.after_initialize;
     extend(instance, merge(this, modelable));
+    instance.after_initialize = instance.after_initialize.concat(after_initialize);
     _ref = modelable.after_mix;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       callback = _ref[_i];
@@ -15934,23 +15940,29 @@ model.rivets = function() {
 });
 require.alias("pluma-assimilate/dist/assimilate.js", "indemma/deps/assimilate/dist/assimilate.js");
 require.alias("pluma-assimilate/dist/assimilate.js", "indemma/deps/assimilate/index.js");
+require.alias("pluma-assimilate/dist/assimilate.js", "assimilate/index.js");
 require.alias("pluma-assimilate/dist/assimilate.js", "pluma-assimilate/index.js");
 
 require.alias("component-type/index.js", "indemma/deps/type/index.js");
+require.alias("component-type/index.js", "type/index.js");
 
 require.alias("component-bind/index.js", "indemma/deps/bind/index.js");
+require.alias("component-bind/index.js", "bind/index.js");
 
 require.alias("component-jquery/index.js", "indemma/deps/jquery/index.js");
+require.alias("component-jquery/index.js", "jquery/index.js");
 
-require.alias("observable/components/cjohansen-sinon/sinon.js", "indemma/deps/observable/components/cjohansen-sinon/sinon.js");
-require.alias("observable/index.js", "indemma/deps/observable/index.js");
-require.alias("observable/lib/observable.js", "indemma/deps/observable/lib/observable.js");
-require.alias("observable/lib/adapters/rivets.js", "indemma/deps/observable/lib/adapters/rivets.js");
+require.alias("indefinido-observable/components/cjohansen-sinon/sinon.js", "indemma/deps/observable/components/cjohansen-sinon/sinon.js");
+require.alias("indefinido-observable/index.js", "indemma/deps/observable/index.js");
+require.alias("indefinido-observable/lib/observable.js", "indemma/deps/observable/lib/observable.js");
+require.alias("indefinido-observable/lib/adapters/rivets.js", "indemma/deps/observable/lib/adapters/rivets.js");
+require.alias("indefinido-observable/index.js", "observable/index.js");
 
 
-require.alias("component-jquery/index.js", "observable/deps/jquery/index.js");
+require.alias("component-jquery/index.js", "indefinido-observable/deps/jquery/index.js");
 
-require.alias("advisable/index.js", "indemma/deps/advisable/index.js");
-require.alias("advisable/lib/advisable.js", "indemma/deps/advisable/lib/advisable.js");
-require.alias("component-jquery/index.js", "advisable/deps/jquery/index.js");
+require.alias("indefinido-advisable/index.js", "indemma/deps/advisable/index.js");
+require.alias("indefinido-advisable/lib/advisable.js", "indemma/deps/advisable/lib/advisable.js");
+require.alias("indefinido-advisable/index.js", "advisable/index.js");
+require.alias("component-jquery/index.js", "indefinido-advisable/deps/jquery/index.js");
 
