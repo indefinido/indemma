@@ -55,7 +55,8 @@ merge      = require('assimilate').withStrategy 'deep'
     throw 'Model mixin called incorrectly call with model.call {} instead of model({})' if @ == window
     mixer.stale = true unless mixer.stale # Prevent model changes
 
-    after_initialize = @record?.after_initialize ? Array.prototype
+    after_initialize = @record?.after_initialize? ? []
+    after_initialize = after_initialize.splice 0
 
     instance = bind @, initialize_record
 

@@ -15077,7 +15077,8 @@ this.model = (function() {
     if (!mixer.stale) {
       mixer.stale = true;
     }
-    after_initialize = (_ref = (_ref1 = this.record) != null ? _ref1.after_initialize : void 0) != null ? _ref : Array.prototype;
+    after_initialize = (_ref = ((_ref1 = this.record) != null ? _ref1.after_initialize : void 0) != null) != null ? _ref : [];
+    after_initialize = after_initialize.splice(0);
     instance = bind(this, initialize_record);
     extend(instance, merge(this, modelable));
     instance.record.after_initialize = instance.record.after_initialize.concat(after_initialize);
