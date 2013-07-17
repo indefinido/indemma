@@ -15069,7 +15069,7 @@ this.model = (function() {
     return instance;
   };
   mixer = function(options) {
-    var after_initialize, callback, instance, _i, _len, _ref;
+    var callback, instance, record_options, _i, _len, _ref;
 
     if (this === window) {
       throw 'Model mixin called incorrectly call with model.call {} instead of model({})';
@@ -15077,10 +15077,12 @@ this.model = (function() {
     if (!mixer.stale) {
       mixer.stale = true;
     }
+    record_options = this.record;
     instance = bind(this, initialize_record);
-    after_initialize = this.after_initialize;
     extend(instance, merge(this, modelable));
-    instance.after_initialize = instance.after_initialize.concat(after_initialize);
+    if (this.record != null) {
+      instance.after_initialize = instance.after_initialize.concat(record_options.after_initialize);
+    }
     _ref = modelable.after_mix;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       callback = _ref[_i];
