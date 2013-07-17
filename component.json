@@ -8,13 +8,13 @@
     "pluma/assimilate": "*",
     "component/type": "*",
     "component/bind": "*",
-	"component/jquery": "*"
+	"component/jquery": "*",
+    "indefinido/observable": "*",
+    "indefinido/advisable": "*"
   },
   "development": {
     "chaijs/chai": "*"
   },
-  "local": ["observable", "advisable"],
-  "paths": ["/Users/heitor/Development/Workspace/Javascript"],
   "license": "WTFPL",
   "scripts": [
     "index.js",

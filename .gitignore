@@ -11,4 +11,4 @@
 .loadpath
 
 # Mac OS X Files
-# .DS_*
+.DS_*
