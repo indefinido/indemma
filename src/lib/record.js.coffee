@@ -61,7 +61,7 @@ merge      = require('assimilate').withStrategy 'deep'
 
     extend instance, merge @, modelable
 
-    instance.after_initialize = (instance.after_initialize || Array.prototype).concat after_initialize
+    instance.record.after_initialize = instance.record.after_initialize.concat after_initialize
 
 
     Callback.call instance, instance for callback in modelable.after_mix
