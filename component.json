@@ -4,6 +4,7 @@
   "description": "Indemma (mind picture = memory), client side ES5 observable REST model",
   "version": "0.0.1",
   "keywords": [],
+
   "dependencies": {
     "pluma/assimilate": "*",
     "component/type": "*",

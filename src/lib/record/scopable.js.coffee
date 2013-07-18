@@ -107,19 +107,25 @@ model.associable && model.associable.mix (singular_association,  plural_associat
 
     # TODO better calculate fetch settings
     # if more than 5 records are dirty, we reftech all
-#    if dirty < 5
-#      for record in @
-#        promises.push record.reload()
-
+    #    if dirty < 5
+    #      for record in @
+    #        promises.push record.reload()
     # else we reload everthing!
-#    else
+    #    else
     promises.push rest.get.call @
     promises[0].fail restful.record.failed
 
     reload = $.when.apply jQuery, promises
 
-    # Update association
+    # Update association with data sent from the server
     reload.done (records, status) ->
+      singular_resource = model.singularize(this.resource)
+
+      for record, index in records
+        record.resource        = singular_resource
+        record.parent          = this.parent
+        record.parent_resource = this.parent_resource
+        records[index]         = plural_association.build.call({resource: singular_resource}, record);
 
       # Clear current stored cache on this association
       Array.prototype.splice.call @, 0
