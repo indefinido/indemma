@@ -18,10 +18,10 @@ restful =
       params.unshift {} unless params.length
 
       for attributes in params
-  # TODO accept dirty as attribute on record creation
-  record       = @ attributes
-  record.dirty = true
-  record.save callback
+        # TODO accept dirty as attribute on record creation
+        record       = @ attributes
+        record.dirty = true
+        record.save callback
 
     all: (callback, conditions = {}) ->
 
@@ -90,7 +90,7 @@ restful =
           message += "Status: #{status} (#{payload.status || xhr.status})\n"
           message += "Error : #{payload.error || payload.message || payload}"
 
-    console.error message
+      console.error message
 
     toString: ->
       serialized = {}
@@ -109,23 +109,24 @@ restful =
         else
           json[name] = value
 
-            observable.unobserve json
+          observable.unobserve json
 
-            # TODO Store reserved words in a array
-            # TODO User _.omit functions
-            # Remove model reserved words
-            delete json.dirty
-            delete json.resource
-            delete json.route
-            delete json.after_initialize
-            delete json.parent_resource
-            delete json.nested_attributes
-            delete json.on_save
-            delete json.element
-            delete json.default
-            delete json.lock
+          # TODO Store reserved words in a array
+          # TODO User _.omit functions
 
-            json
+          # Remove model reserved words
+          delete json.dirty
+          delete json.resource
+          delete json.route
+          delete json.after_initialize
+          delete json.parent_resource
+          delete json.nested_attributes
+          delete json.on_save
+          delete json.element
+          delete json.default
+          delete json.lock
+
+          json
 
 
 # Extend indemma
