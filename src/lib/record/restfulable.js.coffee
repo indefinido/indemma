@@ -12,9 +12,9 @@ util =
 restful =
   model:
     # return an array of promises
-    create: (callback, params...) ->
+    create: (params..., callback) ->
       throw new TypeError("No arguments provided for #{@resource}.create") unless arguments.length
-      params.unshift callback and callback = null unless typeof callback == 'function'
+      params.push callback unless typeof callback == 'function'
       params.unshift {} unless params.length
 
       for attributes in params
@@ -23,14 +23,19 @@ restful =
         record.dirty = true
         record.save callback
 
-    all: (callback, conditions = {}) ->
+    # return a promise
+    # TODO move to scopable
+    all: (conditions = {}, callback) ->
+      if typeof conditions == 'function'
+        callback   = conditions
+        conditions = {}
 
       $.when(rest.get.call @, conditions)
        .then(util.model.map             )
        .done callback
 
   record:
-    reload: () ->
+    reload: ->
       promise = rest.get.call @
       promise.done @assign_attributes
       promise.fail @failed
@@ -109,24 +114,24 @@ restful =
         else
           json[name] = value
 
-          observable.unobserve json
+      observable.unobserve json
 
-          # TODO Store reserved words in a array
-          # TODO User _.omit functions
+      # TODO Store reserved words in a array
+      # TODO User _.omit function
 
-          # Remove model reserved words
-          delete json.dirty
-          delete json.resource
-          delete json.route
-          delete json.after_initialize
-          delete json.parent_resource
-          delete json.nested_attributes
-          delete json.on_save
-          delete json.element
-          delete json.default
-          delete json.lock
+      # Remove model reserved words
+      delete json.dirty
+      delete json.resource
+      delete json.route
+      delete json.after_initialize
+      delete json.parent_resource
+      delete json.nested_attributes
+      delete json.on_save
+      delete json.element
+      delete json.default
+      delete json.lock
 
-          json
+      json
 
 
 # Extend indemma

@@ -37,34 +37,12 @@ describe 'restfulable', ->
 
   describe 'model' ,  ->
     describe '#()', ->
-      describe '#all', ->
-        deferred = promises = person = null
-
-        beforeEach ->
-          person   = model.call resource: 'person'
-          deferred = jQuery.Deferred()
-          sinon.stub(jQuery, "ajax").returns deferred
-
-        afterEach  ->
-          jQuery.ajax.restore()
-
-        it 'should return models when promise is resolved', (done) ->
-
-          # Will be called once for each saved record
-          fetched = (people) ->
-            people.should.be.array
-            people[0].name.should.be.string
-            done()
-
-          person.all fetched
-
-          deferred.resolveWith person, [[{name: 'Arthur'}, {name: 'Ford'}]]
-
       describe '#create', ->
         promises = person = null
 
         beforeEach ->
           person   = model.call resource: 'person'
+
           deferred = jQuery.Deferred()
           deferred.resolveWith record.call name: 'Arthur'
           sinon.stub(jQuery, "ajax").returns(deferred)
@@ -89,7 +67,7 @@ describe 'restfulable', ->
             @name.should.be.eq 'Arthur'
             done()
 
-          person.create created, {name: 'Arthur'}, {name: 'Ford'}
+          person.create {name: 'Arthur'}, {name: 'Ford'}, created
 
         it 'should optionally accept create callback', (done) ->
           deferreds = person.create {name: 'Arthur'}, {name: 'Ford'}

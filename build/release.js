@@ -15145,10 +15145,14 @@ exports.model = this.model;
 
 });
 require.register("indemma/lib/record/associable.js", function(exports, require, module){
-var associable, model, plural, root, singular,
+var $, associable, model, plural, root, singular,
   __slice = [].slice;
 
 root = window;
+
+$ = require('jquery');
+
+require('./resource');
 
 plural = {
   add: function() {
@@ -15262,22 +15266,19 @@ associable = {
         }
       }
     };
-    if ($.type(this.has_many) !== 'array') {
+    if ((this.has_many != null) && $.type(this.has_many) !== 'array') {
       this.has_many = [this.has_many];
     }
-    if ($.type(this.has_one) !== 'array') {
+    if ((this.has_one != null) && $.type(this.has_one) !== 'array') {
       this.has_one = [this.has_one];
     }
-    if ($.type(this.belongs_to) !== 'array') {
+    if ((this.belongs_to != null) && $.type(this.belongs_to) !== 'array') {
       this.belongs_to = [this.belongs_to];
     }
     return this.create_associations = function() {
       var association_name, association_proxy, resource, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2, _results;
 
       if (options.has_many) {
-        if ($.type(options.has_many) !== 'array') {
-          options.has_many = [options.has_many];
-        }
         _ref = options.has_many;
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           resource = _ref[_i];
@@ -15293,9 +15294,6 @@ associable = {
         callbacks.has_many.nest_attributes.call(this);
       }
       if (options.has_one) {
-        if ($.type(options.has_one) !== 'array') {
-          options.has_one = [options.has_one];
-        }
         _ref1 = options.has_one;
         for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
           resource = _ref1[_j];
@@ -15309,9 +15307,6 @@ associable = {
         }
       }
       if (options.belongs_to) {
-        if ($.type(options.belongs_to) !== 'array') {
-          options.belongs_to = [options.belongs_to];
-        }
         _ref2 = options.belongs_to;
         _results = [];
         for (_k = 0, _len2 = _ref2.length; _k < _len2; _k++) {
@@ -15474,29 +15469,33 @@ util = {
 restful = {
   model: {
     create: function() {
-      var attributes, callback, params, record, _i, _len, _results;
+      var attributes, callback, params, record, _i, _j, _len, _results;
 
-      callback = arguments[0], params = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+      params = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), callback = arguments[_i++];
       if (!arguments.length) {
         throw new TypeError("No arguments provided for " + this.resource + ".create");
       }
       if (typeof callback !== 'function') {
-        params.unshift(callback && (callback = null));
+        params.push(callback);
       }
       if (!params.length) {
         params.unshift({});
       }
       _results = [];
-      for (_i = 0, _len = params.length; _i < _len; _i++) {
-        attributes = params[_i];
+      for (_j = 0, _len = params.length; _j < _len; _j++) {
+        attributes = params[_j];
         record = this(attributes);
         record.dirty = true;
         _results.push(record.save(callback));
       }
       return _results;
     },
-    all: function(callback, conditions) {
+    all: function(conditions, callback) {
       if (conditions == null) {
+        conditions = {};
+      }
+      if (typeof conditions === 'function') {
+        callback = conditions;
         conditions = {};
       }
       return $.when(rest.get.call(this, conditions)).then(util.model.map).done(callback);
@@ -15721,7 +15720,30 @@ scopable = {
   base: stampit().state({
     name: 'unamed_scope'
   }),
-  record: {},
+  record: {
+    failed: function(xhr, error, status) {
+      var e, message, payload;
+
+      payload = xhr.responseJSON;
+      try {
+        payload || (payload = JSON.parse(xhr.responseText));
+      } catch (_error) {
+        e = _error;
+      }
+      payload || (payload = xhr.responseText);
+      switch (xhr.status) {
+        case 422:
+          this.valid = false;
+          return this.errors = payload.errors;
+        default:
+          message = "Fail in " + this.resource + ".save:\n";
+          message += "Record: " + this + "\n";
+          message += "Status: " + status + " (" + (payload.status || xhr.status) + ")\n";
+          message += "Error : " + (payload.error || payload.message || payload);
+      }
+      return console.error(message);
+    }
+  },
   model: {
     fetch: function() {
       var callbacks, data;
@@ -15809,7 +15831,7 @@ model.associable && model.associable.mix(function(singular_association, plural_a
       }
     }
     promises.push(rest.get.call(this));
-    promises[0].fail(restful.record.failed);
+    promises[0].fail(scopable.record.failed);
     reload = $.when.apply(jQuery, promises);
     reload.done(function(records, status) {
       var index, singular_resource, _j, _len1;

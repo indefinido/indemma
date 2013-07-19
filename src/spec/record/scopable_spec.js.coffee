@@ -19,26 +19,53 @@ describe 'scopable', ->
   describe 'model', ->
 
     describe '#(options)', ->
-      person = model.call
-        $hetero: true
-        $by_type: []
-        resource: 'person'
+      person = null
+
+      beforeEach ->
+
+        person = model.call
+          $hetero: true
+          $by_type: []
+          resource: 'person'
 
       describe 'scope', ->
+
         it 'should add scope methods to model', ->
+
           person.hetero.should.be.function
 
         describe '#(name, type)', ->
+
           it 'should add scope methods to model', ->
             person.scope 'bissexual', Boolean
             person.bissexual.should.be.function
 
       describe '#{generated_scope}', ->
+        deferred = null
+
         beforeEach ->
-          sinon.stub(jQuery, "ajax").returns(jQuery.Deferred())
+          deferred = jQuery.Deferred()
+          sinon.stub(jQuery, "ajax").returns deferred
           person.scope.clear()
 
-        afterEach  -> jQuery.ajax.restore()
+        afterEach -> jQuery.ajax.restore()
+
+        describe '#all', ->
+          deferred = promises = person = null
+
+          it 'should return models when promise is resolved', (done) ->
+
+            # Will be called once for each saved record
+            fetched = (people) ->
+              people.should.be.array
+              people[0].name.should.be.string
+              done()
+
+            person.all fetched
+
+            deferred.resolveWith person, [[{name: 'Arthur'}, {name: 'Ford'}]]
+            jQuery.ajax.callCount.should.be.eq 1
+
 
         describe 'when array', ->
           it 'should acumulate data in scope object', ->

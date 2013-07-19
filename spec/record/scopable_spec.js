@@ -24,10 +24,13 @@ describe('scopable', function() {
     return describe('#(options)', function() {
       var person;
 
-      person = model.call({
-        $hetero: true,
-        $by_type: [],
-        resource: 'person'
+      person = null;
+      beforeEach(function() {
+        return person = model.call({
+          $hetero: true,
+          $by_type: [],
+          resource: 'person'
+        });
       });
       describe('scope', function() {
         it('should add scope methods to model', function() {
@@ -41,12 +44,41 @@ describe('scopable', function() {
         });
       });
       return describe('#{generated_scope}', function() {
+        var deferred;
+
+        deferred = null;
         beforeEach(function() {
-          sinon.stub(jQuery, "ajax").returns(jQuery.Deferred());
+          deferred = jQuery.Deferred();
+          sinon.stub(jQuery, "ajax").returns(deferred);
           return person.scope.clear();
         });
         afterEach(function() {
           return jQuery.ajax.restore();
+        });
+        describe('#all', function() {
+          var promises;
+
+          deferred = promises = person = null;
+          return it('should return models when promise is resolved', function(done) {
+            var fetched;
+
+            fetched = function(people) {
+              people.should.be.array;
+              people[0].name.should.be.string;
+              return done();
+            };
+            person.all(fetched);
+            deferred.resolveWith(person, [
+              [
+                {
+                  name: 'Arthur'
+                }, {
+                  name: 'Ford'
+                }
+              ]
+            ]);
+            return jQuery.ajax.callCount.should.be.eq(1);
+          });
         });
         describe('when array', function() {
           it('should acumulate data in scope object', function() {

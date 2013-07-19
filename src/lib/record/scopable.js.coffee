@@ -1,5 +1,6 @@
 require './restfulable'
 require './resource'
+
 stampit = require '../../vendor/stampit'
 extend  = require 'assimilate'
 merge   = extend.withStrategy 'deep'
@@ -37,7 +38,26 @@ scopable =
   base: stampit().state
     name: 'unamed_scope'
 
-  record: {}
+  record:
+    # Parse error json if any
+    failed: (xhr, error, status) ->
+      payload       = xhr.responseJSON
+      try payload ||= JSON.parse(xhr.responseText) catch e
+      payload     ||= xhr.responseText
+
+      # When client fail
+      switch xhr.status
+        when 422
+          @valid = false
+          return @errors = payload.errors
+        # Unknown fail
+        else
+          message  = "Fail in #{@resource}.save:\n"
+          message += "Record: #{@}\n"
+          message += "Status: #{status} (#{payload.status || xhr.status})\n"
+          message += "Error : #{payload.error || payload.message || payload}"
+
+      console.error message
   model:
     fetch: (data, callbacks...) ->
       rest.get.call(@, extend(@scope.data, data))
@@ -113,18 +133,18 @@ model.associable && model.associable.mix (singular_association,  plural_associat
     # else we reload everthing!
     #    else
     promises.push rest.get.call @
-    promises[0].fail restful.record.failed
+    promises[0].fail scopable.record.failed
 
     reload = $.when.apply jQuery, promises
 
     # Update association with data sent from the server
     reload.done (records, status) ->
-      singular_resource = model.singularize(this.resource)
+      singular_resource = model.singularize @resource
 
       for record, index in records
         record.resource        = singular_resource
-        record.parent          = this.parent
-        record.parent_resource = this.parent_resource
+        record.parent          = @parent
+        record.parent_resource = @parent_resource
         records[index]         = plural_association.build.call({resource: singular_resource}, record);
 
       # Clear current stored cache on this association

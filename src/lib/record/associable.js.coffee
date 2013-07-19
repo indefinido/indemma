@@ -1,5 +1,8 @@
 
 root = window
+$    = require 'jquery'
+
+require './resource'
 
 # Store association methods
 # TODO Implement setter for route
@@ -79,9 +82,9 @@ associable =
     # @after_save.push ->
     #   model[@resource] =
     #
-    @has_many   = [@has_many]   unless $.type(@has_many)   == 'array'
-    @has_one    = [@has_one]    unless $.type(@has_one)    == 'array'
-    @belongs_to = [@belongs_to] unless $.type(@belongs_to) == 'array'
+    @has_many   = [@has_many  ] if @has_many?   and $.type(@has_many)   != 'array'
+    @has_one    = [@has_one   ] if @has_one?    and $.type(@has_one)    != 'array'
+    @belongs_to = [@belongs_to] if @belongs_to? and $.type(@belongs_to) != 'array'
 
 
     # TODO better organise this code
@@ -90,7 +93,6 @@ associable =
       # Create association methods
       # Setup one to many association in model
       if options.has_many
-        options.has_many = [options.has_many] unless $.type(options.has_many) == 'array'
 
         # TODO accept more options on has_many association creation
         for resource in options.has_many
@@ -106,7 +108,6 @@ associable =
         callbacks.has_many.nest_attributes.call @
 
       if options.has_one
-        options.has_one = [options.has_one] unless $.type(options.has_one) == 'array'
 
         for resource in options.has_one
           association_proxy = resource: resource, parent_resource: @resource
@@ -116,7 +117,6 @@ associable =
           @["create_#{resource}"] = $.proxy singular.create, association_proxy
 
       if options.belongs_to
-        options.belongs_to = [options.belongs_to] unless $.type(options.belongs_to) == 'array'
 
         for resource in options.belongs_to
           association_proxy = resource: resource, parent_resource: @resource

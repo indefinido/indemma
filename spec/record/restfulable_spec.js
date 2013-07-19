@@ -46,40 +46,6 @@ describe('restfulable', function() {
   });
   return describe('model', function() {
     return describe('#()', function() {
-      describe('#all', function() {
-        var deferred, person, promises;
-
-        deferred = promises = person = null;
-        beforeEach(function() {
-          person = model.call({
-            resource: 'person'
-          });
-          deferred = jQuery.Deferred();
-          return sinon.stub(jQuery, "ajax").returns(deferred);
-        });
-        afterEach(function() {
-          return jQuery.ajax.restore();
-        });
-        return it('should return models when promise is resolved', function(done) {
-          var fetched;
-
-          fetched = function(people) {
-            people.should.be.array;
-            people[0].name.should.be.string;
-            return done();
-          };
-          person.all(fetched);
-          return deferred.resolveWith(person, [
-            [
-              {
-                name: 'Arthur'
-              }, {
-                name: 'Ford'
-              }
-            ]
-          ]);
-        });
-      });
       return describe('#create', function() {
         var person, promises;
 
@@ -121,11 +87,11 @@ describe('restfulable', function() {
             this.name.should.be.eq('Arthur');
             return done();
           };
-          return person.create(created, {
+          return person.create({
             name: 'Arthur'
           }, {
             name: 'Ford'
-          });
+          }, created);
         });
         it('should optionally accept create callback', function(done) {
           var deferreds;

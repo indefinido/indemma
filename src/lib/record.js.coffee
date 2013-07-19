@@ -40,6 +40,7 @@ merge      = require('assimilate').withStrategy 'deep'
     data.route             ||= @route
     data.nested_attributes   = @nested_attributes || []
 
+
     # instance = record.call extend data, @record # TODO remove @record from outside scop
     after_initialize = (data.after_initialize || []).concat(@record.after_initialize)
     instance = record.call extend {}, @record, data, after_initialize: after_initialize # TODO remove @record from outside scope
@@ -59,6 +60,7 @@ merge      = require('assimilate').withStrategy 'deep'
       after_initialize = @record.after_initialize.splice 0
     else
       after_initialize = []
+
 
     instance = bind @, initialize_record
 
