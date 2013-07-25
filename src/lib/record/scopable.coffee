@@ -139,19 +139,33 @@ model.associable && model.associable.mix (singular_association,  plural_associat
 
     # Update association with data sent from the server
     reload.done (records, status) ->
-      singular_resource = model.singularize @resource
-
-      for record, index in records
-        record.resource        = singular_resource
-        record.parent          = @parent
-        record.parent_resource = @parent_resource
-        records[index]         = plural_association.build.call({resource: singular_resource}, record);
 
       # Clear current stored cache on this association
+      # TODO implement setter on this association and let user to set
+      # it to an empty array
       Array.prototype.splice.call @, 0
 
+      # return if there's nothing else to do
+      return unless records.length
+
+      singular_resource = model.singularize @resource
+
+      # Normalize json data for building on association
+      for record in records
+
+        # TODO only nest specified nested attributes on model definition
+        # TODO create special deserialization method no plural association
+        # TODO check if we need to nest attributes in other association tipes
+        for association_name in model[singular_resource].has_many
+          record["#{association_name}_attributes"] = record[association_name]
+          delete record[association_name]
+
       # Load new records on this association
-      Array.prototype.push.apply  @, records
+      @add.apply @, records
+
+      # Override the response records object with added to association records
+      records.splice 0
+      records.push.apply records, @
 
 
     reload.done done

@@ -20,8 +20,9 @@ plural = # has_many ## TODO embeds_many
     data.route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource}" if @parent?
     throw "associable.has_many: cannot redefine route of association #{@parent_resource}.#{@resource} from #{@route} to #{data.route}" if @route isnt data.route and @route
 
-    model[@resource] data
-  push  : Array.prototype.push
+    # TODO store a singular copy of the resource for better performace
+    model[model.singularize @resource] data
+  push   : Array.prototype.push
   length : 0
 
 
@@ -40,10 +41,12 @@ associable =
       # Forward association nested attributes
       has_many:
         nest_attributes: ->
+          # TODO only nest specified nested attributes on model definition
           association_names = model[@resource].has_many
           if association_names
             for association_name in association_names
-              if @["#{association_name}_attributes"]
+              associations_attributes = @["#{association_name}_attributes"]
+              if associations_attributes and associations_attributes.length
                 association = @[model.pluralize association_name]
 
                 unless association
@@ -51,7 +54,10 @@ associable =
                   message += "did you set it on model declaration? \n  has_many: #{association_name} "
                   throw message
 
-                association.add @["#{association_name}_attributes"]
+                # TODO store a singular copy of the resource for better performace
+                association.resource = model.singularize association.resource
+                association.add.apply association, associations_attributes
+                association.resource = model.pluralize   association.resource
 
         # TODO Update route after setting the id
         # TODO Update route association only once for each associated record
@@ -82,10 +88,13 @@ associable =
     # @after_save.push ->
     #   model[@resource] =
     #
-    @has_many   = [@has_many  ] if @has_many?   and $.type(@has_many)   != 'array'
-    @has_one    = [@has_one   ] if @has_one?    and $.type(@has_one)    != 'array'
-    @belongs_to = [@belongs_to] if @belongs_to? and $.type(@belongs_to) != 'array'
+    @has_many   = [@has_many  ] if @has_many   and $.type(@has_many)   != 'array'
+    @has_one    = [@has_one   ] if @has_one    and $.type(@has_one)    != 'array'
+    @belongs_to = [@belongs_to] if @belongs_to and $.type(@belongs_to) != 'array'
 
+    @has_many   ||= []
+    @has_one    ||= []
+    @belongs_to ||= []
 
     # TODO better organise this code
     # inside this function: @ = record (running on after_initialize)

@@ -15190,7 +15190,7 @@ plural = {
     if (this.route !== data.route && this.route) {
       throw "associable.has_many: cannot redefine route of association " + this.parent_resource + "." + this.resource + " from " + this.route + " to " + data.route;
     }
-    return model[this.resource](data);
+    return model[model.singularize(this.resource)](data);
   },
   push: Array.prototype.push,
   length: 0
@@ -15215,21 +15215,24 @@ associable = {
     callbacks = {
       has_many: {
         nest_attributes: function() {
-          var association, association_name, association_names, message, _i, _len, _results;
+          var association, association_name, association_names, associations_attributes, message, _i, _len, _results;
 
           association_names = model[this.resource].has_many;
           if (association_names) {
             _results = [];
             for (_i = 0, _len = association_names.length; _i < _len; _i++) {
               association_name = association_names[_i];
-              if (this["" + association_name + "_attributes"]) {
+              associations_attributes = this["" + association_name + "_attributes"];
+              if (associations_attributes && associations_attributes.length) {
                 association = this[model.pluralize(association_name)];
                 if (!association) {
                   message = "has_many.nest_attributes: Association not found for " + association_name + ". \n";
                   message += "did you set it on model declaration? \n  has_many: " + association_name + " ";
                   throw message;
                 }
-                _results.push(association.add(this["" + association_name + "_attributes"]));
+                association.resource = model.singularize(association.resource);
+                association.add.apply(association, associations_attributes);
+                _results.push(association.resource = model.pluralize(association.resource));
               } else {
                 _results.push(void 0);
               }
@@ -15266,15 +15269,18 @@ associable = {
         }
       }
     };
-    if ((this.has_many != null) && $.type(this.has_many) !== 'array') {
+    if (this.has_many && $.type(this.has_many) !== 'array') {
       this.has_many = [this.has_many];
     }
-    if ((this.has_one != null) && $.type(this.has_one) !== 'array') {
+    if (this.has_one && $.type(this.has_one) !== 'array') {
       this.has_one = [this.has_one];
     }
-    if ((this.belongs_to != null) && $.type(this.belongs_to) !== 'array') {
+    if (this.belongs_to && $.type(this.belongs_to) !== 'array') {
       this.belongs_to = [this.belongs_to];
     }
+    this.has_many || (this.has_many = []);
+    this.has_one || (this.has_one = []);
+    this.belongs_to || (this.belongs_to = []);
     return this.create_associations = function() {
       var association_name, association_proxy, resource, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2, _results;
 
@@ -15826,20 +15832,25 @@ model.associable && model.associable.mix(function(singular_association, plural_a
     promises[0].fail(scopable.record.failed);
     reload = $.when.apply(jQuery, promises);
     reload.done(function(records, status) {
-      var index, singular_resource, _j, _len1;
+      var association_name, singular_resource, _j, _k, _len1, _len2, _ref;
 
-      singular_resource = model.singularize(this.resource);
-      for (index = _j = 0, _len1 = records.length; _j < _len1; index = ++_j) {
-        record = records[index];
-        record.resource = singular_resource;
-        record.parent = this.parent;
-        record.parent_resource = this.parent_resource;
-        records[index] = plural_association.build.call({
-          resource: singular_resource
-        }, record);
-      }
       Array.prototype.splice.call(this, 0);
-      return Array.prototype.push.apply(this, records);
+      if (!records.length) {
+        return;
+      }
+      singular_resource = model.singularize(this.resource);
+      for (_j = 0, _len1 = records.length; _j < _len1; _j++) {
+        record = records[_j];
+        _ref = model[singular_resource].has_many;
+        for (_k = 0, _len2 = _ref.length; _k < _len2; _k++) {
+          association_name = _ref[_k];
+          record["" + association_name + "_attributes"] = record[association_name];
+          delete record[association_name];
+        }
+      }
+      this.add.apply(this, records);
+      records.splice(0);
+      return records.push.apply(records, this);
     });
     reload.done(done);
     reload.fail(fail);
