@@ -11,19 +11,13 @@ var used = []
  * Chai version
  */
 
-exports.version = '1.6.0';
-
-/*!
- * Primary `Assertion` prototype
- */
-
-exports.Assertion = require('./chai/assertion');
+exports.version = '1.7.2';
 
 /*!
  * Assertion Error
  */
 
-exports.AssertionError = require('./chai/error');
+exports.AssertionError = require('assertion-error');
 
 /*!
  * Utils for plugins (not exported)
@@ -49,6 +43,13 @@ exports.use = function (fn) {
 
   return this;
 };
+
+/*!
+ * Primary `Assertion` prototype
+ */
+
+var assertion = require('./chai/assertion');
+exports.use(assertion);
 
 /*!
  * Core Assertions

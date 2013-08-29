@@ -32,13 +32,18 @@ function _deepEqual(actual, expected, memos) {
 
   // 7.2. If the expected value is a Date object, the actual value is
   // equivalent if it is also a Date object that refers to the same time.
-  } else if (actual instanceof Date && expected instanceof Date) {
+  } else if (expected instanceof Date) {
+    if (!(actual instanceof Date)) return false;
     return actual.getTime() === expected.getTime();
 
   // 7.3. Other pairs that do not both pass typeof value == 'object',
   // equivalence is determined by ==.
   } else if (typeof actual != 'object' && typeof expected != 'object') {
     return actual === expected;
+
+  } else if (expected instanceof RegExp) {
+    if (!(actual instanceof RegExp)) return false;
+    return actual.toString() === expected.toString();
 
   // 7.4. For all other Object pairs, including Array objects, equivalence is
   // determined by having the same number of owned properties (as verified

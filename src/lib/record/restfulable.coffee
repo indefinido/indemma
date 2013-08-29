@@ -11,11 +11,12 @@ util =
 
 restful =
   model:
-    # return an array of promises
+    # returns an array of promises
     create: (params..., callback) ->
       throw new TypeError("No arguments provided for #{@resource}.create") unless arguments.length
       params.push callback unless typeof callback == 'function'
       params.unshift {} unless params.length
+
 
       for attributes in params
         # TODO accept dirty as attribute on record creation
@@ -23,7 +24,8 @@ restful =
         record.dirty = true
         record.save callback
 
-    # return a promise
+
+    # returns a promise
     # TODO move to scopable
     all: (conditions = {}, callback) ->
       if typeof conditions == 'function'
@@ -33,6 +35,36 @@ restful =
       $.when(rest.get.call @, conditions)
        .then(util.model.map             )
        .done callback
+
+    first: (conditions = {}, callback) ->
+      if typeof conditions == 'function'
+        callback   = conditions
+        conditions = {}
+
+      namespaced       = conditions[@resource] || {}
+      namespaced.limit = 1
+      namespaced.order = 'desc'
+
+      # TODO should fail when server returns more then one record
+      @all conditions, callback
+
+    get: (action, data) ->
+      # TODO better way to override route
+      old_route = @route
+      @route    = "/#{model.pluralize @resource}/#{action}"
+      resource  = data.resource
+      data      = data.json() if data and data.json
+
+      if resource?
+        payload        = data
+        data           = {}
+        data[resource] = payload
+
+      promise = rest.get.call @, data
+
+      route   = old_route
+
+      promise
 
   record:
     reload: ->
@@ -46,34 +78,79 @@ restful =
       promise
 
     assign_attributes: (attributes) ->
-      # TODO parsear de forma melhor a resposta do servidor e popular dados no modelo atual
+
+      # First assign has_many associations
+      # TODO implement setter on has_many association and move this code there
+      for association_name in model[@resource].has_many
+        associations_attributes = attributes[association_name]
+        delete attributes[association_name] # Remove loaded json data
+
+
+        # Clear current stored cache on this association
+        # TODO implement setter on this association and let user to set
+        # it to an empty array
+        association = @[association_name]
+
+        unless association?
+          message  = "Association '#{association_name}' not found. \n"
+          message += "For record with resource #{@resource}. \n"
+          message += "Probably defined on server side but not on client side.\n"
+          message += "Skipping association assignment!"
+          console.warn message
+          continue
+
+        # TODO implement association.clear
+        Array.prototype.splice.call association, 0 if association.length
+
+        # continue if no associations_attributes were found by the server
+        continue unless associations_attributes? and associations_attributes.length
+
+        singular_resource = model.singularize association_name
+
+        # Normalize json data for building on association
+        for association_attributes in associations_attributes
+
+          # TODO only nest specified nested attributes on model definition
+          # TODO create special deserialization method no plural association
+          # TODO check if we need to nest attributes in other association tipes
+          for association_name in model[singular_resource].has_many
+            association_attributes["#{association_name}_attributes"] = association_attributes[association_name]
+            delete association_attributes[association_name]
+
+        # Load new associations_attributes on this association
+        association.add associations_attributes...
+
+      # Assign remaining attributes
       @[attribute] = attributes[attribute] for attribute of attributes
 
-    save: () ->
+    save: (doned, failed, data) ->
       # TODO remove jquery dependency
       unless @dirty
         return $.Deferred().resolve()
 
-      promise = rest[if @_id then 'put' else 'post'].call @
+      promise = rest[if @_id then 'put' else 'post'].call @, data
       promise.done @saved
       promise.fail @failed
 
       # Bind one time save callbacks
-      promise.done argument for argument in arguments when type(argument) is 'function'
+      promise.done doned
+      promise.fail failed
 
+      # TODO better lock generation
       @lock = JSON.stringify(@json())
       promise
 
     saved: (data) ->
 
+      # TODO better lock generation
       if @lock == JSON.stringify(@json())
         @dirty = false
         delete @lock
       # Delayed optimistic lock
       else
-        @save()
+        return @save()
 
-      @assign_attributes data
+      @assign_attributes data if data?
 
       throw "Not supported after_save callback: " + callback for callback in @after_save if @after_save
 
@@ -85,9 +162,24 @@ restful =
 
       # When client fail
       switch xhr.status
+        # move to validatable
         when 422
-          @valid = false
-          return @errors = payload.errors
+
+          definition = model[@resource]
+
+          for attribute_name, messages of payload.errors
+
+            # Only add errors to existing attributes
+            unless @hasOwnProperty(attribute_name) or definition.hasOwnProperty(attribute_name)
+              message  = "Server returned an validation error message for a not defined model attribute.\n"
+              message += "The attribute was '#{attribute_name}', the model resource was '#{@resource}'.\n"
+              message += "The model definition keys were '#{JSON.stringify Object.keys definition }'.\n"
+              message += "Please remove server validation, or update your model definition."
+              throw new TypeError message
+
+            for message in messages
+              @errors.add attribute_name, 'server', server_message: message
+
         # Unknown fail
         else
           message  = "Fail in #{@resource}.save:\n"
@@ -95,7 +187,6 @@ restful =
           message += "Status: #{status} (#{payload.status || xhr.status})\n"
           message += "Error : #{payload.error || payload.message || payload}"
 
-      console.error message
 
     toString: ->
       serialized = {}
@@ -110,7 +201,8 @@ restful =
 
         if type(value) == 'object'
           # TODO move nested attributes to model definition
-          json["#{name}_attributes"] = value.json() for attribute in @nested_attributes when attribute == name
+          for attribute in @nested_attributes when attribute == name
+            json["#{name}_attributes"] = value.json()
         else
           json[name] = value
 
@@ -130,6 +222,7 @@ restful =
       delete json.element
       delete json.default
       delete json.lock
+      delete json.validated
 
       json
 

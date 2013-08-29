@@ -4,10 +4,10 @@ maid =
     @record.after_initialize.push maid.record if @washing?
 
   record: ->
-    self = @
-    @subscribe 'dirty', (prop, dirty) ->
-      dirty && setTimeout ->
-        self.save()
+
+    @subscribe 'dirty', (dirty) ->
+      dirty && setTimeout =>
+        @save()
       , 500
 
 # Extend indemma

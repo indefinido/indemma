@@ -37,7 +37,8 @@ describe('restfulable', function() {
         afterEach(function() {
           return jQuery.ajax.restore();
         });
-        return it('sends correct parameters', function() {
+        it('should send paramenters accordingly');
+        return it('should make ajax call', function() {
           arthur.save();
           return jQuery.ajax.called.should.be["true"];
         });
@@ -46,20 +47,70 @@ describe('restfulable', function() {
   });
   return describe('model', function() {
     return describe('#()', function() {
-      return describe('#create', function() {
-        var person, promises;
+      describe('#assign_attributes', function() {
+        var friend, person;
 
-        promises = person = null;
+        friend = person = null;
         beforeEach(function() {
-          var deferred;
+          person = model.call({
+            resource: 'person',
+            has_many: 'friends',
+            name: String
+          });
+          return friend = model.call({
+            resource: 'friend',
+            belongs_to: 'person'
+          });
+        });
+        return it('assigns associations properly', function() {
+          var arthur, attributes, ford, marvin, search_record;
 
+          arthur = person({
+            name: 'Arthur Dent'
+          });
+          ford = friend({
+            name: 'Ford Perfect'
+          });
+          marvin = friend({
+            name: 'Marvin'
+          });
+          attributes = {
+            friends: [ford, marvin]
+          };
+          arthur.assign_attributes(attributes);
+          search_record = function(association, search) {
+            var associated, _i, _len;
+
+            search = JSON.stringify(search.json());
+            for (_i = 0, _len = association.length; _i < _len; _i++) {
+              associated = association[_i];
+              associated = JSON.stringify(associated.json());
+              if (associated === search) {
+                return true;
+              }
+            }
+            return false;
+          };
+          search_record(arthur.friends, ford).should.be.eq["true"];
+          return search_record(arthur.friends, arthur).should.be.eq["true"];
+        });
+      });
+      return describe('#create', function() {
+        var deferred, person, promises;
+
+        deferred = promises = person = null;
+        beforeEach(function() {
           person = model.call({
             resource: 'person'
           });
           deferred = jQuery.Deferred();
-          deferred.resolveWith(record.call({
+          deferred.resolveWith(person({
             name: 'Arthur'
-          }));
+          }), [
+            {
+              _id: 1
+            }
+          ]);
           sinon.stub(jQuery, "ajax").returns(deferred);
           return promises = person.create({
             name: 'Arthur'
@@ -111,7 +162,9 @@ describe('restfulable', function() {
           });
         });
         it('should create record when only callback is passed', function(done) {
-          person.create(done);
+          person.create(function() {
+            return done();
+          });
           return jQuery.ajax.callCount.should.be.eq(3);
         });
         it('should throw exception when nothing is passed', function() {

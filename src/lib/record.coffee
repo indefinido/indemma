@@ -43,7 +43,7 @@ merge      = require('assimilate').withStrategy 'deep'
 
     # instance = record.call extend data, @record # TODO remove @record from outside scop
     after_initialize = (data.after_initialize || []).concat(@record.after_initialize)
-    instance = record.call extend {}, @record, data, after_initialize: after_initialize # TODO remove @record from outside scope
+    instance = record.call extend Object.create(data), @record, after_initialize: after_initialize # TODO remove @record from outside scope
 
     # Call and remove used callbacks
     callback.call instance, instance for callback in instance.after_initialize
@@ -52,21 +52,23 @@ merge      = require('assimilate').withStrategy 'deep'
     instance
 
 
+  # Create model
   mixer = (options) ->
     throw 'Model mixin called incorrectly call with model.call {} instead of model({})' if @ == window
     mixer.stale = true unless mixer.stale # Prevent model changes
 
+    # TODO Use stampit and solve this mess!!
     if @record and @record.after_initialize
       after_initialize = @record.after_initialize.splice 0
     else
       after_initialize = []
 
-
     instance = bind @, initialize_record
 
     extend instance, merge @, modelable
 
-    instance.record.after_initialize = instance.record.after_initialize.concat after_initialize
+    @record =  instance.record = merge {}, instance.record, modelable.record
+    @record.after_initialize   = instance.record.after_initialize = instance.record.after_initialize.concat after_initialize
 
 
     callback.call instance, instance for callback in modelable.after_mix
@@ -85,6 +87,7 @@ merge      = require('assimilate').withStrategy 'deep'
 @record = do -> # mixin
 
   callbacks =
+    # TODO search for a existing word and rename method, 'smudge' perhaps?
     dirtify: ->
       @subscribe (prop, value, old) ->
         if prop isnt 'dirty' and not @dirty and value isnt old

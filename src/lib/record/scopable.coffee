@@ -17,19 +17,34 @@ scopable =
 
     stampit.mixIn (name, type) ->
       if $.type(type) == 'function'
-        @[name]  = new type
-        type     = $.type @[name]
+        @["$#{name}"] = type() || new type
+        type          = $.type @["$#{name}"]
+      else
+        @["$#{name}"] = defaults[type] || type
 
       type    = $.type type unless $.type(type) == 'string'
       builder = builders[type]
 
       throw "Unknown scope type #{type} for model with resource #{model.resource}" unless builder?
 
+      @scope.declared.push name
       @[name] = builder name: name
     ,
-      data: {}
-      then: []
-      fail: []
+      data:     {}
+      then:     []
+      fail:     []
+      declared: []
+      fetch: (data, done, fail) ->
+        scope = extend {}, @scope.data
+
+        promise = rest.get.call(@, extend scope, data)
+          .done(@scope.then.concat done)
+          .fail([@scope.fail, fail])
+
+        @scope.clear()
+
+        promise
+
       clear: ->
         @data      = {}
         @callbacks = []
@@ -59,13 +74,62 @@ scopable =
 
       console.error message
   model:
-    fetch: (data, callbacks...) ->
-      rest.get.call(@, extend(@scope.data, data))
-        .done(@scope.then.concat callbacks)
-        .fail @scope.fail
+    fetch: (data, done, fail) ->
+      @scope.fetch.call @, data, done, fail
 
-      @scope.clear()
+    # TODO optmize this iterations or add support for stampit on associable and merge factories
+    # @ = record instance
+    forward_scopes_to_associations: ->
+      factory = model[@resource]
 
+      for association_name in factory.has_many
+        associated_resource = model.singularize association_name
+        associated_factory  = model[associated_resource]
+
+        # TODO change this warn message into a exception when
+        # associations are renamable
+        unless model[associated_resource]
+          console.warn("Associated factory not found for associated resource: #{associated_resource}")
+          continue
+
+        association         = @[association_name]
+        association.scope   = scopable.builder association
+
+
+        for scope in associated_factory.scope.declared
+          association.scope scope, associated_factory["$#{scope}"]
+
+      for associated_resource in factory.has_one
+        # TODO change this warn message into a exception when
+        # associations are renamable
+        unless model[associated_resource]
+          console.warn("Associated factory not found for associated resource: #{associated_resource}")
+          continue
+
+        for scope in model[associated_resource].scope.declared
+          @[associated_resource][scope] = factory[scope]
+
+      # TODO improve associable inner workings to stampit objects
+      if factory.belongs_to.length
+        generate_forwarder = (associated_resource) ->
+          associated_factory = model[associated_resource]
+
+          # TODO change this warn message into a exception when
+          # associations are renamable
+          return console.warn("Associated factory not found for associated resource: #{associated_resource}") unless associated_factory
+
+          declared_scopes    = associated_factory.scope.declared
+
+          ->
+            for scope in declared_scopes
+              @[associated_resource][scope] = associated_factory[scope]
+
+        for associated_resource in factory.belongs_to
+          forwarder = generate_forwarder associated_resource
+          @after "build_#{associated_resource}", forwarder
+
+      true
+  # @ = model instance
   after_mix: ->
     @scope = scopable.builder @
 
@@ -81,7 +145,7 @@ builders =
 
     stampit.mixIn (value, callbacks...) ->
       callbacks.length and @scope.then = @scope.then.concat callbacks
-      @scope.data[base.name] ||= value ? (@["$#{name}"] || defaults.boolean)
+      @scope.data[base.name] ||= value ? @["$#{base.name}"]
       @
 
   # Builds a array scope builder
@@ -89,7 +153,7 @@ builders =
     base = scopable.base @
 
     stampit.mixIn (values...) ->
-      @scope.data[base.name] ||= values ? (@["$#{name}"] || defaults.array)
+      @scope.data[base.name] ||= values ? @["$#{base.name}"]
       @
 
 defaults =
@@ -112,71 +176,79 @@ model.mix (modelable) ->
 
 
 # TODO create a deferred to better mix models
-model.associable && model.associable.mix (singular_association,  plural_association) ->
+if model.associable
+  model.mix (modelable) ->
+    modelable.record.after_initialize.push ->
+      scopable.model.forward_scopes_to_associations.call @
 
-  # reload (done callbacks...)
-  plural_association.all = plural_association.reload = (done, fail) ->
-    # TODO move route discovery to plural_association.after_mix
-    @route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource}" if @parent?
+  model.associable.mix (singular_association,  plural_association) ->
 
-    dirty    = 0
-    promises = []
+    # reload (done callbacks...)
+    plural_association.all = plural_association.reload = (data, done, fail) ->
+      # TODO move route discovery to plural_association.after_mix
+      @route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource}" if @parent?
+      promises = []
 
-    for record in @
-      dirty++ if record.dirty
+      # TODO better calculate fetch settings
+      # dirty    = 0
+      # if more than 5 records are dirty, we reftech all
+      #    if dirty < 5
+      #      for record in @
+      #        promises.push record.reload()
+      # else we reload everthing!
+      #    else
+      #
+      # for record in @
+      #   dirty++ if record.dirty
 
-    # TODO better calculate fetch settings
-    # if more than 5 records are dirty, we reftech all
-    #    if dirty < 5
-    #      for record in @
-    #        promises.push record.reload()
-    # else we reload everthing!
-    #    else
-    promises.push rest.get.call @
-    promises[0].fail scopable.record.failed
+      if typeof data == 'function'
+        done = data
+        data = undefined
 
-    reload = $.when.apply jQuery, promises
+      promises.push @scope.fetch.call @, data, null, scopable.record.failed
 
-    # Update association with data sent from the server
-    reload.done (records, status) ->
+      reload = $.when.apply jQuery, promises
 
-      # Clear current stored cache on this association
+      # Update association with data sent from the server
       # TODO implement setter on this association and let user to set
-      # it to an empty array
-      Array.prototype.splice.call @, 0
+      reload.done (records, status) ->
 
-      # return if there's nothing else to do
-      return unless records.length
+        # Clear current stored cache on this association
+        # it to an empty array
+        Array.prototype.splice.call @, 0
 
-      singular_resource = model.singularize @resource
+        # return if no records were found by the server
+        return unless records.length
 
-      # Normalize json data for building on association
-      for record in records
+        singular_resource = model.singularize @resource
 
-        # TODO only nest specified nested attributes on model definition
-        # TODO create special deserialization method no plural association
-        # TODO check if we need to nest attributes in other association tipes
-        for association_name in model[singular_resource].has_many
-          record["#{association_name}_attributes"] = record[association_name]
-          delete record[association_name]
+        # Normalize json data for building on association
+        for record in records
 
-      # Load new records on this association
-      @add.apply @, records
+          # TODO only nest specified nested attributes on model definition
+          # TODO create special deserialization method no plural association
+          # TODO check if we need to nest attributes in other association tipes
+          for association_name in model[singular_resource].has_many
+            record["#{association_name}_attributes"] = record[association_name]
+            delete record[association_name]
 
-      # Override the response records object with added to association records
-      records.splice 0
-      records.push.apply records, @
+        # Load new records on this association
+        @add.apply @, records
+
+        # Override the response records object with added to association records
+        records.splice 0
+        records.push.apply records, @
 
 
-    reload.done done
-    reload.fail fail
+      reload.done done
+      reload.fail fail
 
-    reload
+      reload
 
-  plural_association.each = (callback) ->
-    @route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource}" if @parent?
+    plural_association.each = (callback) ->
+      @route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource}" if @parent?
 
-    # TODO cache models
-    @get().done (records) =>
-      for record in @
-        callback record
+      # TODO cache models
+      @get().done (records) =>
+        for record in @
+          callback record

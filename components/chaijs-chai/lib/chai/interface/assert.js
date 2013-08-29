@@ -83,6 +83,24 @@ module.exports = function (chai, util) {
   };
 
   /**
+   * ### .notOk(object, [message])
+   *
+   * Asserts that `object` is falsy.
+   *
+   *     assert.notOk('everything', 'this will fail');
+   *     assert.notOk(false, 'this will pass');
+   *
+   * @name notOk
+   * @param {Mixed} object to test
+   * @param {String} message
+   * @api public
+   */
+
+  assert.notOk = function (val, msg) {
+    new Assertion(val, msg).is.not.ok;
+  };
+
+  /**
    * ### .equal(actual, expected, [message])
    *
    * Asserts non-strict equality (`==`) of `actual` and `expected`.
@@ -646,10 +664,11 @@ module.exports = function (chai, util) {
     } else if ('string' === typeof exp) {
       obj.to.contain.string(inc);
     } else {
-      throw new chai.AssertionError({
-          message: 'expected an array or string'
-        , stackStartFunction: assert.include
-      });
+      throw new chai.AssertionError(
+          'expected an array or string'
+        , null
+        , assert.include
+      );
     }
   };
 
@@ -677,10 +696,11 @@ module.exports = function (chai, util) {
     } else if ('string' === typeof exp) {
       obj.to.not.contain.string(inc);
     } else {
-      throw new chai.AssertionError({
-          message: 'expected an array or string'
-        , stackStartFunction: assert.include
-      });
+      throw new chai.AssertionError(
+          'expected an array or string'
+        , null
+        , assert.notInclude
+      );
     }
   };
 

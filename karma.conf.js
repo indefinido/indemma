@@ -11,7 +11,7 @@ files = [
   // Test environment
   MOCHA,
   MOCHA_ADAPTER,
-  'components/cjohansen-sinon/sinon.js',
+  'vendor/sinon.js',
 
   // Test dependencies
   'build/test.js',

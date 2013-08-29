@@ -9,35 +9,55 @@ describe 'record',  ->
 
 describe 'model',  ->
   model  = root.model
-  person = null
+  person = corporation = null
 
   beforeEach ->
+    corporation = model.call
+      resource: 'corporation'
+
+    # TODO implement support for self referential associations
+    friend = model.call
+      resource: 'friends'
+
     person = model.call
-      resource: 'person'
-      has_many: 'friends'
+      resource  : 'person'
+      has_many  : 'friends'
+      belongs_to: 'corporation'
 
-  it 'should return a record factory with associations stored', ->
-    person.has_many.should.be.array
+  describe 'belongs_to', ->
 
-    has_many = Array.prototype.splice.call person.has_many, 0
+    it 'should add builded object to association named attribute', ->
+      arthur = person
+        name: 'Arthur Dent'
 
-    has_many.should.contain 'friends'
+      corporation = arthur.build_corporation()
+      arthur.should.have.property 'corporation'
+      expect(corporation).to.be.ok
 
-  describe '#()', ->
+  describe 'has_many', ->
 
-    it 'should return a record with an association object', ->
-      person().should.have.property 'friends'
+    it 'should return a record factory with associations stored', ->
+      person.has_many.should.be.array
 
-    describe '{generated_association}', ->
-      association = null
+      has_many = Array.prototype.splice.call person.has_many, 0
 
-      beforeEach -> association = person().friends
+      has_many.should.contain 'friends'
 
-      it 'should have query methods', ->
-        association.should.have.property 'all'
-        association.should.have.property 'each'
-        association.should.have.property 'reload'
+    describe '#()', ->
 
-      describe '#all', ->
+      it 'should return a record with an association object', ->
+        person().should.have.property 'friends'
 
-        it 'should auto observe nested associations attributes'
+      describe '{generated_association}', ->
+        association = null
+
+        beforeEach -> association = person().friends
+
+        it 'should have query methods', ->
+          association.should.have.property 'all'
+          association.should.have.property 'each'
+          association.should.have.property 'reload'
+
+        describe '#all', ->
+
+          it 'should auto observe nested associations attributes'

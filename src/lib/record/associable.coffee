@@ -16,20 +16,28 @@ plural = # has_many ## TODO embeds_many
   build: (data = {}) ->
     data.parent_resource = @parent_resource
 
-    # TODO Setup a before save callback to generate rout when there is no id
+    # TODO Setup a before save callback to generate route when there is no id
     data.route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource}" if @parent?
     throw "associable.has_many: cannot redefine route of association #{@parent_resource}.#{@resource} from #{@route} to #{data.route}" if @route isnt data.route and @route
 
+    # Adds parent record to children side of association, if not set
+    # TODO check if this reference is unmade on instance elimination
+    data[@parent_resource] ||= @parent
+
     # TODO store a singular copy of the resource for better performace
     model[model.singularize @resource] data
-  push   : Array.prototype.push
+  push    : Array.prototype.push
+
   length : 0
+  json   : -> record.json() for record in @
 
 
 singular = # belongs_to, has_one ## TODO embeds_one, embedded_in
-  create: (data) -> model[@resource].create $.extend {}, @, data
-  build : (data) -> model[@resource]        $.extend {}, @, data
-
+  create: (data) ->                  model[@resource].create $.extend {}, @, data
+  build : (data) ->
+    # Adds child record of association to parent, and returns new
+    # record
+    @[@parent_resource][@resource] = model[@resource]        $.extend {}, @, data
 
 # TODO Better association segregation
 associable =
@@ -74,11 +82,11 @@ associable =
             # TODO setter of association.route
             # to automatically update associated records
             unless association.route
-              association.route = "/#{@resource}/#{id}/#{association.resource}"
+              association.route = "/#{model.pluralize @resource}/#{id}/#{model.pluralize association.resource}"
 
               for associated in association
                 if not associated.route and associated.parent?
-                  associated.route = "/#{@resource}/#{id}/#{association.resource}"
+                  associated.route = "/#{model.pluralize @resource}/#{id}/#{model.pluralize association.resource}"
 
           true
         autosave: ->
@@ -96,7 +104,7 @@ associable =
     @has_one    ||= []
     @belongs_to ||= []
 
-    # TODO better organise this code
+    # TODO better organisation of this code
     # inside this function: @ = record (running on after_initialize)
     @create_associations = ->
       # Create association methods
@@ -105,6 +113,9 @@ associable =
 
         # TODO accept more options on has_many association creation
         for resource in options.has_many
+          # unless model[resource]
+            # throw "Model not found for association with resource '#{resource}', on association 'has_many' "
+
           # TODO Remember to clear association proxy when object is destroyed
           association_proxy   = resource: resource, parent_resource: @resource, parent: @
           association_name    = model.pluralize resource
@@ -117,8 +128,10 @@ associable =
         callbacks.has_many.nest_attributes.call @
 
       if options.has_one
-
         for resource in options.has_one
+          # unless model[resource]
+            # throw "Model not found for association with resource '#{resource}', on association 'has_one' "
+
           association_proxy = resource: resource, parent_resource: @resource
           association_proxy[@resource] = @
 
@@ -128,6 +141,9 @@ associable =
       if options.belongs_to
 
         for resource in options.belongs_to
+          # unless model[resource]
+            # throw "Model not found for association with resource '#{resource}', on association 'belongs_to' "
+
           association_proxy = resource: resource, parent_resource: @resource
 
           # TODO override default setter to set resource_id from parent resource FTW!

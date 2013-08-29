@@ -5,7 +5,6 @@
   "version": "0.0.1",
   "keywords": [],
   "dependencies": {
-    "kapit/observe-shim": "*",
     "kapit/observe-utils": "*",
     "component/jquery": "*"
   },
@@ -17,6 +16,10 @@
     "components/cjohansen-sinon/sinon.js",
     "index.js",
     "lib/observable.js",
-    "lib/adapters/rivets.js"
+    "lib/adapters/rivets.js",
+    "vendor/shims/accessors.js",
+    "vendor/shims/accessors-legacy.js",
+    "vendor/shims/array.indexOf.js",
+    "vendor/shims/object.create.js"
   ]
 }

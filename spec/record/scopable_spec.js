@@ -1,4 +1,4 @@
-var jQuery, model, record, root;
+var model, record, root;
 
 require('indemma/lib/record/resource');
 
@@ -11,8 +11,6 @@ root = typeof exports !== "undefined" && exports !== null ? exports : window;
 model = root.model;
 
 record = root.record;
-
-jQuery = require('component-jquery');
 
 describe('scopable', function() {
   describe('when included', function() {
@@ -91,12 +89,23 @@ describe('scopable', function() {
           });
           it('should use default value');
           it('should allow scope chaining');
-          return it('should make ajax call', function() {
-            person.by_type(1, 3, 4).fetch();
-            return jQuery.ajax.callCount.should.be.eq(1);
+          return describe('xhr request', function() {
+            it('should build correct url', function() {
+              var settings;
+
+              person.by_type(1, 3, 4).fetch();
+              settings = jQuery.ajax.firstCall.args[0];
+              settings.should.have.property('data');
+              settings.data.should.have.property('by_type');
+              return settings.data.by_type.should.include(1, 3, 4);
+            });
+            return it('should make call', function() {
+              person.by_type(1, 3, 4).fetch();
+              return jQuery.ajax.callCount.should.be.eq(1);
+            });
           });
         });
-        return describe('when boolean', function() {
+        describe('when boolean', function() {
           it('should acumulate data in scope object', function() {
             person.hetero();
             return person.scope.data.hetero.should.be.eq(true);
@@ -109,6 +118,70 @@ describe('scopable', function() {
           return it('should make ajax call', function() {
             person.hetero().fetch();
             return jQuery.ajax.callCount.should.be.eq(1);
+          });
+        });
+        return describe('#{generated_association}', function() {
+          describe('of type belongs_to', function() {
+            var towel;
+
+            towel = null;
+            beforeEach(function() {
+              person = model.call({
+                $hetero: true,
+                $by_type: [],
+                resource: 'person'
+              });
+              return towel = model.call({
+                resource: 'towel',
+                material: 'cotton',
+                belongs_to: 'person'
+              });
+            });
+            return describe('#{generated_scope}', function() {
+              return it('can be called on association', function() {
+                var soft_towel;
+
+                soft_towel = towel({
+                  material: 'silicon microfiber'
+                });
+                soft_towel.build_person();
+                return expect(soft_towel.person).to.respondTo('hetero');
+              });
+            });
+          });
+          return describe('of type has_many', function() {
+            var arthur, towel;
+
+            arthur = towel = null;
+            beforeEach(function() {
+              person = model.call({
+                $hetero: true,
+                $by_type: [],
+                resource: 'person',
+                has_many: 'towels'
+              });
+              towel = model.call({
+                $by_material: [],
+                resource: 'towel',
+                material: 'cotton',
+                belongs_to: 'person'
+              });
+              return arthur = person({
+                name: 'Arthur'
+              });
+            });
+            return describe('#{generated_scope}', function() {
+              it('can be called on association', function() {
+                return expect(arthur.towels).to.respondTo('by_material');
+              });
+              return it('should be serializable into paramenters', function() {
+                var query_string;
+
+                arthur.towels.by_material('cotton', 'microfiber');
+                query_string = decodeURIComponent(jQuery.param(arthur.towels.scope.data));
+                return query_string.should.be.eq('by_material[]=cotton&by_material[]=microfiber');
+              });
+            });
           });
         });
       });

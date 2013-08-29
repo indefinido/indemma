@@ -9,7 +9,7 @@
     "inherit",
     "mixin"
   ],
-  "main": "dist/assimilate.js",
+  "main": "./dist/assimilate.js",
   "dependencies": {},
   "development": {},
   "scripts": [

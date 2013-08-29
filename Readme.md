@@ -7,7 +7,7 @@
 
 ## Summary
 
- - We are tired of calling .attr on my models.
+ - We are tired of calling .attr on our models.
  - We are tired of using templates
  - We want a decent kind of polyfill to view models until polymer is out of beta
  - Requirements
@@ -213,6 +213,62 @@ TODO make documentation
 
 TODO make documentation
 
+### Validations support
+
+```javascript
+  require('indemma');
+
+  // model definition
+  var person = model.call({
+    resource  : 'person',
+
+    email     : 'Email',                // By default uses type validation
+    age       :  Number,
+    birthday  : {type: Number},
+
+    // You can use builtin validators sintax
+    validates_presence_of  : 'age',
+    validates_remotely     : 'email',   // Remote validator will do POST /people/validate?person[email]=arthur@earth.com
+
+    // Coming soon!
+    // validates  : {name: {beginsWith: 'arthur', presence: true}} // Or you can use the object syntax
+
+  });
+
+
+  arthur = person({
+    name: "Arthur Philip Dent",
+  });
+
+
+  arthur.email = "arthur@earth.com";// "arthur@earth.com"
+  arthur.valid;                     // true
+
+  arthur.email = "wrong@@";
+  arthur.valid;                     // false
+
+  // When calling valid attribute will trigger validations
+  arthur.errors;                    // [ email: ["Email 'wrongg@@' is in an invalid format.", "..."]
+  arthur.errors.messages.email;     // "Email 'wrongg@@' is in an invalid format."
+
+  // When using remote validations use the returned deferred
+  arthur.validate(function (record, validation_results...) {
+    alert(record.errors.messages.email);
+  });
+
+  <div>
+    <input class="invalid" data-value="user.email" data-class-invalid="user.errors.messages.email" />
+  </div>
+
+  // Validators reference
+  person.validators                 // [ {attribute_name: 'email', type: 'Email', ... } , ... ]
+
+
+  // Suport for custom validators coming soon!
+  // person.validators.phone = function (record, attribute, value) {... }
+
+```
+
 #### Adapters
 
 ##### Rivets
@@ -236,9 +292,9 @@ TODO make documentation
   }),
 
   template = '<div class="person">' +
-			 '  <span data-html="person.name"></span>    ' +
-			 '  <span data-html="person.species"></span> ' +
-			 '</div>';
+             '  <span data-html="person.name"></span>    ' +
+             '  <span data-html="person.species"></span> ' +
+             '</div>';
 
   document.body.innerHTML = template;
   element = document.body.children[0];
@@ -251,30 +307,10 @@ TODO make documentation
 
 ## TODO
 
-## TESTS!
+## Tests!
 
-A tiny part of tests has been written, but more on the go!
-
-### Validations support
-
-```javascript
-  require('indemma');
-
-  // model definition
-  var person = model.call({
-    resource  : 'person',
-    email     : {
-      type: 'email'
-    }
-  });
-
-  arthur = person({
-    name: "Arthur Philip Dent",
-  });
-
-  arthur.email = "arthur@earth.com" // "arthur@earth.com"
-  arthur.email = "wrong@@"          // TypeError: "wrong@@" is not a valid email
-```
+A medium part of tests has been written, but more on the go!
+You can help by implementing the body of some spec
 
 
 ### Define property on steroids sintax support

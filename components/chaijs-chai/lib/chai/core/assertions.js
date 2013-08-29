@@ -244,8 +244,8 @@ module.exports = function (chai, _) {
    *
    * Asserts that the target is `undefined`.
    *
-   *      expect(undefined).to.be.undefined;
-   *      expect(null).to.not.be.undefined;
+   *     expect(undefined).to.be.undefined;
+   *     expect(null).to.not.be.undefined;
    *
    * @name undefined
    * @api public
@@ -1125,8 +1125,8 @@ module.exports = function (chai, _) {
    * To check if a constructor will respond to a static function,
    * set the `itself` flag.
    *
-   *    Klass.baz = function(){};
-   *    expect(Klass).itself.to.respondTo('baz');
+   *     Klass.baz = function(){};
+   *     expect(Klass).itself.to.respondTo('baz');
    *
    * @name respondTo
    * @param {String} method
@@ -1154,12 +1154,12 @@ module.exports = function (chai, _) {
    *
    * Sets the `itself` flag, later used by the `respondTo` assertion.
    *
-   *    function Foo() {}
-   *    Foo.bar = function() {}
-   *    Foo.prototype.baz = function() {}
+   *     function Foo() {}
+   *     Foo.bar = function() {}
+   *     Foo.prototype.baz = function() {}
    *
-   *    expect(Foo).itself.to.respondTo('bar');
-   *    expect(Foo).itself.not.to.respondTo('baz');
+   *     expect(Foo).itself.to.respondTo('bar');
+   *     expect(Foo).itself.not.to.respondTo('baz');
    *
    * @name itself
    * @api public
@@ -1225,16 +1225,16 @@ module.exports = function (chai, _) {
   }
 
   /**
-   * ### .members
+   * ### .members(set)
    *
    * Asserts that the target is a superset of `set`,
    * or that the target and `set` have the same members.
    *
-   *    expect([1, 2, 3]).to.include.members([3, 2]);
-   *    expect([1, 2, 3]).to.not.include.members([3, 2, 8]);
+   *     expect([1, 2, 3]).to.include.members([3, 2]);
+   *     expect([1, 2, 3]).to.not.include.members([3, 2, 8]);
    *
-   *    expect([4, 2]).to.have.members([2, 4]);
-   *    expect([5, 2]).to.not.have.members([5, 2, 1]);
+   *     expect([4, 2]).to.have.members([2, 4]);
+   *     expect([5, 2]).to.not.have.members([5, 2, 1]);
    *
    * @name members
    * @param {Array} set
