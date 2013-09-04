@@ -213,7 +213,7 @@ Inflection and resource modules together.
 
 ```javascript
 
-  require('indemma/lib/record/resource); // Working on to be require('indemma/resourceable')
+  require('indemma/lib/record/resource'); // Working on to be require('indemma/resourceable')
 
   var person = model.call({
     resource: {
