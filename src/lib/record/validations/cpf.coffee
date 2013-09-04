@@ -55,4 +55,4 @@ cpfable = stampit
 
 composed = stampit.compose validations.validatable, cpfable
 composed.definition_key = 'validates_cpf_format'
-validations.manager.validators.cpf = Composed
+validations.manager.validators.cpf = composed

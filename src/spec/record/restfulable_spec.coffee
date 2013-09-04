@@ -74,55 +74,63 @@ describe 'restfulable', ->
           search_record(arthur.friends, ford).should.be.eq.true
           search_record(arthur.friends, arthur).should.be.eq.true
 
-      describe '#create', ->
-        deferred = promises = person = null
 
-        beforeEach ->
-          person   = model.call resource: 'person'
+      describe 'with singular resource', ->
+        describe '#create', ->
 
-          deferred = jQuery.Deferred()
-          deferred.resolveWith person(name: 'Arthur'), [_id: 1]
-          sinon.stub(jQuery, "ajax").returns(deferred)
-          promises = person.create {name: 'Arthur'}, {name: 'Ford'}
+          it 'should return promises'
+          it 'should return models when promise is resolved'
 
-        afterEach  -> jQuery.ajax.restore()
+      describe 'with plural resource', ->
 
-        # TODO move this test to restful test
-        it 'should return promises', (done) ->
-          promises.should.be.array
-          promises[0].should.be.object
-          promises[1].should.be.object
+        describe '#create', ->
+          deferred = promises = person = null
 
-          jQuery.when.apply(jQuery, promises).done () ->
-            promises[0].state().should.be.eq 'resolved'
-            promises[1].state().should.be.eq 'resolved'
-            done()
+          beforeEach ->
+            person   = model.call resource: 'person'
+            deferred = jQuery.Deferred()
+            deferred.resolveWith person(name: 'Arthur'), [_id: 1]
+            sinon.stub(jQuery, "ajax").returns(deferred)
+            promises = person.create {name: 'Arthur'}, {name: 'Ford'}
 
-        it 'should return models when promise is resolved', (done) ->
-          # Will be called once for each saved record
-          created = ->
-            @name.should.be.eq 'Arthur'
-            done()
+          afterEach  -> jQuery.ajax.restore()
 
-          person.create {name: 'Arthur'}, {name: 'Ford'}, created
+          # TODO move this test to restful test
+          it 'should return promises', (done) ->
+            promises.should.be.array
+            promises[0].should.be.object
+            promises[1].should.be.object
 
-        it 'should optionally accept create callback', (done) ->
-          deferreds = person.create {name: 'Arthur'}, {name: 'Ford'}
-          promises.should.be.array
-          promises[0].should.be.object
-          promises[1].should.be.object
+            jQuery.when.apply(jQuery, promises).done () ->
+              promises[0].state().should.be.eq 'resolved'
+              promises[1].state().should.be.eq 'resolved'
+              done()
 
-          jQuery.when.apply(jQuery, promises).done () ->
-            promises[0].state().should.be.eq 'resolved'
-            promises[1].state().should.be.eq 'resolved'
-            done()
+          it 'should return models when promise is resolved', (done) ->
+            # Will be called once for each saved record
+            created = ->
+              @name.should.be.eq 'Arthur'
+              done()
 
-        it 'should create record when only callback is passed', (done) ->
-          person.create -> done()
-          jQuery.ajax.callCount.should.be.eq 3 # 2 is counts is from the beforeEach
+            person.create {name: 'Arthur'}, {name: 'Ford'}, created
 
-        it 'should throw exception when nothing is passed', () ->
-          expect(person.create).to.throw TypeError
+          it 'should optionally accept create callback', (done) ->
+            deferreds = person.create {name: 'Arthur'}, {name: 'Ford'}
+            promises.should.be.array
+            promises[0].should.be.object
+            promises[1].should.be.object
 
-        it 'should make ajax calls', ->
-          jQuery.ajax.callCount.should.be.eq 2
+            jQuery.when.apply(jQuery, promises).done () ->
+              promises[0].state().should.be.eq 'resolved'
+              promises[1].state().should.be.eq 'resolved'
+              done()
+
+          it 'should create record when only callback is passed', (done) ->
+            person.create -> done()
+            jQuery.ajax.callCount.should.be.eq 3 # 2 is counts is from the beforeEach
+
+          it 'should throw exception when nothing is passed', () ->
+            expect(person.create).to.throw TypeError
+
+          it 'should make ajax calls', ->
+            jQuery.ajax.callCount.should.be.eq 2

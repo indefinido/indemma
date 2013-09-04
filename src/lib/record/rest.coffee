@@ -6,15 +6,17 @@ module.exports =
   post: (data) -> request.call @, 'post', @route, data
 
 request = (method, url, data) ->
+  param_name = @resource.param_name || @resource.toString()
+
   # TODO optmize this serialization lookup
   if not data and @json
    data = {}
-   data[@resource] = @json()
+   data[param_name] = @json()
 
   # Id is automatically propagated through url
-  if data[@resource]
-    delete data[@resource]._id
-    delete data[@resource].id
+  if data[param_name]
+    delete data[param_name]._id
+    delete data[param_name].id
 
   $.ajax
     url     : url

@@ -31,7 +31,7 @@ describe('model', function() {
       person.should.be.object;
       john = person();
       john.should.be.object;
-      return john.should.have.property('resource', 'person');
+      return john.resource.should.have.property('name', 'person');
     });
   });
 });

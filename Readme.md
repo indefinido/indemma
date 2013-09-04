@@ -3,13 +3,13 @@
 
   Indemma (mind picture → memory), client side, ES5 observable and REST, extensible modular data model.
 
-  Current version 0.0.1
+  Current version 0.1.0
 
 ## Summary
 
  - We are tired of calling .attr on our models.
  - We are tired of using templates
- - We want a decent kind of polyfill to view models until polymer is out of beta
+ - We want a decent kind of polyfill to view models and rest clients until polymer is out of beta
  - Requirements
    - ES5 Getters and Setters (Shim ships with component, IE 10+)
    - ES7 Observer            (Shim ships with component, IE ?+)
@@ -22,7 +22,7 @@
 
 ### Basic Functionality (Query, Observable, Advisable)
 
-Basic functionality, just copy [ActiveRecord Interface API](https://github.com/rails/rails/blob/master/activerecord) on javascript
+Basic functionality: Just a copy of [ActiveRecord Interface](https://github.com/rails/rails/blob/master/activerecord) on javascript.
 
 #### Model
 
@@ -181,10 +181,12 @@ Nested Attributes
 
   // Activate restful support
   // Compatible with default rails json rendering e.g. render :json => @person
+  // Depends on resourceful module
   require('indemma/lib/record/restful); // Working on to be require('indemma/restful')
-  model.restfulable();
 
-  var person = model.call({resource: 'person'}),
+  var person = model.call({
+    resource: 'person'
+  }),
 
   arthur = person({
     name     : function () { return this.firstname + " " + this.surname; },
@@ -207,7 +209,30 @@ Nested Attributes
 
 #### Resourcefull
 
-TODO make documentation
+Inflection and resource modules together.
+
+```javascript
+
+  require('indemma/lib/record/resource); // Working on to be require('indemma/resourceable')
+
+  var person = model.call({
+    resource: {
+      name      : 'person',
+      param_name: 'guy',
+      scope     : 'world'
+      // singular: true         // Works as singular resource too =D
+    }
+  }),
+
+  arthur = person({
+    name   : "Arthur Philip",
+    species: "Humam"
+  });
+
+  arthur.save();   // POST /world/person?guy[name]=Arthur Philip&guy[species]=Human
+
+```
+
 
 #### Maid
 
@@ -280,7 +305,6 @@ TODO make documentation
   // Requires observer-shim
   // Compatible with default rails json rendering e.g. render :json => @person
   require('indemma/lib/record/rivets'); // Working on to be require('indemma/adapters/rivets')
-  model.rivets();
 
   var person = model.call({resource: 'person'}),
 
@@ -306,6 +330,8 @@ TODO make documentation
 ```
 
 ## TODO
+
+Move API to a custom page or the github wiki
 
 ## Tests!
 
@@ -347,6 +373,7 @@ With setter on steroids
 
   var person = model.call({resource: 'person'});
   person.plural     // 'people'
+
 ```
 
 ### Storage extension
@@ -379,3 +406,4 @@ With setter on steroids
 ## Credits
 
   Built upon the lovely [coffeescript](http://coffeescript.org/) language
+  Building with [the prototypal paradigm](http://ericleads.com/2013/02/fluent-javascript-three-different-kinds-of-prototypal-oo) library [stampit](https://github.com/dilvie/stampit)

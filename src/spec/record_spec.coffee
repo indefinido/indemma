@@ -21,4 +21,4 @@ describe 'model',  ->
 
       john = person()
       john.should.be.object
-      john.should.have.property 'resource', 'person'
+      john.resource.should.have.property 'name', 'person'

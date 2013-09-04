@@ -10,7 +10,8 @@
     "component/bind": "*",
     "component/jquery": "*",
     "indefinido/observable": "*",
-    "indefinido/advisable": "*"
+    "indefinido/advisable": "*",
+    "chaijs/chai": "*"
   },
   "development": {
     "chaijs/chai": "*"

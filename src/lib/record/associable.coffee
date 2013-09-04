@@ -16,10 +16,10 @@ plural = # has_many ## TODO embeds_many
   build: (data = {}) ->
     data.parent_resource = @parent_resource
 
-    # TODO Setup a before save callback to generate route when there is no id
-    data.route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource}" if @parent?
-    throw "associable.has_many: cannot redefine route of association #{@parent_resource}.#{@resource} from #{@route} to #{data.route}" if @route isnt data.route and @route
 
+    # TODO Setup a before save callback to generate route when there is no id
+    data.route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource.toString()}" if @parent?
+    throw "associable.has_many: cannot redefine route of association #{@parent_resource}.#{@resource} from #{@route} to #{data.route}" if @route isnt data.route and @route
     # Adds parent record to children side of association, if not set
     # TODO check if this reference is unmade on instance elimination
     data[@parent_resource] ||= @parent
@@ -116,6 +116,9 @@ associable =
           # unless model[resource]
             # throw "Model not found for association with resource '#{resource}', on association 'has_many' "
 
+          # TODO instantiate default resources in has_many association
+          # @resource = model[resource].resource
+
           # TODO Remember to clear association proxy when object is destroyed
           association_proxy   = resource: resource, parent_resource: @resource, parent: @
           association_name    = model.pluralize resource
@@ -155,14 +158,14 @@ associable =
   # @ = record
   record: (options) ->
     console.error 'resource must be defined in order to associate' unless @resource?
-    model[@resource].create_associations.call @
+    model[@resource.name || @resource.toString()].create_associations.call @
 
 
 # Extend indemma
 model  = root.model     # TODO better way to get parent
 model.mix (modelable) ->
-  modelable.after_mix.unshift associable.model
-  modelable.record.after_initialize.unshift associable.record
+  modelable.after_mix.push associable.model
+  modelable.record.after_initialize.push associable.record
 
 # This allows to extendind the associable mixin
 model.associable =

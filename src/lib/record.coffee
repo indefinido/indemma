@@ -36,7 +36,7 @@ merge      = require('assimilate').withStrategy 'deep'
 
   initialize_record = (data = {resource: @resource, parent_resource: @parent_resource}) ->
     data.resource          ||= @resource
-    data.parent_resource   ||= @parent_resource
+    data.parent_resource   ||= @resource.parent || @parent_resource
     data.route             ||= @route
     data.nested_attributes   = @nested_attributes || []
 
@@ -74,7 +74,10 @@ merge      = require('assimilate').withStrategy 'deep'
     callback.call instance, instance for callback in modelable.after_mix
 
     # Store model for later use
-    mixer[@resource] = instance
+
+    # TODO implement correctly stampit usage, and remove the need for
+    # direct storage
+    mixer[@resource.name || @resource.toString()] = instance
 
   mixer.mix = (blender) ->
     throw "Trying to change model mixin with #{object} but model already used.\nCheck your configuration order" if @stale

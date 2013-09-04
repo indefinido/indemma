@@ -9,6 +9,7 @@ util =
     map: (models) ->
       @ model for model in models
 
+
 restful =
   model:
     # returns an array of promises
@@ -17,13 +18,11 @@ restful =
       params.push callback unless typeof callback == 'function'
       params.unshift {} unless params.length
 
-
       for attributes in params
         # TODO accept dirty as attribute on record creation
         record       = @ attributes
         record.dirty = true
         record.save callback
-
 
     # returns a promise
     # TODO move to scopable
@@ -51,7 +50,7 @@ restful =
     get: (action, data) ->
       # TODO better way to override route
       old_route = @route
-      @route    = "/#{model.pluralize @resource}/#{action}"
+      @route    = "/#{model.pluralize @resource.name}/#{action}"
       resource  = data.resource
       data      = data.json() if data and data.json
 
@@ -79,12 +78,12 @@ restful =
 
     assign_attributes: (attributes) ->
 
+      # TODO only set associations on nested attributes!
       # First assign has_many associations
       # TODO implement setter on has_many association and move this code there
-      for association_name in model[@resource].has_many
+      for association_name in model[@resource.toString()].has_many
         associations_attributes = attributes[association_name]
         delete attributes[association_name] # Remove loaded json data
-
 
         # Clear current stored cache on this association
         # TODO implement setter on this association and let user to set
@@ -119,6 +118,16 @@ restful =
 
         # Load new associations_attributes on this association
         association.add associations_attributes...
+
+
+      # Nested attributes
+      # TODO implement setter on has_one association and move this code there
+      for association_name in model[@resource.toString()].has_one
+        association_attributes = attributes[association_name]
+        delete attributes[association_name]
+
+        @[association_name] = @["build_#{association_name}"] association_attributes if association_attributes
+
 
       # Assign remaining attributes
       @[attribute] = attributes[attribute] for attribute of attributes
@@ -171,7 +180,7 @@ restful =
 
             # Only add errors to existing attributes
             unless @hasOwnProperty(attribute_name) or definition.hasOwnProperty(attribute_name)
-              message  = "Server returned an validation error message for a not defined model attribute.\n"
+              message  = "Server returned an validation error message for a attribute that is not defined in your model.\n"
               message += "The attribute was '#{attribute_name}', the model resource was '#{@resource}'.\n"
               message += "The model definition keys were '#{JSON.stringify Object.keys definition }'.\n"
               message += "Please remove server validation, or update your model definition."
@@ -200,10 +209,19 @@ restful =
         continue unless value?  # Bypass null, and undefined values
 
         if type(value) == 'object'
-          # TODO move nested attributes to model definition
-          for attribute in @nested_attributes when attribute == name
-            json["#{name}_attributes"] = value.json()
+
+          if value.toJSON?
+
+            json[name] = value.toJSON()
+
+          else
+
+            # TODO move nested attributes to model definition
+            for attribute in @nested_attributes when attribute == name
+              json["#{name}_attributes"] = value.json()
+
         else
+
           json[name] = value
 
       observable.unobserve json
@@ -215,16 +233,21 @@ restful =
       delete json.dirty
       delete json.resource
       delete json.route
+      delete json.initial_route # TODO implement better initial_route and remove attribute from here
       delete json.after_initialize
       delete json.parent_resource
       delete json.nested_attributes
-      delete json.on_save
+      delete json.on_save # TODO use advice and remove on_save from here
       delete json.element
       delete json.default
       delete json.lock
       delete json.validated
 
       json
+
+# TODO put deprecation warning on json method
+# TODO rename json method to toJSON
+restful.toJSON = restful.json
 
 
 # Extend indemma
@@ -236,16 +259,18 @@ model.restfulable = true
 record.mix (recordable) ->
   merge recordable, restful.record
 
-model.mix  (modelable) ->
+
+model.mix  (modelable ) ->
   merge modelable , restful.model
+
 
 model.associable && model.associable.mix (singular_association,  plural_association) ->
 
   # TODO move route setting to plural_association.after_mix
   plural_association.get = ->
-    @route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource}" if @parent?
+    @route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource.name}" if @parent?
     rest.get.apply @, arguments
 
   plural_association.post = ->
-    @route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource}" if @parent?
+    @route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource.name}" if @parent?
     rest.post.apply @, arguments
