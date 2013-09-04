@@ -182,7 +182,7 @@ Nested Attributes
   // Activate restful support
   // Compatible with default rails json rendering e.g. render :json => @person
   // Depends on resourceful module
-  require('indemma/lib/record/restful); // Working on to be require('indemma/restful')
+  require('indemma/lib/record/restful'); // Working on to be require('indemma/restful')
 
   var person = model.call({
     resource: 'person'
