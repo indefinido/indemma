@@ -15,6 +15,7 @@ files = [
 
   // Test dependencies
   'build/test.js',
+  'spec/support/**/*.js',
 
   // Test Source files
   'spec/spec_helper.js',

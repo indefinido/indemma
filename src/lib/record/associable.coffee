@@ -75,18 +75,18 @@ associable =
           # Keep trying until we have a id
           return unless id
 
-          for association_name in model[@resource].has_many
+          for association_name in model[@resource.toString()].has_many
             pluralized_association = model.pluralize association_name
             association = @[pluralized_association]
 
             # TODO setter of association.route
             # to automatically update associated records
             unless association.route
-              association.route = "/#{model.pluralize @resource}/#{id}/#{model.pluralize association.resource}"
+              association.route = "/#{model.pluralize @resource.toString()}/#{id}/#{model.pluralize association.resource}"
 
               for associated in association
                 if not associated.route and associated.parent?
-                  associated.route = "/#{model.pluralize @resource}/#{id}/#{model.pluralize association.resource}"
+                  associated.route = "/#{model.pluralize @resource.toString()}/#{id}/#{model.pluralize association.resource}"
 
           true
         autosave: ->

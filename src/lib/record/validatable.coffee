@@ -25,10 +25,15 @@ messages =
     "O campo #{attribute_name} não está diacordo com a confirmação #{confirmation_attribute_name}."
   associated:  (attribute_name) ->
     attribute_name = @human_attribute_name attribute_name
-    "O registro associado #{attribute_name} não é válido"
+    "O registro associado #{attribute_name} não é válido."
 
   server:  (attribute_name, options) ->
-    "#{@human_attribute_name attribute_name} #{options.server_message} "
+    attribute_name = @human_attribute_name attribute_name
+    "#{attribute_name} #{options.server_message}."
+
+  type:  (attribute_name, options) ->
+    attribute_name = @human_attribute_name attribute_name
+    "O campo #{attribute_name} não está válido."
 
 # TODO move to errorsable.coffee
 errorsable = stampit
@@ -89,6 +94,8 @@ initializers =
 
   create_validators: (definitions) ->
 
+    @validators = []
+
     for name, validator of manager.validators
       definition = definitions[validator.definition_key]
 
@@ -112,7 +119,7 @@ initializers =
 # TODO Use stampit!
 extensions =
   model:
-    validators: []
+    validators: null
 
   record:
 
@@ -125,7 +132,7 @@ extensions =
       # TODO copy validators reference from model object to record object
       # TODO update json serializer
       # TODO filter validators for attribute
-      for validator in model[@resource].validators
+      for validator in model[@resource.toString()].validators
         if validator.attribute_name is attribute
           results.push validator.validate_each @, validator.attribute_name, @[validator.attribute_name]
 
@@ -143,7 +150,7 @@ extensions =
 
       # TODO copy validators reference from model object to record object
       # TODO update json serializer
-      for validator in model[@resource].validators
+      for validator in model[@resource.toString()].validators
         results.push validator.validate_each @, validator.attribute_name, @[validator.attribute_name]
 
       @validation = jQuery.when results...
@@ -191,4 +198,5 @@ require './validations/confirmation'
 require './validations/associated'
 require './validations/presence'
 require './validations/remote'
+require './validations/type'
 require './validations/cpf'

@@ -1,11 +1,13 @@
 
-# indemma
+indemma
+=======
 
   Indemma (mind picture → memory), client side, ES5 observable and REST, extensible modular data model.
 
   Current version 0.1.0
 
-## Summary
+Summary
+-------
 
  - We are tired of calling .attr on our models.
  - We are tired of using templates
@@ -14,11 +16,13 @@
    - ES5 Getters and Setters (Shim ships with component, IE 10+)
    - ES7 Observer            (Shim ships with component, IE ?+)
 
-## Installation
+Installation
+------------
 
     $ component install indefinido/indemma
 
-## API
+Usage
+-----
 
 ### Basic Functionality (Query, Observable, Advisable)
 
@@ -399,11 +403,13 @@ With setter on steroids
   model(['advisable', 'observable', 'restfulable', 'maid', ... ]);
 ```
 
-## License
-
-  [WTFPL](http://www.wtfpl.net)
-
-## Credits
+Credits
+-------
 
   Built upon the lovely [coffeescript](http://coffeescript.org/) language
   Building with [the prototypal paradigm](http://ericleads.com/2013/02/fluent-javascript-three-different-kinds-of-prototypal-oo) library [stampit](https://github.com/dilvie/stampit)
+
+
+
+
+This project rocks and uses [WTFP-LICENSE](http://www.wtfpl.net)

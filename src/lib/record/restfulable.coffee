@@ -1,7 +1,7 @@
 merge      = require('assimilate').withStrategy 'deep'
 type       = require 'type'
 observable = require('observable').mixin
-$          = require 'jquery'
+$          = require 'jquery' # TODO remove jquery dependency and use simple promises implementation
 rest       = require './rest.js'
 
 util =
@@ -18,11 +18,14 @@ restful =
       params.push callback unless typeof callback == 'function'
       params.unshift {} unless params.length
 
+      savings = []
       for attributes in params
         # TODO accept dirty as attribute on record creation
         record       = @ attributes
         record.dirty = true
-        record.save callback
+        savings.push record.save callback
+
+      $.when savings...
 
     # returns a promise
     # TODO move to scopable

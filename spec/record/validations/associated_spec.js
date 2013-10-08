@@ -35,7 +35,7 @@ describe('model #() validates_associated', function() {
           street: null
         });
         arthur.valid;
-        arthur.errors.messages.should.have.deep.property('address', 'O registro associado address não é válido');
+        arthur.errors.messages.should.have.deep.property('address', 'O registro associado address não é válido.');
         return arthur.address.errors.messages.should.have.deep.property('street', 'O campo street não pode ficar em branco.');
       });
     });
