@@ -92,13 +92,14 @@ merge      = require('assimilate').withStrategy 'deep'
   callbacks =
     # TODO search for a existing word and rename method, 'smudge' perhaps?
     dirtify: ->
-      @subscribe (prop, value, old) ->
-        if prop isnt 'dirty' and not @dirty and value isnt old
-          console.groupCollapsed "◉ Property '#{prop}' dirtied a #{@resource}"
-          console.log old, "→", value
-          console.log @
-          console.groupEnd()
-          @dirty = true
+# TODO add suport to subscribe to any property
+#      @subscribe (prop, value, old) ->
+#        if prop isnt 'dirty' and not @dirty and value isnt old
+#          console.groupCollapsed "◉ Property '#{prop}' dirtied a #{@resource}"
+#          console.log old, "→", value
+#          console.log @
+#          console.groupEnd()
+#          @dirty = true
 
   recordable =
     # TODO usar deferred

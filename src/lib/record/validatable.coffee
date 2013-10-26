@@ -61,8 +61,11 @@ errorsable = stampit
   splice: Array.prototype.splice
 ,
   model: null
-  messages: {}
+  messages: null
   length: 0
+, ->
+  @messages = {}
+  @
 
 
 initializers =

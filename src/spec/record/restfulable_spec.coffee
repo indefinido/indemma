@@ -41,6 +41,20 @@ describe 'restfulable', ->
 
   describe 'model' ,  ->
     describe '#()', ->
+      describe '#json', ->
+        friend = person = null
+
+        beforeEach ->
+          person   = model.call
+            resource: 'person'
+            has_many: 'friends'
+            nested_attributes: ['friends']
+            name: String
+
+          friend   = model.call
+            resource: 'friend'
+            belongs_to: 'person'
+
       describe '#assign_attributes', ->
         friend = person = null
 
@@ -84,27 +98,23 @@ describe 'restfulable', ->
       describe 'with plural resource', ->
 
         describe '#create', ->
-          deferred = promises = person = null
+          deferred = promise = person = null
 
           beforeEach ->
             person   = model.call resource: 'person'
             deferred = jQuery.Deferred()
             deferred.resolveWith person(name: 'Arthur'), [_id: 1]
             sinon.stub(jQuery, "ajax").returns(deferred)
-            promises = person.create {name: 'Arthur'}, {name: 'Ford'}
+            promise  = person.create {name: 'Arthur'}, {name: 'Ford'}
 
           afterEach  -> jQuery.ajax.restore()
 
           # TODO move this test to restful test
-          it 'should return promises', (done) ->
-            promises.should.be.array
-            promises[0].should.be.object
-            promises[1].should.be.object
+          it 'should return a promise', (done) ->
+            promise.done.should.be.function
+            promise.state().should.be.eq 'resolved'
+            promise.done(-> done()).should.be.eq 'resolved'
 
-            jQuery.when.apply(jQuery, promises).done () ->
-              promises[0].state().should.be.eq 'resolved'
-              promises[1].state().should.be.eq 'resolved'
-              done()
 
           it 'should return models when promise is resolved', (done) ->
             # Will be called once for each saved record
@@ -115,15 +125,11 @@ describe 'restfulable', ->
             person.create {name: 'Arthur'}, {name: 'Ford'}, created
 
           it 'should optionally accept create callback', (done) ->
-            deferreds = person.create {name: 'Arthur'}, {name: 'Ford'}
-            promises.should.be.array
-            promises[0].should.be.object
-            promises[1].should.be.object
+            promise = person.create {name: 'Arthur'}, {name: 'Ford'}
+            promise.done.should.be.function
+            promise.done -> done()
+            promise.state().should.be.eq 'resolved'
 
-            jQuery.when.apply(jQuery, promises).done () ->
-              promises[0].state().should.be.eq 'resolved'
-              promises[1].state().should.be.eq 'resolved'
-              done()
 
           it 'should create record when only callback is passed', (done) ->
             person.create -> done()
@@ -134,3 +140,25 @@ describe 'restfulable', ->
 
           it 'should make ajax calls', ->
             jQuery.ajax.callCount.should.be.eq 2
+
+      describe '#destroy', ->
+        describe 'with plural resource', ->
+          arthur = person = deferred = null
+
+          beforeEach ->
+            person   = model.call resource: 'person'
+            deferred = jQuery.Deferred()
+            deferred.resolveWith person(name: 'Arthur'), [id: 1]
+            sinon.stub(jQuery, "ajax").returns(deferred)
+            arthur = person name: 'Arthur', id: 1
+
+          afterEach  -> jQuery.ajax.restore()
+
+          it "throw exception when record has no id", ->
+            delete arthur.id
+            expect(arthur.destroy).to.throw Error
+
+
+          it "should make ajax calls", ->
+            arthur.destroy()
+            jQuery.ajax.callCount.should.be.eq 1

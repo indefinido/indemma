@@ -135,6 +135,19 @@ restful =
       # Assign remaining attributes
       @[attribute] = attributes[attribute] for attribute of attributes
 
+    destroy: (doned, failed, data) ->
+      throw new Error 'Can\'t delete record without id!' unless @id? or @_id?
+
+      promise = rest.delete.call @, data
+      promise.done @destroyed
+      promise.fail @failed
+
+      # Bind one time save callbacks
+      promise.done doned
+      promise.fail failed
+
+      promise
+
     save: (doned, failed, data) ->
       # TODO remove jquery dependency
       unless @dirty
@@ -205,7 +218,7 @@ restful =
       serialized[@resource] = @json()
       JSON.stringify serialized
 
-    json: ->
+    json: (methods = {}) ->
       json = {}
 
       for name, value of @ when type(value) isnt 'function'
@@ -215,13 +228,14 @@ restful =
 
           if value.toJSON?
 
-            json[name] = value.toJSON()
+            json[name] = value.toJSON(methods[name])
 
           else
 
             # TODO move nested attributes to model definition
+            # TODO and implement toJSON there
             for attribute in @nested_attributes when attribute == name
-              json["#{name}_attributes"] = value.json()
+              json["#{name}_attributes"] = value.json(methods[name])
 
         else
 
@@ -231,8 +245,9 @@ restful =
 
       # TODO Store reserved words in a array
       # TODO User _.omit function
-
       # Remove model reserved words
+      delete json.id
+      delete json._id
       delete json.dirty
       delete json.resource
       delete json.route

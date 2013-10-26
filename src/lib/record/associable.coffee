@@ -29,7 +29,7 @@ plural = # has_many ## TODO embeds_many
   push    : Array.prototype.push
 
   length : 0
-  json   : -> record.json() for record in @
+  json   : (methods, omissions) -> record.json(methods, omissions) for record in @
 
 
 singular = # belongs_to, has_one ## TODO embeds_one, embedded_in

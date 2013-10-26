@@ -47,6 +47,23 @@ describe('restfulable', function() {
   });
   return describe('model', function() {
     return describe('#()', function() {
+      describe('#json', function() {
+        var friend, person;
+
+        friend = person = null;
+        return beforeEach(function() {
+          person = model.call({
+            resource: 'person',
+            has_many: 'friends',
+            nested_attributes: ['friends'],
+            name: String
+          });
+          return friend = model.call({
+            resource: 'friend',
+            belongs_to: 'person'
+          });
+        });
+      });
       describe('#assign_attributes', function() {
         var friend, person;
 
@@ -101,11 +118,11 @@ describe('restfulable', function() {
           return it('should return models when promise is resolved');
         });
       });
-      return describe('with plural resource', function() {
+      describe('with plural resource', function() {
         return describe('#create', function() {
-          var deferred, person, promises;
+          var deferred, person, promise;
 
-          deferred = promises = person = null;
+          deferred = promise = person = null;
           beforeEach(function() {
             person = model.call({
               resource: 'person'
@@ -119,7 +136,7 @@ describe('restfulable', function() {
               }
             ]);
             sinon.stub(jQuery, "ajax").returns(deferred);
-            return promises = person.create({
+            return promise = person.create({
               name: 'Arthur'
             }, {
               name: 'Ford'
@@ -128,15 +145,12 @@ describe('restfulable', function() {
           afterEach(function() {
             return jQuery.ajax.restore();
           });
-          it('should return promises', function(done) {
-            promises.should.be.array;
-            promises[0].should.be.object;
-            promises[1].should.be.object;
-            return jQuery.when.apply(jQuery, promises).done(function() {
-              promises[0].state().should.be.eq('resolved');
-              promises[1].state().should.be.eq('resolved');
+          it('should return a promise', function(done) {
+            promise.done.should.be["function"];
+            promise.state().should.be.eq('resolved');
+            return promise.done(function() {
               return done();
-            });
+            }).should.be.eq('resolved');
           });
           it('should return models when promise is resolved', function(done) {
             var created;
@@ -152,21 +166,16 @@ describe('restfulable', function() {
             }, created);
           });
           it('should optionally accept create callback', function(done) {
-            var deferreds;
-
-            deferreds = person.create({
+            promise = person.create({
               name: 'Arthur'
             }, {
               name: 'Ford'
             });
-            promises.should.be.array;
-            promises[0].should.be.object;
-            promises[1].should.be.object;
-            return jQuery.when.apply(jQuery, promises).done(function() {
-              promises[0].state().should.be.eq('resolved');
-              promises[1].state().should.be.eq('resolved');
+            promise.done.should.be["function"];
+            promise.done(function() {
               return done();
             });
+            return promise.state().should.be.eq('resolved');
           });
           it('should create record when only callback is passed', function(done) {
             person.create(function() {
@@ -179,6 +188,42 @@ describe('restfulable', function() {
           });
           return it('should make ajax calls', function() {
             return jQuery.ajax.callCount.should.be.eq(2);
+          });
+        });
+      });
+      return describe('#destroy', function() {
+        return describe('with plural resource', function() {
+          var arthur, deferred, person;
+
+          arthur = person = deferred = null;
+          beforeEach(function() {
+            person = model.call({
+              resource: 'person'
+            });
+            deferred = jQuery.Deferred();
+            deferred.resolveWith(person({
+              name: 'Arthur'
+            }), [
+              {
+                id: 1
+              }
+            ]);
+            sinon.stub(jQuery, "ajax").returns(deferred);
+            return arthur = person({
+              name: 'Arthur',
+              id: 1
+            });
+          });
+          afterEach(function() {
+            return jQuery.ajax.restore();
+          });
+          it("throw exception when record has no id", function() {
+            delete arthur.id;
+            return expect(arthur.destroy).to["throw"](Error);
+          });
+          return it("should make ajax calls", function() {
+            arthur.destroy();
+            return jQuery.ajax.callCount.should.be.eq(1);
           });
         });
       });
