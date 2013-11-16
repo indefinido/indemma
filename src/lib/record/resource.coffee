@@ -9,7 +9,18 @@ resource = stampit
     scope   : null
     singular: false
   , ->
+
+    # TODO better integration with record.coffee, and stop storing
+    # original reference
+    if @original_reference
+      stampit.mixIn @original_reference, @
+      @original_reference.toString     = @toString
+      @original_reference.param_name ||= @name
+
+      return @original_reference
+
     @param_name ||= @name
+
     @
 
 resourceable =
@@ -24,7 +35,7 @@ resourceable =
   singularize: (word) ->
     throw new TypeError "Invalid string passed to singularize '#{word}'" unless word and word.length
 
-    if word.indexOf('s') == word.length - 1
+    if word.lastIndexOf('s') == word.length - 1
       word.substring 0, word.length - 1
     else
       word
@@ -60,10 +71,18 @@ resourceable =
     # Setup resource
     resource_definition = {}
     resource_definition = name: @resource if typeof @resource == 'string'
-    resource_definition = @resource       if typeof @resource == 'object'
+    if typeof @resource == 'object'
+      # TODO deeper resource integration with record.coffee, and remove original reference
+      # To prevent reference lost and allow dinamic modification of resources
+      # we need to preserve the original reference
+      @resource.original_reference = @resource
+
+      resource_definition = @resource
 
     # TODO remove mentions of @parent_resource and use only resource: {parent: ...}
     resource_definition.parent = @parent_resource
+
+
 
 
     @resource = resource resource_definition

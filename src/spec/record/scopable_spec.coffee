@@ -13,7 +13,9 @@ describe 'scopable', ->
     it 'sets te scopable loaded flag on model', ->
       model.scopable.should.be.true
 
-    # it 'adds save methods to records'
+    # TODO check if it is better to create a queryable extension and
+    # move finder methods there
+    # it 'adds finder methods to records'
 
   describe 'model', ->
 
@@ -27,11 +29,21 @@ describe 'scopable', ->
           $by_type: []
           resource: 'person'
 
+      it 'should add scope methods to model', ->
+        person.none.should.be.function
+
+      it 'should generate scope methods based on model definition', ->
+        person.hetero.should.be.function
+
+      describe '#none', ->
+        it 'should return empty response on fetch calls', (done) ->
+          # TODO implement getter for none property!
+          person.none().fetch null, (people) ->
+            people.length.should.be.empty
+            done()
+
+
       describe 'scope', ->
-
-        it 'should add scope methods to model', ->
-
-          person.hetero.should.be.function
 
         describe '#(name, type)', ->
 

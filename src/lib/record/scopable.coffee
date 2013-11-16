@@ -37,13 +37,19 @@ scopable =
       fetch: (data, done, fail) ->
         scope = extend {}, @scope.data
 
-        promise = rest.get.call(@, extend scope, data)
+        if scope.noned?
+          deferred = $.Deferred()
+          deferred.resolveWith @, [[]]
+        else
+          deferred = rest.get.call(@, extend scope, data)
+
+        deferred
           .done(@scope.then.concat done)
           .fail([@scope.fail, fail])
 
         @scope.clear()
 
-        promise
+        deferred
 
       clear: ->
         @data      = {}
@@ -74,6 +80,11 @@ scopable =
 
       console.error message
   model:
+    # TODO implement getter for none property!
+    none: ->
+      @scope.data.noned = true
+      @
+
     fetch: (data, done, fail) ->
       @scope.fetch.call @, data, done, fail
 
@@ -172,6 +183,7 @@ model.scopable = true
 
 model.mix (modelable) ->
   merge modelable, scopable.model
+
   modelable.after_mix.push scopable.after_mix
 
 

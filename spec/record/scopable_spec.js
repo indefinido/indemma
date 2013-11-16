@@ -30,10 +30,21 @@ describe('scopable', function() {
           resource: 'person'
         });
       });
-      describe('scope', function() {
-        it('should add scope methods to model', function() {
-          return person.hetero.should.be["function"];
+      it('should add scope methods to model', function() {
+        return person.none.should.be["function"];
+      });
+      it('should generate scope methods based on model definition', function() {
+        return person.hetero.should.be["function"];
+      });
+      describe('#none', function() {
+        return it('should return empty response on fetch calls', function(done) {
+          return person.none().fetch(null, function(people) {
+            people.length.should.be.empty;
+            return done();
+          });
         });
+      });
+      describe('scope', function() {
         return describe('#(name, type)', function() {
           return it('should add scope methods to model', function() {
             person.scope('bissexual', Boolean);

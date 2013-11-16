@@ -15,7 +15,10 @@ restful =
     # returns an array of promises
     create: (params..., callback) ->
       throw new TypeError("No arguments provided for #{@resource}.create") unless arguments.length
-      params.push callback unless typeof callback == 'function'
+      unless typeof callback == 'function'
+        params.push callback
+        callback = undefined
+
       params.unshift {} unless params.length
 
       savings = []
@@ -33,6 +36,11 @@ restful =
       if typeof conditions == 'function'
         callback   = conditions
         conditions = {}
+
+      # TODO Consider parent resources
+      # if @parent and not @parent._id
+      #   return callback.call @model, []
+
 
       $.when(rest.get.call @, conditions)
        .then(util.model.map             )
@@ -67,6 +75,8 @@ restful =
       route   = old_route
 
       promise
+
+    put: rest.put
 
   record:
     reload: ->
@@ -148,22 +158,31 @@ restful =
 
       promise
 
+    saving: false
+    salvation: null
     save: (doned, failed, data) ->
-      # TODO remove jquery dependency
-      unless @dirty
-        return $.Deferred().resolve()
-
-      promise = rest[if @_id then 'put' else 'post'].call @, data
-      promise.done @saved
-      promise.fail @failed
-
-      # Bind one time save callbacks
-      promise.done doned
-      promise.fail failed
+      return @salvation if @saving
 
       # TODO better lock generation
-      @lock = JSON.stringify(@json())
-      promise
+      @lock = JSON.stringify @json()
+
+      # TODO remove jquery dependency
+      # TODO think with wich value makes more sense to resolve the
+      # absence of need to save the model
+      salvation   = $.Deferred().resolveWith @, null unless @dirty
+      salvation ||= rest[if @_id then 'put' else 'post'].call @, data
+      @salvation  = salvation
+      @saving     = true
+
+      salvation.done @saved
+      salvation.fail @failed
+      salvation.always -> @saving = false
+
+      # Bind one time save callbacks
+      salvation.done doned
+      salvation.fail failed
+
+      salvation
 
     saved: (data) ->
 
@@ -244,10 +263,9 @@ restful =
       observable.unobserve json
 
       # TODO Store reserved words in a array
-      # TODO User _.omit function
+      # TODO Use _.omit function
+      # TODO Use object.defineProperty to not need to delete this properties
       # Remove model reserved words
-      delete json.id
-      delete json._id
       delete json.dirty
       delete json.resource
       delete json.route
@@ -255,11 +273,13 @@ restful =
       delete json.after_initialize
       delete json.parent_resource
       delete json.nested_attributes
-      delete json.on_save # TODO use advice and remove on_save from here
+      delete json.saving
+      delete json.salvation
       delete json.element
       delete json.default
       delete json.lock
       delete json.validated
+      delete json.validation
 
       json
 

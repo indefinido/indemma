@@ -10,7 +10,7 @@ stampit     = require '../../../vendor/stampit'
 confirmationable = stampit
   validate_each: (record, attribute, value) ->
     if record[attribute] != record["#{attribute}_confirmation"]
-      record.errors.add attribute, 'confirmation', @options
+      record.errors.add "#{attribute}_confirmation", 'confirmation', @options
 
 
 composed = stampit.compose(validations.validatable, confirmationable)

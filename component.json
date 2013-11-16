@@ -2,7 +2,7 @@
   "name": "indemma",
   "repo": "indefinido/indemma",
   "description": "Indemma (mind picture = memory), client side ES5 observable REST model",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "keywords": [],
   "dependencies": {
     "pluma/assimilate": "*",
@@ -10,18 +10,14 @@
     "component/bind": "*",
     "component/jquery": "*",
     "indefinido/observable": "*",
-    "indefinido/advisable": "*",
-    "chaijs/chai": "*"
+    "indefinido/advisable": "*"
   },
-  "development": {
-  },
+  "development": {},
   "license": "WTFPL",
   "scripts": [
     "index.js",
-
     "vendor/stampit.js",
     "vendor/sinon.js",
-
     "lib/record.js",
     "lib/record/associable.js",
     "lib/record/resource.js",
@@ -30,14 +26,12 @@
     "lib/record/scopable.js",
     "lib/record/maid.js",
     "lib/record/translationable.js",
-
     "lib/record/validations/confirmation.js",
     "lib/record/validations/associated.js",
     "lib/record/validations/presence.js",
     "lib/record/validations/remote.js",
     "lib/record/validations/type.js",
     "lib/record/validations/cpf.js",
-
     "lib/record/validatable.js",
     "lib/extensions/rivets.js"
   ]

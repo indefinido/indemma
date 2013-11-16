@@ -19,13 +19,14 @@ remoteable = stampit
     @post(data).done((json) => @succeeded(json, record))
 
   json: (record) ->
+    param = @resource.param_name || @resource.toString()
 
     data = {}
-    data[@resource] = record.json()
+    data[param] = record.json()
 
     # TODO stop renaming id field, lol
-    data[@resource].id ||= data[@resource]._id
-    delete data[@resource]._id
+    data[param].id ||= data[param]._id
+    delete data[param]._id
 
     data
 
@@ -52,7 +53,7 @@ remoteable = stampit
 , ->
   # TODO discover why @model.route is coming null!
   # Desglobalize model constant
-  pluralized_resource  = model.pluralize @model.resource
+  pluralized_resource  = model.pluralize @model.resource.toString()
   @resource            = @model.resource
   @route             ||= "/#{pluralized_resource}/validate"
   @

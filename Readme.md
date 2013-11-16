@@ -233,10 +233,38 @@ Inflection and resource modules together.
     species: "Humam"
   });
 
+  // Also sets the accept header to application/json
+
   arthur.save();   // POST /world/person?guy[name]=Arthur Philip&guy[species]=Human
 
 ```
 
+#### Scopable
+
+Active Record like scopes and some finders
+
+```javascript
+  require('indemma/lib/record/scopable'); // Working on to be require('indemma/scopable)
+
+  // Sintax is up to change yet
+  var person = model.call({
+    resource: 'person',
+    $gender: String,
+    $age: Number
+    $towel_ids: Array
+
+    // $towel: function () {}          // Runtime scope builders to come
+  });
+
+  // Also sets the accept header to application/json
+
+  person.all();               // GET /people
+  person.gender('m');         // GET /people?gender=m
+  person.age(32);             // GET /people?age=32
+  person.none.age(32);        // GET /people
+  person.towel_ids(1, 2, 3);  // GET /people?towel_ids[]=1&towel_ids[]=2&towel_ids[]=3
+
+```
 
 #### Maid
 

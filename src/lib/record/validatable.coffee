@@ -16,13 +16,16 @@ messages =
   blank:  (attribute_name) ->
     attribute_name = @human_attribute_name attribute_name
     "O campo #{attribute_name} não pode ficar em branco."
+
   cpf:  (attribute_name) ->
     attribute_name = @human_attribute_name attribute_name
     "O campo #{attribute_name} não está válido."
+
   confirmation:  (attribute_name) ->
-    confirmation_attribute_name = @human_attribute_name "#{attribute_name}_confirmation"
-    attribute_name              = @human_attribute_name attribute_name
-    "O campo #{attribute_name} não está diacordo com a confirmação #{confirmation_attribute_name}."
+    confirmation_attribute_name = @human_attribute_name attribute_name
+    attribute_name              = @human_attribute_name attribute_name.replace '_confirmation', ''
+    "O campo #{attribute_name} não está de acordo com o campo #{confirmation_attribute_name}."
+
   associated:  (attribute_name) ->
     attribute_name = @human_attribute_name attribute_name
     "O registro associado #{attribute_name} não é válido."
@@ -48,7 +51,7 @@ errorsable = stampit
     translator = messages[message_key]
 
     if translator?
-      @messages[attribute_name] += translator.call(@model, attribute_name, options)
+      @messages[attribute_name] += translator.call @model, attribute_name, options
     else
       @messages[attribute_name] += message_key
 
@@ -76,6 +79,7 @@ initializers =
 
     # TODO only add after save when resourceable is included
     # TODO @after_initialize validate_field_types
+    # TODO only execute save operation if record is valid
     @before 'save', -> @validate() if @save
 
     # TODO move this functionality control to validatorable

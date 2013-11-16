@@ -70,7 +70,7 @@ associable =
         # TODO Update route after setting the id
         # TODO Update route association only once for each associated record
         update_association: (data) ->
-          id = @_id || data._id || data.id
+          id = @_id || data && (data._id || data.id)
 
           # Keep trying until we have a id
           return unless id

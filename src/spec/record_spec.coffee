@@ -7,7 +7,6 @@ describe 'record',  ->
     arthur = record.call resource: 'person'
     arthur.should.be.object
 
-
 describe 'model',  ->
   model = root.model
 
