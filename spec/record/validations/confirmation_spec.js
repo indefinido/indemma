@@ -29,7 +29,7 @@ describe('model #() validates_confirmation_of', function() {
           password_confirmation: "kun"
         });
         arthur.valid;
-        return arthur.errors.messages.should.have.deep.property('password', "O campo password não está diacordo com a confirmação password_confirmation.");
+        return arthur.errors.messages.should.have.deep.property('password_confirmation', 'O campo password não está de acordo com o campo password_confirmation.');
       });
     });
   });

@@ -1,4 +1,5 @@
 stampit = require '../../vendor/stampit'
+require '../../vendor/owl/pluralize'
 
 # TODO Think of a better name
 resource = stampit
@@ -24,11 +25,11 @@ resource = stampit
     @
 
 resourceable =
-  pluralize: (word) ->
+  pluralize: (word, count, plural) ->
     throw new TypeError "Invalid string passed to pluralize '#{word}'" unless word and word.length
 
     unless word.indexOf('s') == word.length - 1
-      word + 's'
+      owl.pluralize word, count, plural
     else
       word
 
@@ -60,13 +61,16 @@ resourceable =
     set: (value) -> @initial_route = value
 
   parent_id:
-    get: -> @[@parent_resource]._id
+    get: -> @[@parent_resource]._id if @[@parent_resource]
     set: -> console.error 'Warning changing associations throught parent_id not allowed for security and style guide purposes' # TODO
 
   initialize: ->
     # Set parent attribute and default nested route
     if @parent_resource
-      Object.defineProperty @, "#{@parent_resource}_id", resourceable.parent_id
+      Object.defineProperty @, "#{@parent_resource}_id",
+        value: resourceable.parent_id
+        configurable: true
+        enumerable: true
 
     # Setup resource
     resource_definition = {}

@@ -40,13 +40,14 @@ merge      = require('assimilate').withStrategy 'deep'
     data.route             ||= @route
     data.nested_attributes   = @nested_attributes || []
 
-
     # instance = record.call extend data, @record # TODO remove @record from outside scop
     after_initialize = (data.after_initialize || []).concat(@record.after_initialize)
     instance = record.call extend Object.create(data), @record, after_initialize: after_initialize # TODO remove @record from outside scope
 
     # Call and remove used callbacks
-    callback.call instance, instance for callback in instance.after_initialize
+    for callback, index in instance.after_initialize
+      callback.call instance, instance
+
     delete instance.after_initialize
 
     instance
@@ -69,7 +70,6 @@ merge      = require('assimilate').withStrategy 'deep'
 
     @record =  instance.record = merge {}, instance.record, modelable.record
     @record.after_initialize   = instance.record.after_initialize = instance.record.after_initialize.concat after_initialize
-
 
     callback.call instance, instance for callback in modelable.after_mix
 

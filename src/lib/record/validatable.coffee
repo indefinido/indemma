@@ -12,6 +12,8 @@ type       = require 'type'
 # TODO implement method
 # model[resource].validators_on 'field' # Get all validators related to this field
 
+# TODO use http://validatejs.org for internal handling
+
 messages =
   blank:  (attribute_name) ->
     attribute_name = @human_attribute_name attribute_name
@@ -84,7 +86,7 @@ initializers =
 
     # TODO move this functionality control to validatorable
     @validated = false
-    @subscribe 'dirty', -> @validated = false
+    @subscribe 'dirty', (value) -> @validated = false
 
     Object.defineProperty @, 'valid',
       get: ->
@@ -150,7 +152,7 @@ extensions =
       validation
 
     validate: (doned, failed) ->
-      return @validation if @validated
+      return @validation if @validated and not @dirty
 
       @errors.clear()
       results  = [@]

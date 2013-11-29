@@ -9,6 +9,7 @@ describe 'record',  ->
 
 describe 'model',  ->
   model  = root.model
+  arthur = radio       = null
   person = corporation = null
 
   beforeEach ->
@@ -19,20 +20,77 @@ describe 'model',  ->
     friend = model.call
       resource: 'friends'
 
+
     person = model.call
       resource  : 'person'
       has_many  : 'friends'
       belongs_to: 'corporation'
 
+
+    radio = corporation
+      _id: 1
+      name: 'Local Radio'
+
+    ford = friend
+      _id: 2
+      name: 'Ford Perfect'
+
+    arthur = person
+      _id: 3
+      name: 'Arthur Philip Dent'
+
   describe 'belongs_to', ->
 
-    it 'should add builded object to association named attribute', ->
-      arthur = person
-        name: 'Arthur Dent'
+    describe "#associated_id", ->
+      it 'should return an partial resource when acessing associated', ->
 
-      corporation = arthur.build_corporation()
-      arthur.should.have.property 'corporation'
-      expect(corporation).to.be.ok
+        arthur.corporation_id = radio._id
+
+        arthur.corporation.should.be.object
+        arthur.corporation.should.have.property 'resource'
+        arthur.corporation.should.have.property '_id', radio._id
+
+      xit 'should fetch the resource when accessing associated and resource not present', (done) ->
+        radio = corporation
+          _id: 1
+          name: 'Local Radio'
+
+        arthur.corporation_id = radio._id
+
+        arthur.corporation.should.be.object
+        arthur.corporation.should.have.property 'resource', radio.resource
+        arthur.corporation._id.should.be null
+        arthur.corporation.locking.should.be.object
+
+        arthur.corporation.locking.done (corporation) ->
+          corporation.should.have.property '_id' , radio.id
+          corporation.should.have.property 'name', radio.name
+
+
+
+    describe "#associated", ->
+
+      it 'should update associated id and record when associated record changes', ->
+        radio = corporation
+          _id: 1
+          name: 'Local Radio'
+
+        expect(arthur.corporation).to.be.undefined
+
+        arthur.corporation = radio
+
+        arthur.should.to.have.property 'corporation', radio
+        arthur.should.to.have.property 'corporation_id', radio._id
+
+
+    describe "#build_associated", ->
+      it 'should add builded object to association named attribute', ->
+        arthur = person
+          name: 'Arthur Dent'
+
+        corporation = arthur.build_corporation()
+        arthur.should.have.property 'corporation'
+        expect(corporation).to.be.ok
 
   describe 'has_many', ->
 

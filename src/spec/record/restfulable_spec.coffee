@@ -139,7 +139,7 @@ describe 'restfulable', ->
             expect(person.create).to.throw TypeError
 
           it 'should make ajax calls', ->
-            jQuery.ajax.callCount.should.be.eq 2
+            jQuery.ajax.callCount.should.be.eq 3
 
       describe '#destroy', ->
         describe 'with plural resource', ->

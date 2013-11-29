@@ -35,7 +35,8 @@ describe('model #() validates_remotely', function() {
         arthur.validate();
         jQuery.ajax.called.should.be["true"];
         return jQuery.ajax.calledWithMatch({
-          url: '/persons/validate',
+          url: '/people/validate',
+          type: 'post',
           data: {
             person: {
               name: 'Arthur Dent'

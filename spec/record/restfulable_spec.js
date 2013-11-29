@@ -187,7 +187,7 @@ describe('restfulable', function() {
             return expect(person.create).to["throw"](TypeError);
           });
           return it('should make ajax calls', function() {
-            return jQuery.ajax.callCount.should.be.eq(2);
+            return jQuery.ajax.callCount.should.be.eq(3);
           });
         });
       });

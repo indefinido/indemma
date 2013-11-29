@@ -5,7 +5,7 @@ module.exports =
   get   : (data) -> request.call @, 'get'   , (if @_id then  "#{@route}/#{@_id}" else @route), data
   put   : (data) -> request.call @, 'put'   , (if @_id then  "#{@route}/#{@_id}" else @route), data # TODO change from put to patch
   post  : (data) -> request.call @, 'post'  , @route, data
-  delete: (data) -> request.call @, 'delete', @route, data
+  delete: (data) -> request.call @, 'delete', (if @_id then  "#{@route}/#{@_id}" else @route), data
 
 request = (method, url, data) ->
   param_name = @resource.param_name || @resource.toString()

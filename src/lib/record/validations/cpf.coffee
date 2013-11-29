@@ -32,7 +32,7 @@ cpfable = stampit
     d1 = 11 - (d1 % 11)
     d1 = 0 if (d1 > 9 )
 
-    return false if +dv.charAt 0 != d1
+    return false if +dv.charAt(0) != d1
 
     d1 *= 2
     for i in [1..9]

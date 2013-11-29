@@ -22,4 +22,4 @@ describe 'model #() validates_confirmation_of',  ->
       it 'should add error to record when fields does not match', ->
         arthur = person password: "domo", password_confirmation: "kun"
         arthur.valid
-        arthur.errors.messages.should.have.deep.property 'password', "O campo password não está diacordo com a confirmação password_confirmation."
+        arthur.errors.messages.should.have.deep.property 'password_confirmation', 'O campo password não está de acordo com o campo password_confirmation.'
