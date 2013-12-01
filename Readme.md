@@ -270,6 +270,10 @@ Active Record like scopes and some finders
 
 TODO make documentation
 
+#### Storage (Persistance, Queryable & Storeable)
+
+TODO make documentation
+
 ### Validations support
 
 ```javascript
