@@ -20,8 +20,8 @@ merge      = require('assimilate').withStrategy 'deep'
     create: (params...) ->
       # Implementat non restful model creation
       throw 'model.create not implemented yet, try using the restful.model.create method'
-    find: (id) ->
-      @where id: id, true
+#    find: (id) ->
+#      @where id: id, true
     where: (conditions, first = false) ->
       results = []
       conditions.id = [conditions.id] if type(conditions.id) != 'array'

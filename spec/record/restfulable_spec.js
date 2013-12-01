@@ -124,15 +124,28 @@ describe('restfulable', function() {
 
           deferred = promise = person = null;
           beforeEach(function() {
+            var context;
+
             person = model.call({
               resource: 'person'
             });
             deferred = jQuery.Deferred();
+            context = person({
+              name: 'Arthur'
+            });
+            context.lock = JSON.stringify(context.json());
+            deferred.resolveWith(context, [
+              {
+                _id: 1,
+                name: 'Arthur'
+              }
+            ]);
             deferred.resolveWith(person({
               name: 'Arthur'
             }), [
               {
-                _id: 1
+                _id: 1,
+                name: 'Arthur'
               }
             ]);
             sinon.stub(jQuery, "ajax").returns(deferred);

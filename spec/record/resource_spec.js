@@ -41,7 +41,7 @@ describe('resource', function() {
 
     towel = null;
     beforeEach(function() {
-      var deferred, promises;
+      var context, deferred, promises;
 
       towel = model.call({
         resource: {
@@ -50,16 +50,19 @@ describe('resource', function() {
         }
       });
       deferred = jQuery.Deferred();
-      deferred.resolveWith(towel({
-        name: 'Arthur'
-      }), [
+      context = towel({
+        name: 'Arthur Philip Dent'
+      });
+      context.lock = JSON.stringify(context.json());
+      deferred.resolveWith(context, [
         {
-          _id: 1
+          _id: 1,
+          name: 'Arthur Philip Dent'
         }
       ]);
       sinon.stub(jQuery, "ajax").returns(deferred);
       return promises = towel.create({
-        name: 'Arthur'
+        name: 'Arthur Philip Dent'
       }, {
         name: 'Ford'
       });

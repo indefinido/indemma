@@ -52,24 +52,37 @@ subscribers =
       # Remove associated record
       association_name = @resource.toString()
       associated       = @owner[association_name]
-      delete @owner[association_name]
-
-      # Cancel any possible associated loading
-      associated?.abort?()
 
       # Update association with blank resource that will update
-      associated = model[association_name] _id: resource_id
+      resource = model[association_name]
+      unless resource
+        console.warn "subscribers.belongs_to.foreign_key: associated factory not found for model: #{association_name}"
+        return resource_id
+
+      # TODO faster nullifing association check
+      # TODO only allow nullifying with null
+      if resource_id == null or resource_id == undefined
+        @dirty = true
+        delete @owner[association_name]
+        return resource_id
+
+      # TODO remote find or local find automatically
+      associated = resource.find resource_id
+
+      unless associated
+        associated = resource _id: resource_id
+        associated.reload()
+        resource.storage.store resource_id, associated
 
       # TODO Discover and update inverse side of association
       # associated[@owner.resource.toString()] = @owner
 
       # TODO use object.define property and lazy load attribute
-      associated.reload()
       @owner[association_name] = associated
       resource_id
 
     associated_changed: (associated) ->
-      @observed["#{associated.resource.toString()}_id"] = associated._id
+      @owner.observed["#{@resource.toString()}_id"] = if associated then associated._id else null
 
 # TODO Better association segregation
 associable =
@@ -202,7 +215,7 @@ associable =
 
       # Externalize this to a file
       if options.belongs_to
-
+        # TODO implement association reflection!
         for resource in options.belongs_to
           # unless model[resource]
             # throw "Model not found for association with resource '#{resource}', on association 'belongs_to' "
@@ -218,7 +231,13 @@ associable =
 
           # TODO copy from active record and better modularization of this internals
           @subscribe "#{resource}_id", $.proxy subscribers.belongs_to.foreign_key, association_proxy
-          @subscribe resource, subscribers.belongs_to.associated_changed
+          @subscribe resource.toString(), $.proxy subscribers.belongs_to.associated_changed, association_proxy
+
+          # Execute relation attributes binding
+          # TODO validate bindings! When @resource._id != @["#{resource}_id"]
+          # TODO write test for this case
+          if @["#{resource}_id"] and not @[resource]
+            @publish "#{resource}_id", @["#{resource}_id"]
 
   # @ = record
   record: (options) ->

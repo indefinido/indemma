@@ -103,7 +103,12 @@ describe 'restfulable', ->
           beforeEach ->
             person   = model.call resource: 'person'
             deferred = jQuery.Deferred()
-            deferred.resolveWith person(name: 'Arthur'), [_id: 1]
+
+            context = person(name: 'Arthur')
+            context.lock = JSON.stringify context.json()
+            deferred.resolveWith context, [_id: 1, name: 'Arthur']
+
+            deferred.resolveWith person(name: 'Arthur'), [_id: 1, name: 'Arthur']
             sinon.stub(jQuery, "ajax").returns(deferred)
             promise  = person.create {name: 'Arthur'}, {name: 'Ford'}
 

@@ -9,7 +9,6 @@
     "component/type": "*",
     "component/bind": "*",
     "component/jquery": "*",
-    "chaijs/chai": "*",
     "indefinido/observable": "*",
     "indefinido/advisable": "*"
   },
@@ -22,6 +21,9 @@
     "vendor/owl/pluralize.js",
     "lib/record.js",
     "lib/record/associable.js",
+    "lib/record/persistable.js",
+    "lib/record/storable.js",
+    "lib/record/queryable.js",
     "lib/record/resource.js",
     "lib/record/rest.js",
     "lib/record/restfulable.js",

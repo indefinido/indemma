@@ -67,7 +67,6 @@ describe 'model',  ->
           corporation.should.have.property 'name', radio.name
 
 
-
     describe "#associated", ->
 
       it 'should update associated id and record when associated record changes', ->

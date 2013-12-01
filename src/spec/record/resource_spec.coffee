@@ -38,9 +38,14 @@ describe 'resource', ->
           singular: true
 
       deferred = jQuery.Deferred()
-      deferred.resolveWith towel(name: 'Arthur'), [_id: 1]
+
+      context = towel(name: 'Arthur Philip Dent')
+      context.lock = JSON.stringify context.json()
+      deferred.resolveWith context, [_id: 1, name: 'Arthur Philip Dent']
+
       sinon.stub(jQuery, "ajax").returns(deferred)
-      promises = towel.create {name: 'Arthur'}, {name: 'Ford'}
+
+      promises = towel.create {name: 'Arthur Philip Dent'}, {name: 'Ford'}
 
     afterEach  -> jQuery.ajax.restore()
 
