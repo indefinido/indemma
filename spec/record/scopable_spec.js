@@ -27,6 +27,7 @@ describe('scopable', function() {
         return person = model.call({
           $hetero: true,
           $by_type: [],
+          $by_name: String,
           resource: 'person'
         });
       });
@@ -87,6 +88,16 @@ describe('scopable', function() {
               ]
             ]);
             return jQuery.ajax.callCount.should.be.eq(1);
+          });
+        });
+        describe('when string', function() {
+          it('should acumulate data in scope object', function() {
+            person.by_name();
+            return person.scope.data.by_name.should.be.a('string');
+          });
+          return it('should override data throught parameters', function() {
+            person.by_name('Ford');
+            return person.scope.data.by_name.should.be.eq('Ford');
           });
         });
         describe('when array', function() {

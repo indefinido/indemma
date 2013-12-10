@@ -21,6 +21,12 @@ describe 'storable',  ->
         @storage.writes.should.be.eq 1
         @storage.database['1'].should.be.eq data
 
+      it "should mark an object as sustained",  ->
+        data = name: 'Arthur Dent'
+        @storage.store '1', data
+        data.should.have.property 'sustained', true
+
+
     describe "read", ->
       data = null
 
@@ -30,3 +36,5 @@ describe 'storable',  ->
 
       it "should save object on storage", ->
         @storage.store('1').should.be.eq data
+
+      it "should unmark an object as sustained"

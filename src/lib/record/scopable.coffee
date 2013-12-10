@@ -25,7 +25,7 @@ scopable =
       type    = $.type type unless $.type(type) == 'string'
       builder = builders[type]
 
-      throw "Unknown scope type #{type} for model with resource #{model.resource}" unless builder?
+      throw "Unknown scope type: '#{type}', For model with resource: '#{@resource}'" unless builder?
 
       @scope.declared.push name
       @[name] = builder name: name
@@ -91,7 +91,7 @@ scopable =
     # TODO optmize this iterations or add support for stampit on associable and merge factories
     # @ = record instance
     forward_scopes_to_associations: ->
-      factory = model[@resource]
+      factory = model[@resource.name]
 
       for association_name in factory.has_many
         associated_resource = model.singularize association_name
@@ -120,7 +120,7 @@ scopable =
         for scope in model[associated_resource].scope.declared
           @[associated_resource][scope] = factory[scope]
 
-      # TODO improve associable inner workings to stampit objects
+        # TODO improve associable inner workings to stampit objects
       if factory.belongs_to.length
         generate_forwarder = (associated_resource) ->
           associated_factory = model[associated_resource]
@@ -150,6 +150,15 @@ scopable =
         @scope name, type
 
 builders =
+  # Builds a string scope builder
+  string: stampit().enclose ->
+    base = scopable.base @
+
+    stampit.mixIn (value, callbacks...) ->
+      callbacks.length and @scope.then = @scope.then.concat callbacks
+      @scope.data[base.name] ||= value ? @["$#{base.name}"]
+      @
+
   # Builds a boolean scope builder
   boolean: stampit().enclose ->
     base = scopable.base @

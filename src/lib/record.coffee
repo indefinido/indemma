@@ -13,6 +13,8 @@ merge      = require('assimilate').withStrategy 'deep'
     record:
       # TODO usar deferred
       after_initialize: []
+      # TODO usar deferred
+      before_initialize: []
     all: ->
       # TODO transform model in a array like object and store cache in root
       @cache
@@ -42,9 +44,18 @@ merge      = require('assimilate').withStrategy 'deep'
 
     # instance = record.call extend data, @record # TODO remove @record from outside scop
     after_initialize = (data.after_initialize || []).concat(@record.after_initialize)
-    instance = record.call extend Object.create(data), @record, after_initialize: after_initialize # TODO remove @record from outside scope
+
+    creation = extend Object.create(data), @record, creation, after_initialize: after_initialize
+
+    # TODO use deferred instead of before_initialize array
+    for callback, index in @record.before_initialize
+      callback.call @, creation
+
+    instance = record.call creation # TODO remove @record from outside scope
+
 
     # Call and remove used callbacks
+    # TODO use deferred instead of after_initialize array
     for callback, index in instance.after_initialize
       callback.call instance, instance
 
@@ -68,8 +79,10 @@ merge      = require('assimilate').withStrategy 'deep'
 
     extend instance, merge @, modelable
 
-    @record =  instance.record = merge {}, instance.record, modelable.record
-    @record.after_initialize   = instance.record.after_initialize = instance.record.after_initialize.concat after_initialize
+    @record =  instance.record  = merge {}, instance.record, modelable.record
+    @record.after_initialize    = instance.record.after_initialize = instance.record.after_initialize.concat after_initialize
+
+    @record.before_initialize   = instance.record.before_initialize.concat []
 
     callback.call instance, instance for callback in modelable.after_mix
 
@@ -110,7 +123,7 @@ merge      = require('assimilate').withStrategy 'deep'
     throw "Mixin called incorrectly, call mixin with call method: record.call(object, data)" if @ == window
 
     data ||= {}
-    after_initialize = (@after_initialize || []).concat(data.after_initialize || []).concat(recordable.after_initialize)
+    after_initialize  = (@after_initialize || []).concat(data.after_initialize || []).concat(recordable.after_initialize)
     advisable observable(extend(@, recordable, data, after_initialize: after_initialize))
 
 

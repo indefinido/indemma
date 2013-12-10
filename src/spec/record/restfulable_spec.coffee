@@ -31,6 +31,11 @@ describe 'restfulable', ->
         beforeEach -> sinon.stub(jQuery, "ajax").returns(jQuery.Deferred())
         afterEach  -> jQuery.ajax.restore()
 
+        it 'should be able to serialize record', ->
+          JSON.stringify arthur.json()
+
+        it 'should ignore key in transient fields'
+
         it 'should send paramenters accordingly'
 
         # TODO erase this test and implement the above test (should

@@ -17,7 +17,11 @@ storable = stampit
       collection[key]
     else
       @writes++
+
+      # TODO use object.defineProperty
+      value.sustained = true
       collection[key] = value
+
   values: ->
     Object.values @database
   ,

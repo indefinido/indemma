@@ -58,12 +58,16 @@ restful =
       # TODO should fail when server returns more then one record
       @all conditions, callback
 
-    get: (action, data) ->
+    # TODO better treating of arguments
+    get: (action, data = {}) ->
       # TODO better way to override route
-      old_route = @route
-      @route    = "/#{model.pluralize @resource.name}/#{action}"
-      resource  = data.resource
-      data      = data.json() if data and data.json
+      old_route  = @route
+      @route     = "/#{model.pluralize @resource.name}"
+      @route    += "/#{action}" if action
+
+      # TODO not allow resource overriding
+      resource   = data.resource
+      data       = data.json() if data and data.json
 
       if resource?
         payload        = data
@@ -80,13 +84,18 @@ restful =
     delete: rest.delete
 
   record:
-    reload: ->
-      promise = rest.get.call @
+    reload: (params...) ->
+
+      # TODO better signature implementation
+      data = params.pop()
+      params.push data if type(data) != 'object'
+
+      promise = rest.get.call @, data || {}
       promise.done @assign_attributes
       promise.fail @failed
 
       # Bind one time save callbacks
-      promise.done argument for argument in arguments when type(argument) is 'function'
+      promise.done param for param in params
 
       promise
 
@@ -153,7 +162,9 @@ restful =
 
 
       # Assign remaining attributes
-      @[attribute] = attributes[attribute] for attribute of attributes
+      # TODO see if it is a best practice not overriding unchanged attributes
+      for attribute of attributes when attribute isnt @[attribute]
+        @[attribute] = attributes[attribute]
 
     destroy: (doned, failed, data) ->
       throw new Error 'Can\'t delete record without id!' unless @id? or @_id?
@@ -289,10 +300,12 @@ restful =
       delete json.route
       delete json.initial_route # TODO implement better initial_route and remove attribute from here
       delete json.after_initialize
+      delete json.before_initialize
       delete json.parent_resource
       delete json.nested_attributes
       delete json.saving
       delete json.salvation
+      delete json.sustained
       delete json.element
       delete json.default
       delete json.lock

@@ -14,7 +14,7 @@ describe('storable', function() {
   return describe("#store", function() {
     describe("write", function() {
       it("should write object on deep storage");
-      return it("should write object on storage", function() {
+      it("should write object on storage", function() {
         var data;
 
         data = {
@@ -23,6 +23,15 @@ describe('storable', function() {
         this.storage.store('1', data);
         this.storage.writes.should.be.eq(1);
         return this.storage.database['1'].should.be.eq(data);
+      });
+      return it("should mark an object as sustained", function() {
+        var data;
+
+        data = {
+          name: 'Arthur Dent'
+        };
+        this.storage.store('1', data);
+        return data.should.have.property('sustained', true);
       });
     });
     return describe("read", function() {
@@ -35,9 +44,10 @@ describe('storable', function() {
         };
         return this.storage.store('1', data);
       });
-      return it("should save object on storage", function() {
+      it("should save object on storage", function() {
         return this.storage.store('1').should.be.eq(data);
       });
+      return it("should unmark an object as sustained");
     });
   });
 });

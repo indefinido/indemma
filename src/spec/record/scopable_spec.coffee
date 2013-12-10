@@ -25,8 +25,9 @@ describe 'scopable', ->
       beforeEach ->
 
         person = model.call
-          $hetero: true
+          $hetero : true
           $by_type: []
+          $by_name: String
           resource: 'person'
 
       it 'should add scope methods to model', ->
@@ -77,6 +78,15 @@ describe 'scopable', ->
             deferred.resolveWith person, [[{name: 'Arthur'}, {name: 'Ford'}]]
             jQuery.ajax.callCount.should.be.eq 1
 
+
+        describe 'when string', ->
+          it 'should acumulate data in scope object', ->
+            person.by_name()
+            person.scope.data.by_name.should.be.a 'string'
+
+          it 'should override data throught parameters', ->
+            person.by_name 'Ford'
+            person.scope.data.by_name.should.be.eq 'Ford'
 
         describe 'when array', ->
           it 'should acumulate data in scope object', ->

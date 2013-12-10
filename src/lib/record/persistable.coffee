@@ -1,16 +1,20 @@
 require './queryable'
 
 handlers =
-  store_after_save: ->
+  store_after_saved: ->
     # TODO remove global model usage
     {storage} = model[@resource.toString()]
-    storage.store @_id, @
+
+    # TODO check persistable configuration before attaching handlers
+    # and remove the @_id presence check
+    storage.store @_id, @ if @_id
 
 
 persistable =
   record:
     after_initialize: ->
-      @after 'saved', handlers.store_after_save
+      # TODO check persistable configuration before attaching handlers
+      @after 'saved', handlers.store_after_saved
 
 # Extend indemma
 # TODO use stampit to extend record and model

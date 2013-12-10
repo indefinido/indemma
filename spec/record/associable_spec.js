@@ -44,10 +44,19 @@ describe('model', function() {
       name: 'Arthur Philip Dent'
     });
   });
+  describe('has_one', function() {
+    return it('should add a has_one property with the associations descriptions', function() {
+      return $.type(person.has_one).should.be.eq('array');
+    });
+  });
   describe('belongs_to', function() {
+    it('should add a belongs_to property with the associations descriptions', function() {
+      return $.type(person.belongs_to).should.be.eq('array');
+    });
     describe("#associated_id", function() {
       it('should return an partial resource when acessing associated', function() {
         arthur.corporation_id = radio._id;
+        arthur.should.have.property('corporation');
         arthur.corporation.should.be.object;
         arthur.corporation.should.have.property('resource');
         return arthur.corporation.should.have.property('_id', radio._id);
@@ -72,7 +81,8 @@ describe('model', function() {
       return it('should update associated id and record when associated record changes', function() {
         radio = corporation({
           _id: 1,
-          name: 'Local Radio'
+          name: 'Local Radio',
+          sustained: true
         });
         expect(arthur.corporation).to.be.undefined;
         arthur.corporation = radio;
@@ -92,6 +102,9 @@ describe('model', function() {
     });
   });
   return describe('has_many', function() {
+    it('should add a has_many property with the associations descriptions', function() {
+      return $.type(person.has_many).should.be.eq('array');
+    });
     it('should return a record factory with associations stored', function() {
       var has_many;
 

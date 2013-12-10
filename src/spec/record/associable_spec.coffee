@@ -26,7 +26,6 @@ describe 'model',  ->
       has_many  : 'friends'
       belongs_to: 'corporation'
 
-
     radio = corporation
       _id: 1
       name: 'Local Radio'
@@ -39,13 +38,21 @@ describe 'model',  ->
       _id: 3
       name: 'Arthur Philip Dent'
 
+  describe 'has_one', ->
+    it 'should add a has_one property with the associations descriptions', ->
+      $.type(person.has_one).should.be.eq 'array'
+
+
   describe 'belongs_to', ->
+    it 'should add a belongs_to property with the associations descriptions', ->
+      $.type(person.belongs_to).should.be.eq 'array'
+
 
     describe "#associated_id", ->
       it 'should return an partial resource when acessing associated', ->
-
         arthur.corporation_id = radio._id
 
+        arthur.should.have.property 'corporation'
         arthur.corporation.should.be.object
         arthur.corporation.should.have.property 'resource'
         arthur.corporation.should.have.property '_id', radio._id
@@ -73,6 +80,7 @@ describe 'model',  ->
         radio = corporation
           _id: 1
           name: 'Local Radio'
+          sustained: true
 
         expect(arthur.corporation).to.be.undefined
 
@@ -92,6 +100,8 @@ describe 'model',  ->
         expect(corporation).to.be.ok
 
   describe 'has_many', ->
+    it 'should add a has_many property with the associations descriptions', ->
+      $.type(person.has_many).should.be.eq 'array'
 
     it 'should return a record factory with associations stored', ->
       person.has_many.should.be.array

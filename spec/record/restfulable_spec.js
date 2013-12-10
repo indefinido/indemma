@@ -37,6 +37,10 @@ describe('restfulable', function() {
         afterEach(function() {
           return jQuery.ajax.restore();
         });
+        it('should be able to serialize record', function() {
+          return JSON.stringify(arthur.json());
+        });
+        it('should ignore key in transient fields');
         it('should send paramenters accordingly');
         return it('should make ajax call', function() {
           arthur.save();
