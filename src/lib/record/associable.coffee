@@ -273,7 +273,7 @@ associable =
           # TODO see why this code is here, since we have the owner key
           association_proxy[@resource.toString()] = @
 
-          @["build_#{resource}" ] = $.proxy singular.build , association_proxy
+          @["build_#{resource}"  = $.proxy singular.build , association_proxy
           @["create_#{resource}"] = $.proxy singular.create, association_proxy
 
           # TODO copy from active record and better modularization of
@@ -287,7 +287,7 @@ associable =
           @subscribe resource.toString(), $.proxy subscribers.belongs_to.associated_changed, association_proxy
 
           # Restore id after loader prevention has passed
-          @resource_id = old_resource_id
+          @["#{resource}_id"] = old_resource_id
 
           # Execute relation attributes binding
           # TODO validate bindings! When @resource._id != @["#{resource}_id"]

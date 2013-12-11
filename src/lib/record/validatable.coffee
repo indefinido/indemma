@@ -33,8 +33,13 @@ messages =
     "O registro associado #{attribute_name} não é válido."
 
   server:  (attribute_name, options) ->
-    attribute_name = @human_attribute_name attribute_name
-    "#{attribute_name} #{options.server_message}."
+    # TODO Better checking of base attribute case, better yet remove
+    # checking from here, just like active record
+    if attribute_name == 'base'
+      options.server_message
+    else
+      attribute_name = @human_attribute_name attribute_name
+      "#{attribute_name} #{options.server_message}."
 
   type:  (attribute_name, options) ->
     attribute_name = @human_attribute_name attribute_name
@@ -64,6 +69,7 @@ errorsable = stampit
 
   push: Array.prototype.push
   splice: Array.prototype.splice
+  indexOf: Array.prototype.indexOf
 ,
   model: null
   messages: null

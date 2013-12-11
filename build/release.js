@@ -20426,7 +20426,7 @@ associable = {
           this["" + resource + "_id"] = null;
           this.subscribe("" + resource + "_id", $.proxy(subscribers.belongs_to.foreign_key, association_proxy));
           this.subscribe(resource.toString(), $.proxy(subscribers.belongs_to.associated_changed, association_proxy));
-          this.resource_id = old_resource_id;
+          this["" + resource + "_id"] = old_resource_id;
           if (this["" + resource + "_id"] && !this[resource]) {
             _results.push(this.publish("" + resource + "_id", this["" + resource + "_id"]));
           } else {
@@ -21029,7 +21029,7 @@ restful = {
             if (!definition.associations) {
               definition.associations = definition.has_one.concat(definition.has_many.concat(definition.belongs_to));
             }
-            if (!(this.hasOwnProperty(attribute_name) || definition.hasOwnProperty(attribute_name) || definition.associations.indexOf(attribute_name) !== -1)) {
+            if (!(this.hasOwnProperty(attribute_name) || definition.hasOwnProperty(attribute_name) || definition.associations.indexOf(attribute_name) !== -1 || attribute_name === 'base')) {
               message = "Server returned an validation error message for a attribute that is not defined in your model.\n";
               message += "The attribute was '" + attribute_name + "', the model resource was '" + this.resource + "'.\n";
               message += "The model definition keys were '" + (JSON.stringify(Object.keys(definition))) + "'.\n";
@@ -21779,8 +21779,12 @@ messages = {
     return "O registro associado " + attribute_name + " não é válido.";
   },
   server: function(attribute_name, options) {
-    attribute_name = this.human_attribute_name(attribute_name);
-    return "" + attribute_name + " " + options.server_message + ".";
+    if (attribute_name === 'base') {
+      return options.server_message;
+    } else {
+      attribute_name = this.human_attribute_name(attribute_name);
+      return "" + attribute_name + " " + options.server_message + ".";
+    }
   },
   type: function(attribute_name, options) {
     attribute_name = this.human_attribute_name(attribute_name);
@@ -21814,7 +21818,8 @@ errorsable = stampit({
     }
   },
   push: Array.prototype.push,
-  splice: Array.prototype.splice
+  splice: Array.prototype.splice,
+  indexOf: Array.prototype.indexOf
 }, {
   model: null,
   messages: null,

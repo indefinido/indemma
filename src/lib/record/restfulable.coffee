@@ -225,9 +225,10 @@ restful =
       try payload ||= JSON.parse(xhr.responseText) catch e
       payload     ||= xhr.responseText
 
+
       # When client fail
       switch xhr.status
-        # move to validatable
+        # TODO move to validatable
         when 422
 
           definition = model[@resource]
@@ -241,7 +242,9 @@ restful =
               definition.associations = definition.has_one.concat(definition.has_many.concat(definition.belongs_to))
 
             # Only add errors to existing attributes
-            unless @hasOwnProperty(attribute_name) or definition.hasOwnProperty(attribute_name) or definition.associations.indexOf(attribute_name) != -1
+            # TODO shorten this verification
+            unless @hasOwnProperty(attribute_name) or definition.hasOwnProperty(attribute_name) or definition.associations.indexOf(attribute_name) != -1 or attribute_name == 'base'
+
               message  = "Server returned an validation error message for a attribute that is not defined in your model.\n"
               message += "The attribute was '#{attribute_name}', the model resource was '#{@resource}'.\n"
               message += "The model definition keys were '#{JSON.stringify Object.keys definition }'.\n"
