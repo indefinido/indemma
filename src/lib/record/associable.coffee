@@ -62,7 +62,7 @@ subscribers =
 
       # TODO Discover and update inverse side of association
       # associated[@owner.resource.toString()] = @owner
-      current_resource_id = @owner[association_name]?._id
+      current_resource_id = @owner.observed[association_name]?._id
       if resource_id != current_resource_id
         # Update association with blank resource that will update
         resource = model[association_name]
@@ -273,7 +273,7 @@ associable =
           # TODO see why this code is here, since we have the owner key
           association_proxy[@resource.toString()] = @
 
-          @["build_#{resource}"  = $.proxy singular.build , association_proxy
+          @["build_#{resource}"]  = $.proxy singular.build , association_proxy
           @["create_#{resource}"] = $.proxy singular.create, association_proxy
 
           # TODO copy from active record and better modularization of
@@ -292,8 +292,8 @@ associable =
           # Execute relation attributes binding
           # TODO validate bindings! When @resource._id != @["#{resource}_id"]
           # TODO write test for this case
-          if @["#{resource}_id"] and not @[resource]
-            @publish "#{resource}_id", @["#{resource}_id"]
+          # if @["#{resource}_id"] and not @[resource]
+          #   @publish "#{resource}_id", @["#{resource}_id"]
 
     # TODO better organization of this code, probably transforming the
     # association into a composable object inside this function: @ =

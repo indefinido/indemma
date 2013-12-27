@@ -1,6 +1,6 @@
 require './translationable'
 
-root       = exports ? window
+root       = exports ? @
 stampit    = require '../../vendor/stampit'
 observable = require('observable').mixin
 type       = require 'type'

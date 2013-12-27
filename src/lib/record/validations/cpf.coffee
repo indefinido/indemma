@@ -24,7 +24,7 @@ cpfable = stampit
     v  = false
     i  = 0
 
-    for i in [1..9]
+    for i in [0..9]
       d1 += c.charAt(i) * (10 - i)
 
     return false if d1 == 0
@@ -35,7 +35,7 @@ cpfable = stampit
     return false if +dv.charAt(0) != d1
 
     d1 *= 2
-    for i in [1..9]
+    for i in [0..9]
       d1 += c.charAt(i) * (11 - i)
 
 

@@ -3,6 +3,7 @@ type       = require 'type'
 observable = require('observable').mixin
 $          = require 'jquery' # TODO remove jquery dependency and use simple promises implementation
 rest       = require './rest.js'
+root       = exports ? @
 
 util =
   model:
@@ -231,7 +232,7 @@ restful =
         # TODO move to validatable
         when 422
 
-          definition = model[@resource]
+          definition = model[@resource.toString()]
 
           for attribute_name, messages of payload.errors
 
@@ -272,8 +273,17 @@ restful =
     json: (methods = {}) ->
       json = {}
 
-      for name, value of @ when type(value) isnt 'function'
-        continue unless value?  # Bypass null, and undefined values
+      definition = model[@resource.toString()]
+
+      for name of @ when type(value)
+        # TODO treat other associations to!
+        # TODO create association reflection for god sake!
+        continue if definition.belongs_to.indexOf(name) != -1 and @nested_attributes.indexOf(name) == -1
+
+        # TODO Bypass only undefined values so we can erase data on server
+        value = @[name]
+        continue unless value?
+        continue if type(value) == 'function'
 
         if type(value) == 'object'
 

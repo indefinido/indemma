@@ -20210,7 +20210,7 @@ subscribers = {
         this.owner[association_name] = resource_id;
         return resource_id;
       }
-      current_resource_id = (_ref = this.owner[association_name]) != null ? _ref._id : void 0;
+      current_resource_id = (_ref = this.owner.observed[association_name]) != null ? _ref._id : void 0;
       if (resource_id !== current_resource_id) {
         resource = model[association_name];
         if (!resource) {
@@ -20426,12 +20426,7 @@ associable = {
           this["" + resource + "_id"] = null;
           this.subscribe("" + resource + "_id", $.proxy(subscribers.belongs_to.foreign_key, association_proxy));
           this.subscribe(resource.toString(), $.proxy(subscribers.belongs_to.associated_changed, association_proxy));
-          this["" + resource + "_id"] = old_resource_id;
-          if (this["" + resource + "_id"] && !this[resource]) {
-            _results.push(this.publish("" + resource + "_id", this["" + resource + "_id"]));
-          } else {
-            _results.push(void 0);
-          }
+          _results.push(this["" + resource + "_id"] = old_resource_id);
         }
         return _results;
       }
@@ -20609,7 +20604,7 @@ model.mix(function(modelable) {
 
 });
 require.register("indemma/lib/record/resource.js", function(exports, require, module){
-var model, resource, resourceable, stampit;
+var descriptors, model, resource, resourceable, stampit;
 
 stampit = require('../../vendor/stampit');
 
@@ -20636,27 +20631,7 @@ resource = stampit({
   return this;
 });
 
-resourceable = {
-  pluralize: function(word, count, plural) {
-    if (!(word && word.length)) {
-      throw new TypeError("Invalid string passed to pluralize '" + word + "'");
-    }
-    if (word.indexOf('s') !== word.length - 1) {
-      return owl.pluralize(word, count, plural);
-    } else {
-      return word;
-    }
-  },
-  singularize: function(word) {
-    if (!(word && word.length)) {
-      throw new TypeError("Invalid string passed to singularize '" + word + "'");
-    }
-    if (word.lastIndexOf('s') === word.length - 1) {
-      return word.substring(0, word.length - 1);
-    } else {
-      return word;
-    }
-  },
+descriptors = {
   route: {
     get: function() {
       var route;
@@ -20683,27 +20658,33 @@ resourceable = {
     set: function(value) {
       return this.initial_route = value;
     }
+  }
+};
+
+resourceable = {
+  pluralize: function(word, count, plural) {
+    if (!(word && word.length)) {
+      throw new TypeError("Invalid string passed to pluralize '" + word + "'");
+    }
+    if (word.indexOf('s') !== word.length - 1) {
+      return owl.pluralize(word, count, plural);
+    } else {
+      return word;
+    }
   },
-  parent_id: {
-    get: function() {
-      if (this[this.parent_resource]) {
-        return this[this.parent_resource]._id;
-      }
-    },
-    set: function() {
-      return console.error('Warning changing associations throught parent_id not allowed for security and style guide purposes');
+  singularize: function(word) {
+    if (!(word && word.length)) {
+      throw new TypeError("Invalid string passed to singularize '" + word + "'");
+    }
+    if (word.lastIndexOf('s') === word.length - 1) {
+      return word.substring(0, word.length - 1);
+    } else {
+      return word;
     }
   },
   initialize: function() {
     var resource_definition, _ref;
 
-    if (this.parent_resource) {
-      Object.defineProperty(this, "" + this.parent_resource + "_id", {
-        value: resourceable.parent_id,
-        configurable: true,
-        enumerable: true
-      });
-    }
     resource_definition = {};
     if (typeof this.resource === 'string') {
       resource_definition = {
@@ -20716,7 +20697,7 @@ resourceable = {
     }
     resource_definition.parent = this.parent_resource;
     this.resource = resource(resource_definition);
-    return (_ref = this.route) != null ? _ref : Object.defineProperty(this, 'route', resourceable.route);
+    return (_ref = this.route) != null ? _ref : Object.defineProperty(this, 'route', descriptors.route);
   }
 };
 
@@ -20775,7 +20756,7 @@ request = function(method, url, data) {
 
 });
 require.register("indemma/lib/record/restfulable.js", function(exports, require, module){
-var $, merge, model, observable, record, rest, restful, type, util,
+var $, merge, model, observable, record, rest, restful, root, type, util,
   __slice = [].slice;
 
 merge = require('assimilate').withStrategy('deep');
@@ -20787,6 +20768,8 @@ observable = require('observable').mixin;
 $ = require('jquery');
 
 rest = require('./rest.js');
+
+root = typeof exports !== "undefined" && exports !== null ? exports : this;
 
 util = {
   model: {
@@ -21022,7 +21005,7 @@ restful = {
       payload || (payload = xhr.responseText);
       switch (xhr.status) {
         case 422:
-          definition = model[this.resource];
+          definition = model[this.resource.toString()];
           _ref = payload.errors;
           for (attribute_name in _ref) {
             messages = _ref[attribute_name];
@@ -21060,18 +21043,25 @@ restful = {
       return JSON.stringify(serialized);
     },
     json: function(methods) {
-      var attribute, json, name, value, _i, _len, _ref;
+      var attribute, definition, json, name, value, _i, _len, _ref;
 
       if (methods == null) {
         methods = {};
       }
       json = {};
+      definition = model[this.resource.toString()];
       for (name in this) {
-        value = this[name];
-        if (!(type(value) !== 'function')) {
+        if (!(type(value))) {
           continue;
         }
+        if (definition.belongs_to.indexOf(name) !== -1 && this.nested_attributes.indexOf(name) === -1) {
+          continue;
+        }
+        value = this[name];
         if (value == null) {
+          continue;
+        }
+        if (type(value) === 'function') {
           continue;
         }
         if (type(value) === 'object') {
@@ -21705,7 +21695,7 @@ cpfable = stampit({
     d1 = 0;
     v = false;
     i = 0;
-    for (i = _i = 1; _i <= 9; i = ++_i) {
+    for (i = _i = 0; _i <= 9; i = ++_i) {
       d1 += c.charAt(i) * (10 - i);
     }
     if (d1 === 0) {
@@ -21719,7 +21709,7 @@ cpfable = stampit({
       return false;
     }
     d1 *= 2;
-    for (i = _j = 1; _j <= 9; i = ++_j) {
+    for (i = _j = 0; _j <= 9; i = ++_j) {
       d1 += c.charAt(i) * (11 - i);
     }
     d1 = 11 - (d1 % 11);
@@ -21750,7 +21740,7 @@ var errorsable, extensions, initializers, manager, messages, observable, root, s
 
 require('./translationable');
 
-root = typeof exports !== "undefined" && exports !== null ? exports : window;
+root = typeof exports !== "undefined" && exports !== null ? exports : this;
 
 stampit = require('../../vendor/stampit');
 

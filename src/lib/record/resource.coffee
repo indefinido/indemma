@@ -24,24 +24,8 @@ resource = stampit
 
     @
 
-resourceable =
-  pluralize: (word, count, plural) ->
-    throw new TypeError "Invalid string passed to pluralize '#{word}'" unless word and word.length
-
-    unless word.indexOf('s') == word.length - 1
-      owl.pluralize word, count, plural
-    else
-      word
-
-  singularize: (word) ->
-    throw new TypeError "Invalid string passed to singularize '#{word}'" unless word and word.length
-
-    if word.lastIndexOf('s') == word.length - 1
-      word.substring 0, word.length - 1
-    else
-      word
-
-  # TODO move to resourceable method
+# TODO Think of a better name, and move to a composable stampit item
+descriptors =
   route:
     get: ->
       return @initial_route if @initial_route?
@@ -60,17 +44,38 @@ resourceable =
 
     set: (value) -> @initial_route = value
 
-  parent_id:
-    get: -> @[@parent_resource]._id if @[@parent_resource]
-    set: -> console.error 'Warning changing associations throught parent_id not allowed for security and style guide purposes' # TODO
+  # TODO Deprecated! Remove on 15/02/2014
+  # parent_id:
+  #   get: -> @[@parent_resource]._id if @[@parent_resource]
+  #   set: -> console.error 'Warning changing associations throught parent_id not allowed for security and style guide purposes' # TODO
+  #   configurable: true
+  #   enumerable: true
+
+# TODO Think of a better name, and move to a composable stampit item
+resourceable =
+  pluralize: (word, count, plural) ->
+    throw new TypeError "Invalid string passed to pluralize '#{word}'" unless word and word.length
+
+    unless word.indexOf('s') == word.length - 1
+      owl.pluralize word, count, plural
+    else
+      word
+
+  singularize: (word) ->
+    throw new TypeError "Invalid string passed to singularize '#{word}'" unless word and word.length
+
+    if word.lastIndexOf('s') == word.length - 1
+      word.substring 0, word.length - 1
+    else
+      word
 
   initialize: ->
+
+    # Deprecated! Remove on 15/02/2014
     # Set parent attribute and default nested route
-    if @parent_resource
-      Object.defineProperty @, "#{@parent_resource}_id",
-        value: resourceable.parent_id
-        configurable: true
-        enumerable: true
+    # If you're using the associable plugin, this getter and setter will be overwritten!
+    # if @parent_resource
+    #   Object.defineProperty @, "#{@parent_resource}_id", descriptors.parent_id
 
     # Setup resource
     resource_definition = {}
@@ -86,13 +91,10 @@ resourceable =
     # TODO remove mentions of @parent_resource and use only resource: {parent: ...}
     resource_definition.parent = @parent_resource
 
-
-
-
     @resource = resource resource_definition
 
     # TODO Support route parsing, and change route to /parents/:id/childrens
-    @route ? Object.defineProperty @, 'route', resourceable.route
+    @route ? Object.defineProperty @, 'route', descriptors.route
 
 
 # Extend indemma
