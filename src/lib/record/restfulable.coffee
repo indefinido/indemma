@@ -7,8 +7,8 @@ root       = exports ? @
 
 util =
   model:
-    map: (models) ->
-      @ model for model in models
+    map: (records) ->
+      @ record for record in records
 
 
 restful =
@@ -164,8 +164,9 @@ restful =
 
       # Assign remaining attributes
       # TODO see if it is a best practice not overriding unchanged attributes
-      for attribute of attributes when attribute isnt @[attribute]
-        @[attribute] = attributes[attribute]
+      # TODO rename attributes for properties
+      for name, attribute of attributes when attribute isnt @[name]
+        @[name] = attributes[name]
 
     destroy: (doned, failed, data) ->
       throw new Error 'Can\'t delete record without id!' unless @id? or @_id?

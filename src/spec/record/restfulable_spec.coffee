@@ -105,6 +105,14 @@ describe 'restfulable', ->
             belongs_to: 'person'
 
         # TODO implement setter on has many association and move this code to there
+        it 'should not assign attribute with the same value twice', ->
+          object     = {}
+
+          arthur     = person name: object
+          arthur.assign_attributes name: {}
+
+          arthur.name.should.not.be.eq object
+
         it 'assigns associations properly', ->
           arthur     = person name: 'Arthur Dent'
           ford       = friend name: 'Ford Perfect'

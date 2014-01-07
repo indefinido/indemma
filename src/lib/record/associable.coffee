@@ -54,8 +54,8 @@ subscribers =
       association_name = @resource.toString()
 
       # TODO faster nullifing association check
-      # TODO only allow nullifying with null
-      if resource_id == null or resource_id == undefined
+      # TODO check if its usefull to only allow disassociating with null
+        unless resource_id
         @dirty = true
         @owner[association_name] = resource_id
         return resource_id

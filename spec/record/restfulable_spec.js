@@ -121,6 +121,18 @@ describe('restfulable', function() {
             belongs_to: 'person'
           });
         });
+        it('should not assign attribute with the same value twice', function() {
+          var arthur, object;
+
+          object = {};
+          arthur = person({
+            name: object
+          });
+          arthur.assign_attributes({
+            name: {}
+          });
+          return arthur.name.should.not.be.eq(object);
+        });
         return it('assigns associations properly', function() {
           var arthur, attributes, ford, marvin, search_record;
 

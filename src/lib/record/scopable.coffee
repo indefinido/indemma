@@ -7,7 +7,13 @@ merge   = extend.withStrategy 'deep'
 $       = require 'jquery'
 rest    = require './rest'
 
+# TODO merge all with fetch and remove this util object
+util =
+  model:
+    map: (records) ->
+      @ record for record, index in records
 
+# TODO better responsibilty division for this code
 scopable =
   builder: stampit().enclose ->
 
@@ -44,6 +50,7 @@ scopable =
           deferred = rest.get.call(@, extend scope, data)
 
         deferred
+          .then(util.model.map)
           .done(@scope.then.concat done)
           .fail([@scope.fail, fail])
 
@@ -85,7 +92,12 @@ scopable =
       @scope.data.noned = true
       @
 
+    # TODO merge with all object
     fetch: (data, done, fail) ->
+      if typeof data == 'function'
+        done = data
+        data = null
+
       @scope.fetch.call @, data, done, fail
 
     # TODO optmize this iterations or add support for stampit on associable and merge factories
