@@ -11,7 +11,7 @@ rest    = require './rest'
 util =
   model:
     map: (records) ->
-      @ record for record, index in records
+      (@build or @).call @, record for record, index in records
 
 # TODO better responsibilty division for this code
 scopable =

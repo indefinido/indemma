@@ -55,7 +55,7 @@ subscribers =
 
       # TODO faster nullifing association check
       # TODO check if its usefull to only allow disassociating with null
-        unless resource_id
+      unless resource_id
         @dirty = true
         @owner[association_name] = resource_id
         return resource_id
@@ -102,7 +102,7 @@ modifiers =
           # resource and on retrievability of the resource
           return associated unless associated?._id? or associated_id
 
-          # Retunrs imediatelly for resources on storage
+          # Returns imediatelly for resources on storage
           # TODO make this extenxible
           return associated if associated?.sustained
 
@@ -111,6 +111,7 @@ modifiers =
             console.warn "subscribers.belongs_to.foreign_key: associated factory not found for model: #{association_name}"
             return associated
 
+          # Search through stored resources to see if it is stored
           associated   = resource.find associated_id || associated._id
           associated ||= resource _id: associated_id
 
