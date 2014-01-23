@@ -85,6 +85,7 @@ restful =
     delete: rest.delete
 
   record:
+    ready: (callback) -> callback.call @
     reload: (params...) ->
 
       # TODO better signature implementation
@@ -97,6 +98,8 @@ restful =
 
       # Bind one time save callbacks
       promise.done param for param in params
+
+      @ready = promise.done
 
       promise
 
@@ -184,10 +187,20 @@ restful =
     saving: false
     salvation: null
     save: (doned, failed, data) ->
-      return @salvation if @saving
+      lock = JSON.stringify @json()
+
+      # When saving and receive save command again check if the model
+      # has changed, then abort the salvation operation and send a new
+      # save request
+      # TODO check dirty property instead of lock!
+      if @saving
+        if @lock == lock
+          return @salvation
+        else
+          @salvation.abort()
 
       # TODO better lock generation
-      @lock = JSON.stringify @json()
+      @lock = lock
 
       # TODO remove jquery dependency
       # TODO think with wich value makes more sense to resolve the
@@ -227,10 +240,14 @@ restful =
       try payload ||= JSON.parse(xhr.responseText) catch e
       payload     ||= xhr.responseText
 
-
       # When client fail
       switch xhr.status
         # TODO move to validatable
+        when 0
+          if status == 'abort'
+            console.info "salvation probably aborted"
+          else
+            throw new Error 'Unhandled status code for xhr'
         when 422
 
           definition = model[@resource.toString()]
@@ -260,8 +277,9 @@ restful =
         else
           message  = "Fail in #{@resource}.save:\n"
           message += "Record: #{@}\n"
-          message += "Status: #{status} (#{payload.status || xhr.status})\n"
+          message += "Status: #{status} (#{(payload || xhr).status})\n"
           message += "Error : #{payload.error || payload.message || payload}"
+          console.log message
 
       # Finish saving
       @saving = false
@@ -313,16 +331,22 @@ restful =
       delete json.resource
       delete json.route
       delete json.initial_route # TODO implement better initial_route and remove attribute from here
+
       delete json.after_initialize
       delete json.before_initialize
       delete json.parent_resource
       delete json.nested_attributes
+
+      delete json.ready
+
       delete json.saving
       delete json.salvation
       delete json.sustained
+
       delete json.element
       delete json.default
       delete json.lock
+
       delete json.validated
       delete json.validation
 
