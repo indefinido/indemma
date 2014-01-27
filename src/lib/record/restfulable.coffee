@@ -226,9 +226,6 @@ restful =
       if @lock == JSON.stringify(@json())
         @dirty = false
         delete @lock
-      # Delayed optimistic lock
-      else
-        return @save()
 
       @assign_attributes data if data?
 
@@ -244,10 +241,15 @@ restful =
       switch xhr.status
         # TODO move to validatable
         when 0
-          if status == 'abort'
-            console.info "salvation probably aborted"
-          else
-            throw new Error 'Unhandled status code for xhr'
+          message = status or xhr.statusText
+          switch message
+            when 'abort'
+              console.info "salvation probably aborted"
+            when 'error'
+              console.info "server probably unreachable"
+            else
+              throw new Error 'Unhandled status code for xhr'
+
         when 422
 
           definition = model[@resource.toString()]

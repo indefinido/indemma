@@ -1,11 +1,12 @@
 require './restfulable'
 require './resource'
 
-stampit = require '../../vendor/stampit'
-extend  = require 'assimilate'
-merge   = extend.withStrategy 'deep'
-$       = require 'jquery'
-rest    = require './rest'
+stampit    = require '../../vendor/stampit'
+extend     = require 'assimilate'
+observable = require('observable').mixin
+merge      = extend.withStrategy 'deep'
+$          = require 'jquery'
+rest       = require './rest'
 
 # TODO merge all with fetch and remove this util object
 util =
@@ -42,6 +43,7 @@ scopable =
       declared: []
       fetch: (data, done, fail) ->
         scope = extend {}, @scope.data
+        observable.unobserve scope
 
         if scope.noned?
           deferred = $.Deferred()

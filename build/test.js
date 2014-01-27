@@ -24402,8 +24402,8 @@ callbacks = {
         for (_i = 0, _len = association_names.length; _i < _len; _i++) {
           association_name = association_names[_i];
           associations_attributes = this["" + association_name + "_attributes"];
+          association = this[model.pluralize(association_name)];
           if (associations_attributes && associations_attributes.length) {
-            association = this[model.pluralize(association_name)];
             if (!association) {
               message = "has_many.nest_attributes: Association not found for " + association_name + ". \n";
               message += "did you set it on model declaration? \n  has_many: " + association_name + " ";
@@ -24493,7 +24493,7 @@ associable = {
       return true;
     },
     create_after_hooks: function(definition) {
-      var association_name, association_proxy, old_resource_id, options, resource, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2, _results;
+      var association_attributes, association_name, association_proxy, old_resource_id, options, resource, _i, _j, _k, _len, _len1, _len2, _name, _ref, _ref1, _ref2, _results;
 
       options = model[this.resource.name || this.resource.toString()];
       if (options.has_many) {
@@ -24506,6 +24506,11 @@ associable = {
             parent: this
           };
           association_name = model.pluralize(resource);
+          association_attributes = this[association_name] || [];
+          this[_name = "" + association_name + "_attributes"] || (this[_name] = []);
+          if (association_attributes.length) {
+            this["" + association_name + "_attributes"] = this["" + association_name + "_attributes"].concat(association_attributes);
+          }
           this[association_name] = $.extend(association_proxy, plural);
         }
         this.after('saved', callbacks.has_many.update_association);
@@ -25105,8 +25110,6 @@ restful = {
       if (this.lock === JSON.stringify(this.json())) {
         this.dirty = false;
         delete this.lock;
-      } else {
-        return this.save();
       }
       if (data != null) {
         this.assign_attributes(data);
@@ -25133,10 +25136,16 @@ restful = {
       payload || (payload = xhr.responseText);
       switch (xhr.status) {
         case 0:
-          if (status === 'abort') {
-            console.info("salvation probably aborted");
-          } else {
-            throw new Error('Unhandled status code for xhr');
+          message = status || xhr.statusText;
+          switch (message) {
+            case 'abort':
+              console.info("salvation probably aborted");
+              break;
+            case 'error':
+              console.info("server probably unreachable");
+              break;
+            default:
+              throw new Error('Unhandled status code for xhr');
           }
           break;
         case 422:
@@ -25272,7 +25281,7 @@ model.associable && model.associable.mix(function(singular_association, plural_a
 
 });
 require.register("indemma/lib/record/scopable.js", function(exports, require, module){
-var $, builders, defaults, extend, merge, model, record, rest, scopable, stampit, util,
+var $, builders, defaults, extend, merge, model, observable, record, rest, scopable, stampit, util,
   __slice = [].slice;
 
 require('./restfulable');
@@ -25282,6 +25291,8 @@ require('./resource');
 stampit = require('../../vendor/stampit');
 
 extend = require('assimilate');
+
+observable = require('observable').mixin;
 
 merge = extend.withStrategy('deep');
 
@@ -25335,6 +25346,7 @@ scopable = {
         var deferred, scope;
 
         scope = extend({}, this.scope.data);
+        observable.unobserve(scope);
         if (scope.noned != null) {
           deferred = $.Deferred();
           deferred.resolveWith(this, [[]]);
