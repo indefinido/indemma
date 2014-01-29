@@ -24681,7 +24681,14 @@ handlers = {\n\
 persistable = {\n\
   record: {\n\
     after_initialize: function() {\n\
-      return this.after('saved', handlers.store_after_saved);\n\
+      var storage;\n\
+\n\
+      if (this._id) {\n\
+        storage = model[this.resource.toString()].storage;\n\
+        return storage.store(this._id, this);\n\
+      } else {\n\
+        return this.after('saved', handlers.store_after_saved);\n\
+      }\n\
     }\n\
   }\n\
 };\n\
@@ -24723,7 +24730,7 @@ storable = stampit({\n\
       return collection[key];\n\
     } else {\n\
       this.writes++;\n\
-      value.sustained = true;\n\
+      value.sustained || (value.sustained = true);\n\
       return collection[key] = value;\n\
     }\n\
   },\n\
@@ -26187,17 +26194,14 @@ root.validatable = validatable;\n\
 \n\
 root.manager = manager;\n\
 \n\
-require('./validations/confirmation');\n\
-\n\
-require('./validations/associated');\n\
-\n\
-require('./validations/presence');\n\
-\n\
-require('./validations/remote');\n\
-\n\
-require('./validations/type');\n\
-\n\
-require('./validations/cpf');\n\
+setTimeout(function() {\n\
+  require('./validations/confirmation');\n\
+  require('./validations/associated');\n\
+  require('./validations/presence');\n\
+  require('./validations/remote');\n\
+  require('./validations/type');\n\
+  return require('./validations/cpf');\n\
+}, 200);\n\
 //@ sourceURL=indemma/lib/record/validatable.js"
 ));
 require.register("indemma/lib/extensions/rivets.js", Function("exports, require, module",

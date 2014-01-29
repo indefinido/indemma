@@ -19,7 +19,7 @@ storable = stampit
       @writes++
 
       # TODO use object.defineProperty
-      value.sustained = true
+      value.sustained ||= true
       collection[key] = value
 
   values: ->

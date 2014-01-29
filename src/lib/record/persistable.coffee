@@ -13,8 +13,13 @@ handlers =
 persistable =
   record:
     after_initialize: ->
-      # TODO check persistable configuration before attaching handlers
-      @after 'saved', handlers.store_after_saved
+      if @_id
+        # TODO remove global model usage
+        {storage} = model[@resource.toString()]
+        storage.store @_id, @
+      else
+        # TODO check persistable configuration before attaching handlers
+        @after 'saved', handlers.store_after_saved
 
 # Extend indemma
 # TODO use stampit to extend record and model

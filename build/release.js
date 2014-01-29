@@ -24623,7 +24623,14 @@ handlers = {
 persistable = {
   record: {
     after_initialize: function() {
-      return this.after('saved', handlers.store_after_saved);
+      var storage;
+
+      if (this._id) {
+        storage = model[this.resource.toString()].storage;
+        return storage.store(this._id, this);
+      } else {
+        return this.after('saved', handlers.store_after_saved);
+      }
     }
   }
 };
@@ -24665,7 +24672,7 @@ storable = stampit({
       return collection[key];
     } else {
       this.writes++;
-      value.sustained = true;
+      value.sustained || (value.sustained = true);
       return collection[key] = value;
     }
   },
@@ -26117,17 +26124,14 @@ root.validatable = validatable;
 
 root.manager = manager;
 
-require('./validations/confirmation');
-
-require('./validations/associated');
-
-require('./validations/presence');
-
-require('./validations/remote');
-
-require('./validations/type');
-
-require('./validations/cpf');
+setTimeout(function() {
+  require('./validations/confirmation');
+  require('./validations/associated');
+  require('./validations/presence');
+  require('./validations/remote');
+  require('./validations/type');
+  return require('./validations/cpf');
+}, 200);
 
 });
 require.register("indemma/lib/extensions/rivets.js", function(exports, require, module){

@@ -209,9 +209,11 @@ root.validatable = validatable
 root.manager     = manager
 
 # TODO async validator loading
-require './validations/confirmation'
-require './validations/associated'
-require './validations/presence'
-require './validations/remote'
-require './validations/type'
-require './validations/cpf'
+setTimeout ->
+  require './validations/confirmation'
+  require './validations/associated'
+  require './validations/presence'
+  require './validations/remote'
+  require './validations/type'
+  require './validations/cpf'
+, 200
