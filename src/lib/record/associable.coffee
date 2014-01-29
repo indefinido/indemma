@@ -20,7 +20,6 @@ plural = # has_many ## TODO embeds_many
   build: (data = {}) ->
     data.parent_resource = @parent_resource
 
-
     # TODO Setup a before save callback to generate route when there is no id
     data.route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource.toString()}" if @parent?
     throw "associable.has_many: cannot redefine route of association #{@parent_resource}.#{@resource} from #{@route} to #{data.route}" if @route isnt data.route and @route
@@ -55,7 +54,7 @@ subscribers =
 
       # TODO faster nullifing association check
       # TODO check if its usefull to only allow disassociating with null
-        unless resource_id
+      unless resource_id
         @dirty = true
         @owner[association_name] = resource_id
         return resource_id
@@ -102,7 +101,7 @@ modifiers =
           # resource and on retrievability of the resource
           return associated unless associated?._id? or associated_id
 
-          # Retunrs imediatelly for resources on storage
+          # Returns imediatelly for resources on storage
           # TODO make this extenxible
           return associated if associated?.sustained
 
@@ -111,6 +110,7 @@ modifiers =
             console.warn "subscribers.belongs_to.foreign_key: associated factory not found for model: #{association_name}"
             return associated
 
+          # Search through stored resources to see if it is stored
           associated   = resource.find associated_id || associated._id
           associated ||= resource _id: associated_id
 
@@ -133,9 +133,14 @@ callbacks =
       association_names = model[@resource].has_many
       if association_names
         for association_name in association_names
+
+          # Instantiate new records for the association attributes
+          # TODO DO not support '_attributes' property on instantiating!
+          # TODO define setter for attributes
           associations_attributes = @["#{association_name}_attributes"]
+          association = @[model.pluralize association_name]
+
           if associations_attributes and associations_attributes.length
-            association = @[model.pluralize association_name]
 
             unless association
               message  = "has_many.nest_attributes: Association not found for #{association_name}. \n"
@@ -232,9 +237,19 @@ associable =
           # @resource = model[resource].resource
 
           # TODO Remember to clear association proxy when object is destroyed
-          association_proxy   = resource: resource, parent_resource: @resource, parent: @
-          association_name    = model.pluralize resource
-          @[association_name] = $.extend association_proxy, plural
+          association_proxy      = resource: resource, parent_resource: @resource, parent: @
+          association_name       = model.pluralize resource
+
+          # When deserializing has many associated resources from
+          # server, it is common to send as the association without
+          # suffix
+          association_attributes = @[association_name] ||  []
+          @["#{association_name}_attributes"]          ||= []
+          @["#{association_name}_attributes"]            = @["#{association_name}_attributes"].concat association_attributes if association_attributes.length
+
+          # Create or Override sent attributes by the association proxy
+          @[association_name]    = $.extend association_proxy, plural
+
 
         # Update association attribute
         @after 'saved', callbacks.has_many.update_association

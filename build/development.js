@@ -24462,8 +24462,8 @@ callbacks = {\n\
         for (_i = 0, _len = association_names.length; _i < _len; _i++) {\n\
           association_name = association_names[_i];\n\
           associations_attributes = this[\"\" + association_name + \"_attributes\"];\n\
+          association = this[model.pluralize(association_name)];\n\
           if (associations_attributes && associations_attributes.length) {\n\
-            association = this[model.pluralize(association_name)];\n\
             if (!association) {\n\
               message = \"has_many.nest_attributes: Association not found for \" + association_name + \". \\n\
 \";\n\
@@ -24555,7 +24555,7 @@ associable = {\n\
       return true;\n\
     },\n\
     create_after_hooks: function(definition) {\n\
-      var association_name, association_proxy, old_resource_id, options, resource, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2, _results;\n\
+      var association_attributes, association_name, association_proxy, old_resource_id, options, resource, _i, _j, _k, _len, _len1, _len2, _name, _ref, _ref1, _ref2, _results;\n\
 \n\
       options = model[this.resource.name || this.resource.toString()];\n\
       if (options.has_many) {\n\
@@ -24568,6 +24568,11 @@ associable = {\n\
             parent: this\n\
           };\n\
           association_name = model.pluralize(resource);\n\
+          association_attributes = this[association_name] || [];\n\
+          this[_name = \"\" + association_name + \"_attributes\"] || (this[_name] = []);\n\
+          if (association_attributes.length) {\n\
+            this[\"\" + association_name + \"_attributes\"] = this[\"\" + association_name + \"_attributes\"].concat(association_attributes);\n\
+          }\n\
           this[association_name] = $.extend(association_proxy, plural);\n\
         }\n\
         this.after('saved', callbacks.has_many.update_association);\n\
@@ -25177,8 +25182,6 @@ restful = {\n\
       if (this.lock === JSON.stringify(this.json())) {\n\
         this.dirty = false;\n\
         delete this.lock;\n\
-      } else {\n\
-        return this.save();\n\
       }\n\
       if (data != null) {\n\
         this.assign_attributes(data);\n\
@@ -25205,10 +25208,16 @@ restful = {\n\
       payload || (payload = xhr.responseText);\n\
       switch (xhr.status) {\n\
         case 0:\n\
-          if (status === 'abort') {\n\
-            console.info(\"salvation probably aborted\");\n\
-          } else {\n\
-            throw new Error('Unhandled status code for xhr');\n\
+          message = status || xhr.statusText;\n\
+          switch (message) {\n\
+            case 'abort':\n\
+              console.info(\"salvation probably aborted\");\n\
+              break;\n\
+            case 'error':\n\
+              console.info(\"server probably unreachable\");\n\
+              break;\n\
+            default:\n\
+              throw new Error('Unhandled status code for xhr');\n\
           }\n\
           break;\n\
         case 422:\n\
@@ -25350,7 +25359,7 @@ model.associable && model.associable.mix(function(singular_association, plural_a
 //@ sourceURL=indemma/lib/record/restfulable.js"
 ));
 require.register("indemma/lib/record/scopable.js", Function("exports, require, module",
-"var $, builders, defaults, extend, merge, model, record, rest, scopable, stampit, util,\n\
+"var $, builders, defaults, extend, merge, model, observable, record, rest, scopable, stampit, util,\n\
   __slice = [].slice;\n\
 \n\
 require('./restfulable');\n\
@@ -25360,6 +25369,8 @@ require('./resource');\n\
 stampit = require('../../vendor/stampit');\n\
 \n\
 extend = require('assimilate');\n\
+\n\
+observable = require('observable').mixin;\n\
 \n\
 merge = extend.withStrategy('deep');\n\
 \n\
@@ -25375,7 +25386,7 @@ util = {\n\
       _results = [];\n\
       for (index = _i = 0, _len = records.length; _i < _len; index = ++_i) {\n\
         record = records[index];\n\
-        _results.push(this(record));\n\
+        _results.push((this.build || this).call(this, record));\n\
       }\n\
       return _results;\n\
     }\n\
@@ -25413,6 +25424,7 @@ scopable = {\n\
         var deferred, scope;\n\
 \n\
         scope = extend({}, this.scope.data);\n\
+        observable.unobserve(scope);\n\
         if (scope.noned != null) {\n\
           deferred = $.Deferred();\n\
           deferred.resolveWith(this, [[]]);\n\
