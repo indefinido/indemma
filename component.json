@@ -9,7 +9,6 @@
     "component/type": "*",
     "component/bind": "*",
     "component/jquery": "*",
-    "chaijs/chai": "*",
     "indefinido/observable": "*",
     "indefinido/advisable": "*"
   },
