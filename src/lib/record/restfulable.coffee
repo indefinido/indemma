@@ -169,7 +169,12 @@ restful =
       # TODO see if it is a best practice not overriding unchanged attributes
       # TODO rename attributes for properties
       for name, attribute of attributes when attribute isnt @[name]
-        @[name] = attributes[name]
+        # TODO faster object property assignment, get from model definition, instead of checking every attribute
+        # TODO implement custom comparator for each object when es7 is out
+        if type(name) == 'object'
+          @[name] = attributes[name] if JSON.stringify(attribute) != JSON.stringify @[name]
+        else
+          @[name] = attributes[name]
 
     destroy: (doned, failed, data) ->
       throw new Error 'Can\'t delete record without id!' unless @id? or @_id?
@@ -206,9 +211,9 @@ restful =
       # TODO think with wich value makes more sense to resolve the
       # absence of need to save the model
       salvation   = $.Deferred().resolveWith @, null unless @dirty
+      @saving     = true
       salvation ||= rest[if @_id then 'put' else 'post'].call @, data
       @salvation  = salvation
-      @saving     = true
 
       salvation.done @saved
       salvation.fail @failed
