@@ -4,7 +4,7 @@ root = typeof exports !== "undefined" && exports !== null ? exports : window;
 
 require('indemma/lib/record/validatable');
 
-describe('model #() validates_associated', function() {
+describe('model ( validates_associated: ... )', function() {
   return describe('basic usage', function() {
     var address, model, person;
 
@@ -26,7 +26,7 @@ describe('model #() validates_associated', function() {
       person.validators.length = 0;
       return address.validators.length = 0;
     });
-    return describe('#validate', function() {
+    return describe('.validate()', function() {
       return it('should add error to record when fields does not match', function() {
         var arthur;
 

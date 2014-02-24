@@ -4,7 +4,6 @@
 # TODO implement method
 # model[resource].validators_on 'field' # Get all validators related to this field
 
-validations = require '../validatable'
 stampit     = require '../../../vendor/stampit'
 
 presenceable = stampit
@@ -12,8 +11,6 @@ presenceable = stampit
     if value == null or value == '' or value == undefined
       record.errors.add attribute, 'blank', @options
 
-
-composed = stampit.compose(validations.validatable, presenceable)
+composed = stampit.compose require('./validatorable'), presenceable
 composed.definition_key = 'validates_presence_of'
-
-validations.manager.validators.presence = composed
+module.exports = composed

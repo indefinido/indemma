@@ -4,7 +4,6 @@
 # TODO implement method
 # model[resource].validators_on 'field' # Get all validators related to this field
 
-validations = require '../validatable'
 stampit     = require '../../../vendor/stampit'
 
 confirmationable = stampit
@@ -13,7 +12,6 @@ confirmationable = stampit
       record.errors.add "#{attribute}_confirmation", 'confirmation', @options
 
 
-composed = stampit.compose(validations.validatable, confirmationable)
+composed = stampit.compose require('./validatorable'), confirmationable
 composed.definition_key = 'validates_confirmation_of'
-
-validations.manager.validators.confirmation = composed
+module.exports = composed

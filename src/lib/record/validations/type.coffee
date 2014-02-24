@@ -26,7 +26,6 @@ typeable = stampit
         throw new Error "Invalid attribute value type! Found #{typeof value} expected #{@type.name}"
 
 
-composed = stampit.compose(validations.validatable, typeable)
+composed = stampit.compose require('./validatorable'), typeable
 composed.definition_key = 'validates_type_of'
-
-validations.manager.validators.type = composed
+module.exports = composed

@@ -7,6 +7,7 @@ queryable =
   # FIXME don't let everyone use the same storage instance! or let it?
   storage: storable()
   find: (key) ->
+    throw new TypeError "InvalidFind: resource.find was called with a falsey value" unless key
     @storage.store key
   all: ->
     @storage.values()

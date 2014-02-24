@@ -1,12 +1,9 @@
 # TODO Add base settings to validation
 # model = window.model
 
-  # TODO implement method
+# TODO implement method
 # model[resource].validators_on 'field' # Get all validators related to this field
 
-root  = exports ? window
-
-validations = require '../validatable'
 rest        = require '../rest'
 stampit     = require '../../../vendor/stampit'
 
@@ -59,7 +56,6 @@ remoteable = stampit
   @
 
 
-composed = stampit.compose(validations.validatable, remoteable)
+composed = stampit.compose require('./validatorable'), remoteable
 composed.definition_key = 'validates_remotely'
-
-validations.manager.validators.remote = composed
+module.exports = composed

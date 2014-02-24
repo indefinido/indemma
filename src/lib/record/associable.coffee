@@ -70,10 +70,13 @@ subscribers =
           return resource_id
 
         # TODO remote find or local find automatically, and implement find_or_initialize_by
-        associated   = resource.find resource_id
-        associated ||= resource _id: resource_id
+        # this code is not needed, since the association loader already loads the associated record when trying to get it
+        # associated   = resource.find resource_id
+        # associated ||= resource _id: resource_id
 
-        @owner.observed[association_name] = associated
+        # Nullify associated object, so next time user accesses it,
+        # association loader loads the new object
+        @owner.observed[association_name] = null
 
       resource_id
 
@@ -82,7 +85,7 @@ subscribers =
       @owner.observed["#{@resource.toString()}_id"] = if associated then associated._id else null
 
 modifiers =
-  # Called before record initialization to create the a lazy loader
+# Called before record initialization to create the a lazy loader
   # for other records
   belongs_to:
     associated_loader: ->
@@ -112,11 +115,15 @@ modifiers =
 
           # Search through stored resources to see if it is stored
           associated   = resource.find associated_id || associated._id
-          associated ||= resource _id: associated_id
 
-          resource.storage.store associated._id, associated
-          associated.reload()
+          # Found associated in storage, update this model and return associated
+          return @owner.observed[association_name] = associated if associated
 
+          # Not found associated in storage
+          associated ||= resource _id: associated_id  # initialize and store a new record
+          associated.reload()                         # fetch resource
+
+          # Store temporary unloaded resource in this model
           @owner.observed[association_name] = associated
 
         configurable: true
@@ -296,6 +303,7 @@ associable =
           # To prevent association loading request we must nullify the
           # association when subscribing
           old_resource_id     = @["#{resource}_id"]
+          old_dirty           = @dirty
           @["#{resource}_id"] = null
 
           @subscribe "#{resource}_id"   , $.proxy subscribers.belongs_to.foreign_key, association_proxy
@@ -303,6 +311,7 @@ associable =
 
           # Restore id after loader prevention has passed
           @["#{resource}_id"] = old_resource_id
+          @dirty = old_dirty
 
           # Execute relation attributes binding
           # TODO validate bindings! When @resource._id != @["#{resource}_id"]

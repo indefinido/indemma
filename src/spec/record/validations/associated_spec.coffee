@@ -2,7 +2,7 @@ root = exports ? window
 
 require 'indemma/lib/record/validatable'
 
-describe 'model #() validates_associated',  ->
+describe 'model ( validates_associated: ... )',  ->
 
   describe 'basic usage', ->
     model  = root.model
@@ -23,7 +23,7 @@ describe 'model #() validates_associated',  ->
       person.validators.length  = 0
       address.validators.length = 0
 
-    describe '#validate', ->
+    describe '.validate()', ->
 
       it 'should add error to record when fields does not match', ->
         arthur = person {}

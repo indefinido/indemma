@@ -18,9 +18,9 @@ describe('model', function() {
     person.should.have.property('validators');
     return person.validators.should.be.an('array');
   });
-  return describe('#()', function() {
+  return describe('(validates_... : ...)', function() {
     describe('validators instatiation', function() {
-      it('should instantiate validators with prefix validates_', function() {
+      it('should have validators', function() {
         var validator;
 
         person = model.call({
@@ -32,9 +32,9 @@ describe('model', function() {
         validator = person.validators[0];
         return validator.should.have.property('attribute_name', 'name');
       });
-      return it('should instantiate validators with in the key validates');
+      return it('should have validators with in the key validates');
     });
-    describe('#validate_attribute', function() {
+    describe('.validate_attribute()', function() {
       beforeEach(function() {
         person.validators.length = 0;
         return person = model.call({

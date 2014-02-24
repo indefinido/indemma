@@ -4,7 +4,6 @@
 # TODO implement method
 # model[resource].validators_on 'field' # Get all validators related to this field
 
-validations = require '../validatable'
 stampit     = require '../../../vendor/stampit'
 
 cpfable = stampit
@@ -53,6 +52,6 @@ cpfable = stampit
 
 
 
-composed = stampit.compose validations.validatable, cpfable
+composed = stampit.compose require('./validatorable'), cpfable
 composed.definition_key = 'validates_cpf_format'
-validations.manager.validators.cpf = composed
+module.exports = composed

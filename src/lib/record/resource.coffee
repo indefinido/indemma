@@ -28,9 +28,7 @@ resource = stampit
 descriptors =
   route:
     get: ->
-      return @initial_route if @initial_route?
-
-      # TODO use resource object on associations!
+       # TODO use resource object on associations!
       @resource = name: @resource if typeof @resource == 'string'
 
       route  = '/'
@@ -38,11 +36,11 @@ descriptors =
       route += @resource.scope + '/' if @resource.scope?
 
       route += if @resource.singular then @resource.name else model.pluralize @resource.name
-      @initial_route = route
 
-      route
+      @route = route
 
-    set: (value) -> @initial_route = value
+    configurable: true
+#    set: (value) -> @initial_route = value
 
   # TODO Deprecated! Remove on 15/02/2014
   # parent_id:

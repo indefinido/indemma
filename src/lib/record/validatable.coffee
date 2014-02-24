@@ -90,9 +90,9 @@ initializers =
     # TODO only execute save operation if record is valid
     @before 'save', -> @validate() if @save
 
-    # TODO move this functionality control to validatorable
+    # TODO move this functionality control to validatable
     @validated = false
-    @subscribe 'dirty', (value) -> @validated = false
+    @subscribe 'dirty', (value) -> value and @validated = false
 
     Object.defineProperty @, 'valid',
       get: ->
@@ -173,7 +173,16 @@ extensions =
       @validation.fail failed
 
       # TODO store this callback
-      @validation.then (record) -> record.validated = true
+      @validation.then (record) ->
+        # Disable dirty checking to prevent validation believe that
+        # the model values has changed
+        old_dirty        = record.dirty
+        record.dirty     = null
+
+        record.validated ||= true
+
+        # Restore dirty state
+        record.dirty     = old_dirty
 
       @validation
 
@@ -188,11 +197,6 @@ manager =
   #   builder = @validators[name] ||= require "validations/#{name}"
 
 
-validatable = stampit
-  validate: -> throw new Error 'Composed factory must override the validate method'
-  validate_each: -> throw new Error 'Composed factory must override the validate each method'
-
-
 # TODO better stampit integration
 model.mix (modelable) ->
   jQuery.extend modelable, extensions.model
@@ -204,16 +208,11 @@ model.mix (modelable) ->
 
   model.validators = manager.validators
 
-# Globalize definitions
-root.validatable = validatable
-root.manager     = manager
-
 # TODO async validator loading
-setTimeout ->
-  require './validations/confirmation'
-  require './validations/associated'
-  require './validations/presence'
-  require './validations/remote'
-  require './validations/type'
-  require './validations/cpf'
-, 200
+manager.validators.confirmation = require './validations/confirmation'
+manager.validators.associated   = require './validations/associated'
+manager.validators.presence     = require './validations/presence'
+manager.validators.remote       = require './validations/remote'
+manager.validators.type         = require './validations/type'
+manager.validators.cpf          = require './validations/cpf'
+

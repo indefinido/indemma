@@ -13,11 +13,11 @@ describe 'model',  ->
     person.should.have.property 'validators'
     person.validators.should.be.an 'array'
 
-  describe '#()', ->
+  describe '(validates_... : ...)', ->
 
     describe 'validators instatiation',  ->
 
-      it 'should instantiate validators with prefix validates_', ->
+      it 'should have validators', ->
         person = model.call
           resource  : 'person'
           name      : String
@@ -27,7 +27,7 @@ describe 'model',  ->
         validator = person.validators[0]
         validator.should.have.property 'attribute_name', 'name'
 
-      it 'should instantiate validators with in the key validates'
+      it 'should have validators with in the key validates'
         #person = model.call
         #  resource  : 'person'
         #  name      : String
@@ -35,7 +35,7 @@ describe 'model',  ->
 
         #person.validators.should.have.key 'name'
 
-    describe '#validate_attribute', ->
+    describe '.validate_attribute()', ->
 
       beforeEach ->
         # TODO implement better model redefinition pattern

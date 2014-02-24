@@ -62,9 +62,15 @@ restful =
     # TODO better treating of arguments
     get: (action, data = {}) ->
       # TODO better way to override route
-      old_route  = @route
-      @route     = "/#{model.pluralize @resource.name}"
-      @route    += "/#{action}" if action
+      old_route     = @route
+      default_route = "/#{model.pluralize @resource.name}"
+      @route        = default_route unless default_route == @route
+
+      if action
+        # TODO Get own property descriptor, or better way do override route
+        Object.defineProperty @, 'route',
+          value: "#{default_route}/#{action}"
+          configurable: true
 
       # TODO not allow resource overriding
       resource   = data.resource
@@ -77,7 +83,10 @@ restful =
 
       promise = rest.get.call @, data
 
-      route   = old_route
+      # TODO Get own property descriptor, or better way do override route
+      Object.defineProperty @, 'route',
+        value: old_route
+        configurable: true
 
       promise
 
@@ -96,10 +105,14 @@ restful =
       promise.done @assign_attributes
       promise.fail @failed
 
+      @reloading = promise
+      # Assign ready callback before, to allow promise override
+      @ready = ->
+        console.warn "resource.ready was deprecated, please use resource.reloading.done"
+        promise.done arguments...
+
       # Bind one time save callbacks
       promise.done param for param in params
-
-      @ready = promise.done
 
       promise
 
@@ -171,7 +184,7 @@ restful =
       for name, attribute of attributes when attribute isnt @[name]
         # TODO faster object property assignment, get from model definition, instead of checking every attribute
         # TODO implement custom comparator for each object when es7 is out
-        if type(name) == 'object'
+        if type(attribute) == 'object'
           @[name] = attributes[name] if JSON.stringify(attribute) != JSON.stringify @[name]
         else
           @[name] = attributes[name]
@@ -344,6 +357,7 @@ restful =
       delete json.parent_resource
       delete json.nested_attributes
 
+      delete json.reloading
       delete json.ready
 
       delete json.saving

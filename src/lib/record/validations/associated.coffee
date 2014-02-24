@@ -1,10 +1,9 @@
 # TODO Add base settings to validation
 # model = window.model
-
 # TODO implement method
+
 # model[resource].validators_on 'field' # Get all validators related to this field
 
-validations = require '../validatable'
 stampit     = require '../../../vendor/stampit'
 
 associationable = stampit
@@ -26,7 +25,6 @@ associationable = stampit
       associated_validation
 
 
-composed = stampit.compose(validations.validatable, associationable)
+composed = stampit.compose(require('./validatorable'), associationable)
 composed.definition_key = 'validates_associated'
-
-validations.manager.validators.association = composed
+module.exports = composed
