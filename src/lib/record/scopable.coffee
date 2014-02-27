@@ -42,6 +42,11 @@ scopable =
       fail:     []
       declared: []
       fetch: (data, done, fail) ->
+
+        if typeof data == 'function'
+          done = data
+          data = {}
+
         scope = extend {}, @scope.data
         observable.unobserve scope
 

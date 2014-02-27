@@ -24938,15 +24938,15 @@ restful = {
       }
       return $.when.apply($, savings);
     },
-    all: function(conditions, callback) {
+    all: function(conditions, doned, failed) {
       if (conditions == null) {
         conditions = {};
       }
       if (typeof conditions === 'function') {
-        callback = conditions;
+        doned = conditions;
         conditions = {};
       }
-      return $.when(rest.get.call(this, conditions)).then(util.model.map).done(callback);
+      return $.when(rest.get.call(this, conditions)).then(util.model.map).done(doned.fail(failed));
     },
     first: function(conditions, callback) {
       var namespaced;
@@ -25371,6 +25371,10 @@ scopable = {
       fetch: function(data, done, fail) {
         var deferred, scope;
 
+        if (typeof data === 'function') {
+          done = data;
+          data = {};
+        }
         scope = extend({}, this.scope.data);
         observable.unobserve(scope);
         if (scope.noned != null) {

@@ -33,9 +33,9 @@ restful =
 
     # returns a promise
     # TODO move to scopable
-    all: (conditions = {}, callback) ->
+    all: (conditions = {}, doned, failed) ->
       if typeof conditions == 'function'
-        callback   = conditions
+        doned      = conditions
         conditions = {}
 
       # TODO Consider parent resources
@@ -45,7 +45,8 @@ restful =
 
       $.when(rest.get.call @, conditions)
        .then(util.model.map             )
-       .done callback
+       .done doned
+       .fail failed
 
     first: (conditions = {}, callback) ->
       if typeof conditions == 'function'
