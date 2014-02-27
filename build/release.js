@@ -24946,7 +24946,7 @@ restful = {
         doned = conditions;
         conditions = {};
       }
-      return $.when(rest.get.call(this, conditions)).then(util.model.map).done(doned.fail(failed));
+      return $.when(rest.get.call(this, conditions)).then(util.model.map).done(doned).fail(failed);
     },
     first: function(conditions, callback) {
       var namespaced;
@@ -25383,7 +25383,7 @@ scopable = {
         } else {
           deferred = rest.get.call(this, extend(scope, data));
         }
-        deferred.then(util.model.map).done(this.scope.then.concat(done)).fail([this.scope.fail, fail]);
+        deferred.then(util.model.map).done(this.scope.then.concat([done])).fail(this.scope.fail.concat([fail]));
         this.scope.clear();
         return deferred;
       },

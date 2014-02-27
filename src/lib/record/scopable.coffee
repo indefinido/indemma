@@ -58,8 +58,8 @@ scopable =
 
         deferred
           .then(util.model.map)
-          .done(@scope.then.concat done)
-          .fail([@scope.fail, fail])
+          .done(@scope.then.concat [done])
+          .fail(@scope.fail.concat [fail])
 
         @scope.clear()
 

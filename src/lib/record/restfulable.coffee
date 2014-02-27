@@ -45,7 +45,7 @@ restful =
 
       $.when(rest.get.call @, conditions)
        .then(util.model.map             )
-       .done doned
+       .done(doned                      )
        .fail failed
 
     first: (conditions = {}, callback) ->
