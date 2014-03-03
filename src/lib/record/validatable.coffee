@@ -184,8 +184,6 @@ extensions =
         # Restore dirty state
         record.dirty     = old_dirty
 
-      @validation
-
 
 # Validators management
 manager =
