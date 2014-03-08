@@ -224,7 +224,7 @@ if model.associable
   model.associable.mix (singular_association,  plural_association) ->
 
     # reload (done callbacks...)
-    plural_association.all = plural_association.reload = (data, done, fail) ->
+    plural_association.every = plural_association.reload = (data, done, fail) ->
       # TODO move route discovery to plural_association.after_mix
       @route ||= "#{@parent.route}/#{@parent._id}/#{model.pluralize @resource}" if @parent?
       promises = []

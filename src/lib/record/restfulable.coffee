@@ -33,7 +33,7 @@ restful =
 
     # returns a promise
     # TODO move to scopable
-    all: (conditions = {}, doned, failed) ->
+    every: (conditions = {}, doned, failed) ->
       if typeof conditions == 'function'
         doned      = conditions
         conditions = {}
@@ -41,7 +41,6 @@ restful =
       # TODO Consider parent resources
       # if @parent and not @parent._id
       #   return callback.call @model, []
-
 
       $.when(rest.get.call @, conditions)
        .then(util.model.map             )
@@ -58,7 +57,7 @@ restful =
       namespaced.order = 'desc'
 
       # TODO should fail when server returns more then one record
-      @all conditions, callback
+      @every conditions, callback
 
     # TODO better treating of arguments
     get: (action, data = {}) ->
@@ -305,44 +304,85 @@ restful =
       # Finish saving
       @saving = false
 
+    # TODO move to record.coffee
     toString: ->
       serialized = {}
       serialized[@resource] = @json()
-      JSON.stringify serialized
 
+      try
+        # TODO figure out why it throws circular references sometines
+        JSON.stringify serialized
+      catch e
+        console.warn "restfulable.toString: Failed to stringify record: #{e.message}. retrying..."
+
+        for name, property of serialized
+          delete serialized[name] if typeof property == 'object'
+
+        JSON.stringify serialized
+
+    # TODO move this to serializable module
+    # TODO figure out why sometimes is rendering a circular referenced json
+    # TODO rename to toJSON
     json: (methods = {}) ->
       json = {}
 
       definition = model[@resource.toString()]
 
-      for name of @ when type(value)
+      for name of @
+        # TODO smarter way to ignore Dom node fix properties
+        continue if observable.ignores.indexOf(name) != -1
+
         # TODO treat other associations to!
         # TODO create association reflection for god sake!
-        continue if definition.belongs_to.indexOf(name) != -1 and @nested_attributes.indexOf(name) == -1
+        nested = @nested_attributes.indexOf(name) != -1
+
+        # Skip association attributes that are note nested TODO create
+        # an associations array
+        continue if not nested and (definition.belongs_to.indexOf(name) != -1 or definition.has_one.indexOf(name) != -1 or definition.has_many.indexOf(name) != -1)
 
         # TODO Bypass only undefined values so we can erase data on server
         value = @[name]
         continue unless value?
-        continue if type(value) == 'function'
 
-        if type(value) == 'object'
+        nature = type value
+        continue if nature == 'function'
 
-          if value.toJSON?
+        if nature == 'object' or nature == 'element'
 
-            json[name] = value.toJSON(methods[name])
+          if nested
+            unless value.json
+              console.warn "json: Tryied to serialize nested attribute '#{name}' without serialization method!"
+              continue
 
+            # TODO move nested attributes to model definition and
+            # implement toJSON there
+            json["#{name}_attributes"] = value.json methods[name]
+
+          # Serialize complex type values
+          else if value.toJSON? || value.json?
+            # FIXME sometimes wrong pluralization occurs and we cannot
+            # skip association objects, so detect them and skip here
+            continue if value.resource
+
+            # TODO rename json to toJSON
+            if value.json?
+              json[name] = value.json methods[name]
+            else
+              json[name] = value.toJSON methods[name]
+
+          # It is a complex type value without serializtion support so
+          # we just ignore it
           else
-
-            # TODO move nested attributes to model definition
-            # TODO and implement toJSON there
-            for attribute in @nested_attributes when attribute == name
-              json["#{name}_attributes"] = value.json(methods[name])
+            # TODO maybe log warning based on debug or info flag here?
+            continue
 
         else
 
+          # Serialize primitive type values
           json[name] = value
 
-      observable.unobserve json
+      # Remove observable methods and dom node properties
+      json = observable.unobserve json
 
       # TODO Store reserved words in a array
       # TODO Use _.omit function
@@ -371,8 +411,10 @@ restful =
 
       delete json.validated
       delete json.validation
+      delete json.errors
 
       json
+
 
 # TODO put deprecation warning on json method
 # TODO rename json method to toJSON

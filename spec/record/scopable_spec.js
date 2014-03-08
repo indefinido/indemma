@@ -77,7 +77,7 @@ describe('scopable', function() {
               people[0].name.should.be.string;
               return done();
             };
-            person.all(fetched);
+            person.every(fetched);
             deferred.resolveWith(person, [
               [
                 {

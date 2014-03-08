@@ -4,7 +4,7 @@ indemma
 
   Indemma (mind picture → memory), client side, ES5 observable and REST, extensible modular data model.
 
-  Current version 0.1.0
+  Current version 0.1.9
 
 Summary
 -------
@@ -52,7 +52,7 @@ Basic functionality: Just a copy of [ActiveRecord Interface](https://github.com/
 
   person.find(1) //  {name: "Arthur Philip Dent", subscribe: ..., before: ..., after: ..., ... }
 
-  person.all()   // [{name: "Arthur Philip Dent", subscribe: ..., ... }, {name: "Ford Perfect", subscribe: ..., ... }]
+  person.every()   // [{name: "Arthur Philip Dent", subscribe: ..., ... }, {name: "Ford Perfect", subscribe: ..., ... }]
 
   // TODO active record interface like: person.where(attribute: value)
 ```

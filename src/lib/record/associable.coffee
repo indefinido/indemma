@@ -91,7 +91,17 @@ modifiers =
     associated_loader: ->
       association_name = @resource.toString()
 
-      Object.defineProperty @owner, association_name,
+      unless @owner.observed?
+        # When initializing a owner record in legacy browsers, we will
+        # run the getter to set the default value for the associate
+        # property
+        #
+        # TODO in the accessors shim, better way of getting the
+        # default value for further usage
+        @owner.observed    = {}
+        temporary_observed = true
+
+      definition = Object.defineProperty @owner, association_name,
         # Observable already sets property for us
         set: (associated) ->
           @observed[association_name] = associated
@@ -128,6 +138,10 @@ modifiers =
 
         configurable: true
         enumerable: true
+
+      delete @owner.observed if temporary_observed
+
+      definition
 
 callbacks =
   has_many:

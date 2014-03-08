@@ -73,7 +73,7 @@ describe 'scopable', ->
               people[0].name.should.be.string
               done()
 
-            person.all fetched
+            person.every fetched
 
             deferred.resolveWith person, [[{name: 'Arthur'}, {name: 'Ford'}]]
             jQuery.ajax.callCount.should.be.eq 1

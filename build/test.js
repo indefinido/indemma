@@ -26,14 +26,10 @@ function require(path, parent, orig) {
   // perform real require()
   // by invoking the module's
   // registered function
-  if (!module._resolving && !module.exports) {
-    var mod = {};
-    mod.exports = {};
-    mod.client = mod.component = true;
-    module._resolving = true;
-    module.call(this, mod.exports, require.relative(resolved), mod);
-    delete module._resolving;
-    module.exports = mod.exports;
+  if (!module.exports) {
+    module.exports = {};
+    module.client = module.component = true;
+    module.call(this, module.exports, require.relative(resolved), module);
   }
 
   return module.exports;
@@ -24106,7 +24102,7 @@ this.model = (function() {
       after_initialize: [],
       before_initialize: []
     },
-    all: function() {
+    every: function() {
       return this.cache;
     },
     create: function() {
@@ -24157,7 +24153,9 @@ this.model = (function() {
     data.route || (data.route = this.route);
     data.nested_attributes = this.nested_attributes || [];
     after_initialize = (data.after_initialize || []).concat(this.record.after_initialize);
-    creation = extend(Object.create(data), this.record, creation, {
+    creation = extend(Object.create(data, {
+      _shim: {}
+    }), this.record, creation, {
       after_initialize: after_initialize
     });
     _ref = this.record.before_initialize;
@@ -24352,11 +24350,15 @@ subscribers = {
 modifiers = {
   belongs_to: {
     associated_loader: function() {
-      var association_name,
+      var association_name, definition, temporary_observed,
         _this = this;
 
       association_name = this.resource.toString();
-      return Object.defineProperty(this.owner, association_name, {
+      if (this.owner.observed == null) {
+        this.owner.observed = {};
+        temporary_observed = true;
+      }
+      definition = Object.defineProperty(this.owner, association_name, {
         set: function(associated) {
           return this.observed[association_name] = associated;
         },
@@ -24389,6 +24391,10 @@ modifiers = {
         configurable: true,
         enumerable: true
       });
+      if (temporary_observed) {
+        delete this.owner.observed;
+      }
+      return definition;
     }
   }
 };
@@ -24719,7 +24725,7 @@ queryable = {
     }
     return this.storage.store(key);
   },
-  all: function() {
+  every: function() {
     return this.storage.values();
   },
   where: function() {
@@ -24942,7 +24948,7 @@ restful = {
       }
       return $.when.apply($, savings);
     },
-    all: function(conditions, doned, failed) {
+    every: function(conditions, doned, failed) {
       if (conditions == null) {
         conditions = {};
       }
@@ -24965,7 +24971,7 @@ restful = {
       namespaced = conditions[this.resource] || {};
       namespaced.limit = 1;
       namespaced.order = 'desc';
-      return this.all(conditions, callback);
+      return this.every(conditions, callback);
     },
     get: function(action, data) {
       var default_route, old_route, payload, promise, resource;
@@ -25210,14 +25216,26 @@ restful = {
       return this.saving = false;
     },
     toString: function() {
-      var serialized;
+      var e, name, property, serialized;
 
       serialized = {};
       serialized[this.resource] = this.json();
-      return JSON.stringify(serialized);
+      try {
+        return JSON.stringify(serialized);
+      } catch (_error) {
+        e = _error;
+        console.warn("restfulable.toString: Failed to stringify record: " + e.message + ". retrying...");
+        for (name in serialized) {
+          property = serialized[name];
+          if (typeof property === 'object') {
+            delete serialized[name];
+          }
+        }
+        return JSON.stringify(serialized);
+      }
     },
     json: function(methods) {
-      var attribute, definition, json, name, value, _i, _len, _ref;
+      var definition, json, name, nature, nested, value;
 
       if (methods == null) {
         methods = {};
@@ -25225,36 +25243,45 @@ restful = {
       json = {};
       definition = model[this.resource.toString()];
       for (name in this) {
-        if (!(type(value))) {
+        if (observable.ignores.indexOf(name) !== -1) {
           continue;
         }
-        if (definition.belongs_to.indexOf(name) !== -1 && this.nested_attributes.indexOf(name) === -1) {
+        nested = this.nested_attributes.indexOf(name) !== -1;
+        if (!nested && (definition.belongs_to.indexOf(name) !== -1 || definition.has_one.indexOf(name) !== -1 || definition.has_many.indexOf(name) !== -1)) {
           continue;
         }
         value = this[name];
         if (value == null) {
           continue;
         }
-        if (type(value) === 'function') {
+        nature = type(value);
+        if (nature === 'function') {
           continue;
         }
-        if (type(value) === 'object') {
-          if (value.toJSON != null) {
-            json[name] = value.toJSON(methods[name]);
-          } else {
-            _ref = this.nested_attributes;
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-              attribute = _ref[_i];
-              if (attribute === name) {
-                json["" + name + "_attributes"] = value.json(methods[name]);
-              }
+        if (nature === 'object' || nature === 'element') {
+          if (nested) {
+            if (!value.json) {
+              console.warn("json: Tryied to serialize nested attribute '" + name + "' without serialization method!");
+              continue;
             }
+            json["" + name + "_attributes"] = value.json(methods[name]);
+          } else if ((value.toJSON != null) || (value.json != null)) {
+            if (value.resource) {
+              continue;
+            }
+            if (value.json != null) {
+              json[name] = value.json(methods[name]);
+            } else {
+              json[name] = value.toJSON(methods[name]);
+            }
+          } else {
+            continue;
           }
         } else {
           json[name] = value;
         }
       }
-      observable.unobserve(json);
+      json = observable.unobserve(json);
       delete json.dirty;
       delete json.resource;
       delete json.route;
@@ -25273,6 +25300,7 @@ restful = {
       delete json.lock;
       delete json.validated;
       delete json.validation;
+      delete json.errors;
       return json;
     }
   }
@@ -25582,7 +25610,7 @@ if (model.associable) {
     });
   });
   model.associable.mix(function(singular_association, plural_association) {
-    plural_association.all = plural_association.reload = function(data, done, fail) {
+    plural_association.every = plural_association.reload = function(data, done, fail) {
       var promises, reload;
 
       if (this.parent != null) {
@@ -25941,218 +25969,230 @@ module.exports = composed;
 
 });
 require.register("indemma/lib/record/validatable.js", function(exports, require, module){
-(function() {
-  var errorsable, extensions, initializers, manager, messages, observable, root, stampit, type;
+var errorsable, extensions, initializers, manager, messages, observable, root, stampit, type;
 
-  require('./translationable');
+require('./translationable');
 
-  root = typeof exports !== "undefined" && exports !== null ? exports : this;
+root = typeof exports !== "undefined" && exports !== null ? exports : this;
 
-  stampit = require('../../vendor/stampit');
+stampit = require('../../vendor/stampit');
 
-  observable = require('observable').mixin;
+observable = require('observable').mixin;
 
-  type = require('type');
+type = require('type');
 
-  messages = {
-    blank: function(attribute_name) {
+messages = {
+  blank: function(attribute_name) {
+    attribute_name = this.human_attribute_name(attribute_name);
+    return "O campo " + attribute_name + " não pode ficar em branco.";
+  },
+  cpf: function(attribute_name) {
+    attribute_name = this.human_attribute_name(attribute_name);
+    return "O campo " + attribute_name + " não está válido.";
+  },
+  confirmation: function(attribute_name) {
+    var confirmation_attribute_name;
+
+    confirmation_attribute_name = this.human_attribute_name(attribute_name);
+    attribute_name = this.human_attribute_name(attribute_name.replace('_confirmation', ''));
+    return "O campo " + attribute_name + " não está de acordo com o campo " + confirmation_attribute_name + ".";
+  },
+  associated: function(attribute_name) {
+    attribute_name = this.human_attribute_name(attribute_name);
+    return "O registro associado " + attribute_name + " não é válido.";
+  },
+  server: function(attribute_name, options) {
+    if (attribute_name === 'base') {
+      return options.server_message;
+    } else {
       attribute_name = this.human_attribute_name(attribute_name);
-      return "O campo " + attribute_name + " não pode ficar em branco.";
-    },
-    cpf: function(attribute_name) {
-      attribute_name = this.human_attribute_name(attribute_name);
-      return "O campo " + attribute_name + " não está válido.";
-    },
-    confirmation: function(attribute_name) {
-      var confirmation_attribute_name;
-      confirmation_attribute_name = this.human_attribute_name(attribute_name);
-      attribute_name = this.human_attribute_name(attribute_name.replace('_confirmation', ''));
-      return "O campo " + attribute_name + " não está de acordo com o campo " + confirmation_attribute_name + ".";
-    },
-    associated: function(attribute_name) {
-      attribute_name = this.human_attribute_name(attribute_name);
-      return "O registro associado " + attribute_name + " não é válido.";
-    },
-    server: function(attribute_name, options) {
-      if (attribute_name === 'base') {
-        return options.server_message;
-      } else {
-        attribute_name = this.human_attribute_name(attribute_name);
-        return "" + attribute_name + " " + options.server_message + ".";
-      }
-    },
-    type: function(attribute_name, options) {
-      attribute_name = this.human_attribute_name(attribute_name);
-      return "O campo " + attribute_name + " não está válido.";
+      return "" + attribute_name + " " + options.server_message + ".";
     }
-  };
+  },
+  type: function(attribute_name, options) {
+    attribute_name = this.human_attribute_name(attribute_name);
+    return "O campo " + attribute_name + " não está válido.";
+  }
+};
 
-  errorsable = stampit({
-    add: function(attribute_name, message_key, options) {
-      var translator;
-      this.push([attribute_name, message_key, options]);
-      this.messages[attribute_name] = '';
-      translator = messages[message_key];
-      if (translator != null) {
-        return this.messages[attribute_name] += translator.call(this.model, attribute_name, options);
-      } else {
-        return this.messages[attribute_name] += message_key;
-      }
-    },
-    clear: function() {
-      var attribute_name, _results;
-      if (this.length) {
-        this.length = 0;
-        _results = [];
-        for (attribute_name in this.messages) {
-          _results.push(this.messages[attribute_name] = null);
-        }
-        return _results;
-      }
-    },
-    push: Array.prototype.push,
-    splice: Array.prototype.splice,
-    indexOf: Array.prototype.indexOf
-  }, {
-    model: null,
-    messages: null,
-    length: 0
-  }, function() {
-    this.messages = {};
-    return this;
-  });
+errorsable = stampit({
+  add: function(attribute_name, message_key, options) {
+    var translator;
 
-  initializers = {
-    define_triggers: function() {
-      this.errors = errorsable({
-        model: model[this.resource]
-      });
-      this.before('save', function() {
-        if (this.save) return this.validate();
-      });
-      this.validated = false;
-      this.subscribe('dirty', function(value) {
-        return value && (this.validated = false);
-      });
-      return Object.defineProperty(this, 'valid', {
-        get: function() {
-          this.validate();
-          if (this.validation.state() === 'resolved') {
-            return !this.errors.length;
-          } else {
-            return null;
-          }
-        },
-        set: function() {
-          throw new TypeError("You can't set the value for the valid property.");
-        },
-        enumerable: false
-      });
-    },
-    create_validators: function(definitions) {
-      var definition, name, validator, validator_options, _ref, _results;
-      this.validators = [];
-      _ref = manager.validators;
+    this.push([attribute_name, message_key, options]);
+    this.messages[attribute_name] = '';
+    translator = messages[message_key];
+    if (translator != null) {
+      return this.messages[attribute_name] += translator.call(this.model, attribute_name, options);
+    } else {
+      return this.messages[attribute_name] += message_key;
+    }
+  },
+  clear: function() {
+    var attribute_name, _results;
+
+    if (this.length) {
+      this.length = 0;
       _results = [];
-      for (name in _ref) {
-        validator = _ref[name];
-        definition = definitions[validator.definition_key];
-        if (definition) {
-          if (type(definition) !== 'array') definition = [definition];
-          _results.push((function() {
-            var _i, _len, _results2;
-            _results2 = [];
-            for (_i = 0, _len = definition.length; _i < _len; _i++) {
-              validator_options = definition[_i];
-              if (type(validator_options) !== 'object') {
-                validator_options = {
-                  attribute_name: validator_options
-                };
-              }
-              validator_options.model = this;
-              this.validators.push(validator(validator_options));
-              _results2.push(delete definitions[validator.definition_key]);
-            }
-            return _results2;
-          }).call(this));
-        } else {
-          _results.push(void 0);
-        }
+      for (attribute_name in this.messages) {
+        _results.push(this.messages[attribute_name] = null);
       }
       return _results;
     }
-  };
+  },
+  push: Array.prototype.push,
+  splice: Array.prototype.splice,
+  indexOf: Array.prototype.indexOf
+}, {
+  model: null,
+  messages: null,
+  length: 0
+}, function() {
+  this.messages = {};
+  return this;
+});
 
-  extensions = {
-    model: {
-      validators: null
-    },
-    record: {
-      validate_attribute: function(attribute, doned, failed) {
-        var results, validation, validator, _i, _len, _ref;
-        this.errors.messages[attribute] = null;
-        results = [this, attribute];
-        _ref = model[this.resource.toString()].validators;
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          validator = _ref[_i];
-          if (validator.attribute_name === attribute) {
-            results.push(validator.validate_each(this, validator.attribute_name, this[validator.attribute_name]));
-          }
+initializers = {
+  define_triggers: function() {
+    this.errors = errorsable({
+      model: model[this.resource]
+    });
+    this.before('save', function() {
+      if (this.save) {
+        return this.validate();
+      }
+    });
+    this.validated = false;
+    this.subscribe('dirty', function(value) {
+      return value && (this.validated = false);
+    });
+    return Object.defineProperty(this, 'valid', {
+      get: function() {
+        this.validate();
+        if (this.validation.state() === 'resolved') {
+          return !this.errors.length;
+        } else {
+          return null;
         }
-        validation = jQuery.when.apply(jQuery, results);
-        validation.done(doned);
-        validation.fail(failed);
-        return validation;
       },
-      validate: function(doned, failed) {
-        var results, validator, _i, _len, _ref;
-        if (this.validated && !this.dirty) return this.validation;
-        this.errors.clear();
-        results = [this];
-        _ref = model[this.resource.toString()].validators;
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          validator = _ref[_i];
-          results.push(validator.validate_each(this, validator.attribute_name, this[validator.attribute_name]));
+      set: function() {
+        throw new TypeError("You can't set the value for the valid property.");
+      },
+      enumerable: false
+    });
+  },
+  create_validators: function(definitions) {
+    var definition, name, validator, validator_options, _ref, _results;
+
+    this.validators = [];
+    _ref = manager.validators;
+    _results = [];
+    for (name in _ref) {
+      validator = _ref[name];
+      definition = definitions[validator.definition_key];
+      if (definition) {
+        if (type(definition) !== 'array') {
+          definition = [definition];
         }
-        this.validation = jQuery.when.apply(jQuery, results);
-        this.validation.done(doned);
-        this.validation.fail(failed);
-        return this.validation.then(function(record) {
-          var old_dirty;
-          old_dirty = record.dirty;
-          record.dirty = null;
-          record.validated || (record.validated = true);
-          return record.dirty = old_dirty;
-        });
+        _results.push((function() {
+          var _i, _len, _results1;
+
+          _results1 = [];
+          for (_i = 0, _len = definition.length; _i < _len; _i++) {
+            validator_options = definition[_i];
+            if (type(validator_options) !== 'object') {
+              validator_options = {
+                attribute_name: validator_options
+              };
+            }
+            validator_options.model = this;
+            this.validators.push(validator(validator_options));
+            _results1.push(delete definitions[validator.definition_key]);
+          }
+          return _results1;
+        }).call(this));
+      } else {
+        _results.push(void 0);
       }
     }
-  };
+    return _results;
+  }
+};
 
-  manager = {
-    validators: {}
-  };
+extensions = {
+  model: {
+    validators: null
+  },
+  record: {
+    validate_attribute: function(attribute, doned, failed) {
+      var results, validation, validator, _i, _len, _ref;
 
-  model.mix(function(modelable) {
-    jQuery.extend(modelable, extensions.model);
-    jQuery.extend(modelable.record, extensions.record);
-    modelable.after_mix.unshift(initializers.create_validators);
-    modelable.record.after_initialize.push(initializers.define_triggers);
-    return model.validators = manager.validators;
-  });
+      this.errors.messages[attribute] = null;
+      results = [this, attribute];
+      _ref = model[this.resource.toString()].validators;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        validator = _ref[_i];
+        if (validator.attribute_name === attribute) {
+          results.push(validator.validate_each(this, validator.attribute_name, this[validator.attribute_name]));
+        }
+      }
+      validation = jQuery.when.apply(jQuery, results);
+      validation.done(doned);
+      validation.fail(failed);
+      return validation;
+    },
+    validate: function(doned, failed) {
+      var results, validator, _i, _len, _ref;
 
-  manager.validators.confirmation = require('./validations/confirmation');
+      if (this.validated && !this.dirty) {
+        return this.validation;
+      }
+      this.errors.clear();
+      results = [this];
+      _ref = model[this.resource.toString()].validators;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        validator = _ref[_i];
+        results.push(validator.validate_each(this, validator.attribute_name, this[validator.attribute_name]));
+      }
+      this.validation = jQuery.when.apply(jQuery, results);
+      this.validation.done(doned);
+      this.validation.fail(failed);
+      return this.validation.done(function(record) {
+        var old_dirty;
 
-  manager.validators.associated = require('./validations/associated');
+        old_dirty = record.dirty;
+        record.dirty = null;
+        record.validated || (record.validated = true);
+        record.dirty = old_dirty;
+        return record;
+      });
+    }
+  }
+};
 
-  manager.validators.presence = require('./validations/presence');
+manager = {
+  validators: {}
+};
 
-  manager.validators.remote = require('./validations/remote');
+model.mix(function(modelable) {
+  jQuery.extend(modelable, extensions.model);
+  jQuery.extend(modelable.record, extensions.record);
+  modelable.after_mix.unshift(initializers.create_validators);
+  modelable.record.after_initialize.push(initializers.define_triggers);
+  return model.validators = manager.validators;
+});
 
-  manager.validators.type = require('./validations/type');
+manager.validators.confirmation = require('./validations/confirmation');
 
-  manager.validators.cpf = require('./validations/cpf');
+manager.validators.associated = require('./validations/associated');
 
-}).call(this);
+manager.validators.presence = require('./validations/presence');
+
+manager.validators.remote = require('./validations/remote');
+
+manager.validators.type = require('./validations/type');
+
+manager.validators.cpf = require('./validations/cpf');
 
 });
 require.register("indemma/lib/extensions/rivets.js", function(exports, require, module){
@@ -26181,24 +26221,11 @@ model.rivets = function() {
 };
 
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 require.alias("pluma-assimilate/dist/assimilate.js", "indemma/deps/assimilate/dist/assimilate.js");
 require.alias("pluma-assimilate/dist/assimilate.js", "indemma/deps/assimilate/index.js");
 require.alias("pluma-assimilate/dist/assimilate.js", "assimilate/index.js");
 require.alias("pluma-assimilate/dist/assimilate.js", "pluma-assimilate/index.js");
+
 require.alias("component-type/index.js", "indemma/deps/type/index.js");
 require.alias("component-type/index.js", "type/index.js");
 
@@ -26256,4 +26283,6 @@ require.alias("chaijs-chai/index.js", "chai/index.js");
 require.alias("chaijs-assertion-error/index.js", "chaijs-chai/deps/assertion-error/index.js");
 require.alias("chaijs-assertion-error/index.js", "chaijs-chai/deps/assertion-error/index.js");
 require.alias("chaijs-assertion-error/index.js", "chaijs-assertion-error/index.js");
+
 require.alias("chaijs-chai/index.js", "chaijs-chai/index.js");
+
