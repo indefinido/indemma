@@ -173,18 +173,7 @@ extensions =
       @validation.fail failed
 
       # TODO store this callback
-      @validation.done (record) ->
-        # Disable dirty checking to prevent validation believe that
-        # the model values has changed
-        old_dirty        = record.dirty
-        record.dirty     = null
-
-        record.validated ||= true
-
-        # Restore dirty state
-        record.dirty     = old_dirty
-
-        record
+      @validation.done (record) -> record.validated ||= true
 
 
 # Validators management
