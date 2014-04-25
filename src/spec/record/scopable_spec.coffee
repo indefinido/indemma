@@ -20,26 +20,25 @@ describe 'scopable', ->
   describe 'model', ->
 
     describe '#(options)', ->
-      person = null
 
       beforeEach ->
 
-        person = model.call
+        @person = model.call
           $hetero : true
           $by_type: []
           $by_name: String
           resource: 'person'
 
       it 'should add scope methods to model', ->
-        person.none.should.be.function
+        @person.none.should.be.function
 
       it 'should generate scope methods based on model definition', ->
-        person.hetero.should.be.function
+        @person.hetero.should.be.function
 
       describe '#none', ->
         it 'should return empty response on fetch calls', (done) ->
           # TODO implement getter for none property!
-          person.none().fetch null, (people) ->
+          @person.none().fetch null, (people) ->
             people.length.should.be.empty
             done()
 
@@ -49,23 +48,21 @@ describe 'scopable', ->
         describe '#(name, type)', ->
 
           it 'should add scope methods to model', ->
-            person.scope 'bissexual', Boolean
-            person.bissexual.should.be.function
+            @person.scope 'bissexual', Boolean
+            @person.bissexual.should.be.function
 
       describe '#{generated_scope}', ->
-        deferred = null
 
         beforeEach ->
-          deferred = jQuery.Deferred()
-          sinon.stub(jQuery, "ajax").returns deferred
-          person.scope.clear()
+          @request = jQuery.Deferred()
+          sinon.stub(jQuery, "ajax").returns @request
+          @person.scope.clear()
 
         afterEach -> jQuery.ajax.restore()
 
-        describe '#all', ->
-          deferred = promises = person = null
+        describe '#every', ->
 
-          it 'should return models when promise is resolved', (done) ->
+          it 'should fetch models from the server', (done) ->
 
             # Will be called once for each saved record
             fetched = (people) ->
@@ -73,29 +70,30 @@ describe 'scopable', ->
               people[0].name.should.be.string
               done()
 
-            person.every fetched
+            @person.every fetched
 
-            deferred.resolveWith person, [[{name: 'Arthur'}, {name: 'Ford'}]]
+            # TODO rename deferred to @request
+            @request.resolveWith @person, [[{name: 'Arthur'}, {name: 'Ford'}]]
             jQuery.ajax.callCount.should.be.eq 1
 
 
         describe 'when string', ->
           it 'should acumulate data in scope object', ->
-            person.by_name()
-            person.scope.data.by_name.should.be.a 'string'
+            @person.by_name()
+            @person.scope.data.by_name.should.be.a 'string'
 
           it 'should override data throught parameters', ->
-            person.by_name 'Ford'
-            person.scope.data.by_name.should.be.eq 'Ford'
+            @person.by_name 'Ford'
+            @person.scope.data.by_name.should.be.eq 'Ford'
 
         describe 'when array', ->
           it 'should acumulate data in scope object', ->
-            person.by_type()
-            person.scope.data.by_type.should.be.a 'array'
+            @person.by_type()
+            @person.scope.data.by_type.should.be.a 'array'
 
           it 'should override data throught parameters', ->
-            person.by_type 1, 2, 3
-            person.scope.data.by_type.should.contain 1, 2, 3
+            @person.by_type 1, 2, 3
+            @person.scope.data.by_type.should.contain 1, 2, 3
 
           it 'should use default value'
           it 'should allow scope chaining'
@@ -103,7 +101,7 @@ describe 'scopable', ->
           describe 'xhr request', ->
 
             it 'should build correct url', ->
-              person.by_type(1, 3, 4).fetch()
+              @person.by_type(1, 3, 4).fetch()
 
               settings = jQuery.ajax.firstCall.args[0]
 
@@ -112,38 +110,37 @@ describe 'scopable', ->
               settings.data.by_type.should.include 1, 3, 4
 
             it 'should make call', ->
-              person.by_type(1, 3, 4).fetch()
+              @person.by_type(1, 3, 4).fetch()
               jQuery.ajax.callCount.should.be.eq 1
 
 
         describe 'when boolean', ->
 
           it 'should acumulate data in scope object', ->
-            person.hetero()
-            person.scope.data.hetero.should.be.eq true
+            @person.hetero()
+            @person.scope.data.hetero.should.be.eq true
 
           it 'should override data throught parameters', ->
-            person.hetero false
-            person.scope.data.hetero.should.be.eq false
+            @person.hetero false
+            @person.scope.data.hetero.should.be.eq false
 
           it 'should allow scope chaining'
 
           it 'should make ajax call', ->
-            person.hetero().fetch()
+            @person.hetero().fetch()
             jQuery.ajax.callCount.should.be.eq 1
 
         describe '#{generated_association}', ->
 
           describe 'of type belongs_to', ->
-            towel = null
 
             beforeEach ->
-              person = model.call
+              @person = model.call
                 $hetero: true
                 $by_type: []
                 resource: 'person'
 
-              towel = model.call
+              @towel = model.call
                 resource: 'towel'
                 material: 'cotton'
                 belongs_to: 'person'
@@ -152,7 +149,7 @@ describe 'scopable', ->
             describe '#{generated_scope}', ->
 
               it 'can be called on association', ->
-                soft_towel = towel
+                soft_towel = @towel
                   material: 'silicon microfiber'
 
                 soft_towel.build_person()
@@ -160,32 +157,68 @@ describe 'scopable', ->
                 expect(soft_towel.person).to.respondTo 'hetero'
 
           describe 'of type has_many', ->
-            arthur = towel = null
 
             beforeEach ->
-              person = model.call
+              @person = model.call
                 $hetero: true
                 $by_type: []
                 resource: 'person'
                 has_many: 'towels'
 
-              towel = model.call
+              @towel = model.call
                 $by_material: []
                 resource: 'towel'
                 material: 'cotton'
                 belongs_to: 'person'
 
-              arthur = person
+              @arthur = @person
                 name: 'Arthur'
 
-
+              @person.scope.clear()
 
             describe '#{generated_scope}', ->
 
               it 'can be called on association', ->
-                expect(arthur.towels).to.respondTo 'by_material'
+                expect(@arthur.towels).to.respondTo 'by_material'
 
               it 'should be serializable into paramenters', ->
-                arthur.towels.by_material 'cotton', 'microfiber'
-                query_string = decodeURIComponent(jQuery.param arthur.towels.scope.data)
+                @arthur.towels.by_material 'cotton', 'microfiber'
+                query_string = decodeURIComponent(jQuery.param @arthur.towels.scope.data)
                 query_string.should.be.eq 'by_material[]=cotton&by_material[]=microfiber'
+
+              describe '#every', ->
+
+                it 'should empty association when no models are returned', (done) ->
+
+                  # Will be called once for each saved record
+                  fetched = (towels) =>
+                    towels.should.be.array
+                    towels.should.be.empty
+                    @arthur.towels.should.have.length 0
+                    ` this.should.have.length(0) `
+                    done()
+
+                  @arthur.towels.every fetched
+
+                  @request.resolveWith @arthur.towels, [[]]
+                  jQuery.ajax.callCount.should.be.eq 1
+
+                it 'should update resources when already exists in association', (done) ->
+                  aditions = @arthur.towels.add _id: 1, material: 'colan'
+
+                  # Will be called once for each saved record
+                  fetched = (towels) =>
+                    towels.should.be.array
+                    towels.should.have.length 1
+                    towels[0].material.should.be.eq 'cotton'
+
+                    # Updated the associated object, instead of
+                    # creating a new one
+                    aditions[0].material.should.be.eq 'cotton'
+                    @arthur.towels[0].material.should.be.eq 'cotton'
+                    done()
+
+                  @arthur.towels.every fetched
+
+                  @request.resolveWith @arthur.towels, [[_id: 1, material: 'cotton']]
+                  jQuery.ajax.callCount.should.be.eq 1

@@ -7,7 +7,9 @@ module.exports =
   post  : (data) -> request.call @, 'post'  , @route, data
   delete: (data) -> request.call @, 'delete', (if @_id then  "#{@route}/#{@_id}" else @route), data
 
-request = (method, url, data) ->
+
+# TODO move to serialization module
+data_for = (data) ->
   param_name = @resource.param_name || @resource.toString()
 
   # TODO optmize this serialization lookup
@@ -19,6 +21,10 @@ request = (method, url, data) ->
     delete data[param_name]['id']
     delete data[param_name]['_id']
 
+  data
+
+request  = (method, url, data) ->
+  data = data_for.call @, data
 
   $.ajax
     url     : url

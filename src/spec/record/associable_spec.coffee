@@ -121,10 +121,11 @@ describe 'model',  ->
         beforeEach -> association = person().friends
 
         it 'should have query methods', ->
-          association.should.have.property 'all'
+          association.should.have.property 'has_many'
+          association.should.have.property 'find'
           association.should.have.property 'each'
           association.should.have.property 'reload'
 
-        describe '#all', ->
+        describe '#every', ->
 
           it 'should auto observe nested associations attributes'

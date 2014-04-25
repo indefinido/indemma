@@ -10,8 +10,8 @@
     "component/bind": "*",
     "component/jquery": "*",
     "indefinido/observable": "*",
-    "indefinido/advisable": "*",
-    "chaijs/chai": "*"
+    "chaijs/chai": "*",
+    "indefinido/advisable": "*"
   },
   "development": {},
   "license": "WTFPL",

@@ -15005,73 +15005,6 @@ if (!Object.create) {
 }
 
 });
-require.register("indefinido-advisable/index.js", function(exports, require, module){
-module.exports = require('./lib/advisable');
-
-});
-require.register("indefinido-advisable/lib/advisable.js", function(exports, require, module){
-var $, advice, mixin;
-
-$ = require('jquery');
-
-advice = {
-  around: function(base, wrapped) {
-    return function() {
-      var args;
-
-      args = $.makeArray(arguments);
-      return wrapped.apply(this, [$.proxy(base, this)].concat(args));
-    };
-  },
-  before: function(base, before) {
-    return this.around(base, function() {
-      var args, orig;
-
-      args = $.makeArray(arguments);
-      orig = args.shift();
-      before.apply(this, args);
-      return orig.apply(this, args);
-    });
-  },
-  after: function(base, after) {
-    return this.around(base, function() {
-      var args, orig, res;
-
-      args = $.makeArray(arguments);
-      orig = args.shift();
-      res = orig.apply(this, args);
-      after.apply(this, args);
-      return res;
-    });
-  }
-};
-
-mixin = {
-  before: function(method, advicer) {
-    if (typeof this[method] === 'function') {
-      return this[method] = advice.before(this[method], advicer);
-    }
-    throw new TypeError("Can only advice functions, attribute " + method + " of " + this + " is of type " + (typeof this[method]));
-  },
-  after: function(method, advicer) {
-    if (typeof this[method] === 'function') {
-      return this[method] = advice.after(this[method], advicer);
-    }
-    throw new TypeError("Can only advice functions, attribute " + method + " of " + this + " is of type " + (typeof this[method]));
-  },
-  around: function(method, advicer) {
-    if (typeof this[method] === 'function') {
-      return this[method] = advice.around(this[method], advicer);
-    }
-    throw new TypeError("Can only advice functions, attribute " + method + " of " + this + " is of type " + (typeof this[method]));
-  }
-};
-
-exports.mixin = function(object) {
-  return $.extend(object, mixin);
-};
-
-});
 require.register("chaijs-assertion-error/index.js", function(exports, require, module){
 /*!
  * assertion-error
@@ -19187,6 +19120,73 @@ module.exports = function (obj) {
   if (obj === undefined) return 'undefined';
   if (obj === Object(obj)) return 'object';
   return typeof obj;
+};
+
+});
+require.register("indefinido-advisable/index.js", function(exports, require, module){
+module.exports = require('./lib/advisable');
+
+});
+require.register("indefinido-advisable/lib/advisable.js", function(exports, require, module){
+var $, advice, mixin;
+
+$ = require('jquery');
+
+advice = {
+  around: function(base, wrapped) {
+    return function() {
+      var args;
+
+      args = $.makeArray(arguments);
+      return wrapped.apply(this, [$.proxy(base, this)].concat(args));
+    };
+  },
+  before: function(base, before) {
+    return this.around(base, function() {
+      var args, orig;
+
+      args = $.makeArray(arguments);
+      orig = args.shift();
+      before.apply(this, args);
+      return orig.apply(this, args);
+    });
+  },
+  after: function(base, after) {
+    return this.around(base, function() {
+      var args, orig, res;
+
+      args = $.makeArray(arguments);
+      orig = args.shift();
+      res = orig.apply(this, args);
+      after.apply(this, args);
+      return res;
+    });
+  }
+};
+
+mixin = {
+  before: function(method, advicer) {
+    if (typeof this[method] === 'function') {
+      return this[method] = advice.before(this[method], advicer);
+    }
+    throw new TypeError("Can only advice functions, attribute " + method + " of " + this + " is of type " + (typeof this[method]));
+  },
+  after: function(method, advicer) {
+    if (typeof this[method] === 'function') {
+      return this[method] = advice.after(this[method], advicer);
+    }
+    throw new TypeError("Can only advice functions, attribute " + method + " of " + this + " is of type " + (typeof this[method]));
+  },
+  around: function(method, advicer) {
+    if (typeof this[method] === 'function') {
+      return this[method] = advice.around(this[method], advicer);
+    }
+    throw new TypeError("Can only advice functions, attribute " + method + " of " + this + " is of type " + (typeof this[method]));
+  }
+};
+
+exports.mixin = function(object) {
+  return $.extend(object, mixin);
 };
 
 });
@@ -24295,7 +24295,8 @@ plural = {
   },
   push: function() {
     console.warn("" + this.resource + ".push is deprecated and will be removed, please use add instead");
-    return Array.prototype.push.apply(this, arguments);
+    Array.prototype.push.apply(this, arguments);
+    return arguments[0];
   },
   length: 0,
   json: function(methods, omissions) {
@@ -24307,7 +24308,18 @@ plural = {
       _results.push(record.json(methods, omissions));
     }
     return _results;
-  }
+  },
+  find: function(id) {
+    var resource, _i, _len;
+
+    for (_i = 0, _len = this.length; _i < _len; _i++) {
+      resource = this[_i];
+      if (resource._id === id) {
+        return resource;
+      }
+    }
+  },
+  filter: Array.prototype.filter || (typeof _ !== "undefined" && _ !== null ? _.filter : void 0)
 };
 
 singular = {
@@ -24851,7 +24863,7 @@ model.pluralize = resourceable.pluralize;
 
 });
 require.register("indemma/lib/record/rest.js", function(exports, require, module){
-var $, request;
+var $, data_for, request;
 
 $ = require('jquery');
 
@@ -24870,7 +24882,7 @@ module.exports = {
   }
 };
 
-request = function(method, url, data) {
+data_for = function(data) {
   var param_name;
 
   param_name = this.resource.param_name || this.resource.toString();
@@ -24882,6 +24894,11 @@ request = function(method, url, data) {
     delete data[param_name]['id'];
     delete data[param_name]['_id'];
   }
+  return data;
+};
+
+request = function(method, url, data) {
+  data = data_for.call(this, data);
   return $.ajax({
     url: url,
     data: data,
@@ -25036,7 +25053,7 @@ restful = {
       return promise;
     },
     assign_attributes: function(attributes) {
-      var association, association_attributes, association_name, associations_attributes, attribute, message, name, singular_resource, _i, _j, _k, _l, _len, _len1, _len2, _len3, _ref, _ref1, _ref2, _results;
+      var association, association_attributes, association_name, associations_attributes, attribute, message, name, singular_resource, _base, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _m, _ref, _ref1, _ref2, _ref3, _ref4, _results;
 
       _ref = model[this.resource.toString()].has_many;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -25074,6 +25091,16 @@ restful = {
       for (_l = 0, _len3 = _ref2.length; _l < _len3; _l++) {
         association_name = _ref2[_l];
         association_attributes = attributes[association_name];
+        delete attributes[association_name];
+        delete attributes[association_name + "_attributes"];
+        if (association_attributes) {
+          this[association_name] = this["build_" + association_name](association_attributes);
+        }
+      }
+      _ref3 = model[this.resource.toString()].belongs_to;
+      for (_m = 0, _len4 = _ref3.length; _m < _len4; _m++) {
+        association_name = _ref3[_m];
+        association_attributes = (_ref4 = typeof (_base = attributes[association_name]).json === "function" ? _base.json() : void 0) != null ? _ref4 : attributes[association_name];
         delete attributes[association_name];
         delete attributes[association_name + "_attributes"];
         if (association_attributes) {
@@ -25234,11 +25261,11 @@ restful = {
         return JSON.stringify(serialized);
       }
     },
-    json: function(methods) {
-      var definition, json, name, nature, nested, value;
+    json: function(options) {
+      var definition, json, method, name, nature, nested, value, _ref, _ref1;
 
-      if (methods == null) {
-        methods = {};
+      if (options == null) {
+        options = {};
       }
       json = {};
       definition = model[this.resource.toString()];
@@ -25264,15 +25291,15 @@ restful = {
               console.warn("json: Tryied to serialize nested attribute '" + name + "' without serialization method!");
               continue;
             }
-            json["" + name + "_attributes"] = value.json(methods[name]);
+            json["" + name + "_attributes"] = value.json(options[name]);
           } else if ((value.toJSON != null) || (value.json != null)) {
             if (value.resource) {
               continue;
             }
             if (value.json != null) {
-              json[name] = value.json(methods[name]);
+              json[name] = value.json(options[name]);
             } else {
-              json[name] = value.toJSON(methods[name]);
+              json[name] = value.toJSON(options[name]);
             }
           } else {
             continue;
@@ -25282,6 +25309,16 @@ restful = {
         }
       }
       json = observable.unobserve(json);
+      _ref1 = (_ref = options.methods) != null ? _ref : {};
+      for (name in _ref1) {
+        value = _ref1[name];
+        method = this[name];
+        if (typeof method === 'function') {
+          json[name] = method();
+        } else {
+          json[name] = method;
+        }
+      }
       delete json.dirty;
       delete json.resource;
       delete json.route;
@@ -25465,7 +25502,7 @@ scopable = {
       return this.scope.fetch.call(this, data, done, fail);
     },
     forward_scopes_to_associations: function() {
-      var associated_factory, associated_resource, association, association_name, factory, forwarder, generate_forwarder, scope, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _m, _ref, _ref1, _ref2, _ref3, _ref4;
+      var associated_factory, associated_resource, association, association_name, factory, scope, _i, _j, _len, _len1, _ref, _ref1;
 
       factory = model[this.resource.name];
       _ref = factory.has_many;
@@ -25483,46 +25520,6 @@ scopable = {
         for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
           scope = _ref1[_j];
           association.scope(scope, associated_factory["$" + scope]);
-        }
-      }
-      _ref2 = factory.has_one;
-      for (_k = 0, _len2 = _ref2.length; _k < _len2; _k++) {
-        associated_resource = _ref2[_k];
-        if (!model[associated_resource]) {
-          console.warn("Associated factory not found for associated resource: " + associated_resource);
-          continue;
-        }
-        _ref3 = model[associated_resource].scope.declared;
-        for (_l = 0, _len3 = _ref3.length; _l < _len3; _l++) {
-          scope = _ref3[_l];
-          this[associated_resource][scope] = factory[scope];
-        }
-      }
-      if (factory.belongs_to.length) {
-        generate_forwarder = function(associated_resource) {
-          var declared_scopes;
-
-          associated_factory = model[associated_resource];
-          if (!associated_factory) {
-            return console.warn("Associated factory not found for associated resource: " + associated_resource);
-          }
-          declared_scopes = associated_factory.scope.declared;
-          return function() {
-            var _len4, _m, _results;
-
-            _results = [];
-            for (_m = 0, _len4 = declared_scopes.length; _m < _len4; _m++) {
-              scope = declared_scopes[_m];
-              _results.push(this[associated_resource][scope] = associated_factory[scope]);
-            }
-            return _results;
-          };
-        };
-        _ref4 = factory.belongs_to;
-        for (_m = 0, _len4 = _ref4.length; _m < _len4; _m++) {
-          associated_resource = _ref4[_m];
-          forwarder = generate_forwarder(associated_resource);
-          this.after("build_" + associated_resource, forwarder);
         }
       }
       return true;
@@ -25624,11 +25621,13 @@ if (model.associable) {
       promises.push(this.scope.fetch.call(this, data, null, scopable.record.failed));
       reload = $.when.apply(jQuery, promises);
       reload.done(function(records, status) {
-        var association_name, singular_resource, _i, _j, _len, _len1, _ref;
+        var association_name, create, index, singular_resource, target, _i, _j, _k, _len, _len1, _len2, _ref;
 
-        Array.prototype.splice.call(this, 0);
         if (!records.length) {
-          return;
+          if (this.length) {
+            Array.prototype.splice.call(this, 0);
+          }
+          return true;
         }
         singular_resource = model.singularize(this.resource);
         for (_i = 0, _len = records.length; _i < _len; _i++) {
@@ -25640,7 +25639,16 @@ if (model.associable) {
             delete record[association_name];
           }
         }
-        this.add.apply(this, records);
+        create = [];
+        for (index = _k = 0, _len2 = records.length; _k < _len2; index = ++_k) {
+          record = records[index];
+          if (target = this.find(record._id)) {
+            target.assign_attributes(record);
+          } else {
+            create.push(record);
+          }
+        }
+        this.add.apply(this, create);
         records.splice(0);
         return records.push.apply(records, this);
       });
@@ -26247,11 +26255,6 @@ require.alias("indefinido-observable/index.js", "observable/index.js");
 
 require.alias("component-jquery/index.js", "indefinido-observable/deps/jquery/index.js");
 
-require.alias("indefinido-advisable/index.js", "indemma/deps/advisable/index.js");
-require.alias("indefinido-advisable/lib/advisable.js", "indemma/deps/advisable/lib/advisable.js");
-require.alias("indefinido-advisable/index.js", "advisable/index.js");
-require.alias("component-jquery/index.js", "indefinido-advisable/deps/jquery/index.js");
-
 require.alias("chaijs-chai/index.js", "indemma/deps/chai/index.js");
 require.alias("chaijs-chai/lib/chai.js", "indemma/deps/chai/lib/chai.js");
 require.alias("chaijs-chai/lib/chai/assertion.js", "indemma/deps/chai/lib/chai/assertion.js");
@@ -26285,4 +26288,9 @@ require.alias("chaijs-assertion-error/index.js", "chaijs-chai/deps/assertion-err
 require.alias("chaijs-assertion-error/index.js", "chaijs-assertion-error/index.js");
 
 require.alias("chaijs-chai/index.js", "chaijs-chai/index.js");
+
+require.alias("indefinido-advisable/index.js", "indemma/deps/advisable/index.js");
+require.alias("indefinido-advisable/lib/advisable.js", "indemma/deps/advisable/lib/advisable.js");
+require.alias("indefinido-advisable/index.js", "advisable/index.js");
+require.alias("component-jquery/index.js", "indefinido-advisable/deps/jquery/index.js");
 

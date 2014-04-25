@@ -124,11 +124,12 @@ describe('model', function() {
           return association = person().friends;
         });
         it('should have query methods', function() {
-          association.should.have.property('all');
+          association.should.have.property('has_many');
+          association.should.have.property('find');
           association.should.have.property('each');
           return association.should.have.property('reload');
         });
-        return describe('#all', function() {
+        return describe('#every', function() {
           return it('should auto observe nested associations attributes');
         });
       });

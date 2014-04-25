@@ -20,11 +20,8 @@ describe('scopable', function() {
   });
   return describe('model', function() {
     return describe('#(options)', function() {
-      var person;
-
-      person = null;
       beforeEach(function() {
-        return person = model.call({
+        return this.person = model.call({
           $hetero: true,
           $by_type: [],
           $by_name: String,
@@ -32,14 +29,14 @@ describe('scopable', function() {
         });
       });
       it('should add scope methods to model', function() {
-        return person.none.should.be["function"];
+        return this.person.none.should.be["function"];
       });
       it('should generate scope methods based on model definition', function() {
-        return person.hetero.should.be["function"];
+        return this.person.hetero.should.be["function"];
       });
       describe('#none', function() {
         return it('should return empty response on fetch calls', function(done) {
-          return person.none().fetch(null, function(people) {
+          return this.person.none().fetch(null, function(people) {
             people.length.should.be.empty;
             return done();
           });
@@ -48,28 +45,22 @@ describe('scopable', function() {
       describe('scope', function() {
         return describe('#(name, type)', function() {
           return it('should add scope methods to model', function() {
-            person.scope('bissexual', Boolean);
-            return person.bissexual.should.be["function"];
+            this.person.scope('bissexual', Boolean);
+            return this.person.bissexual.should.be["function"];
           });
         });
       });
       return describe('#{generated_scope}', function() {
-        var deferred;
-
-        deferred = null;
         beforeEach(function() {
-          deferred = jQuery.Deferred();
-          sinon.stub(jQuery, "ajax").returns(deferred);
-          return person.scope.clear();
+          this.request = jQuery.Deferred();
+          sinon.stub(jQuery, "ajax").returns(this.request);
+          return this.person.scope.clear();
         });
         afterEach(function() {
           return jQuery.ajax.restore();
         });
-        describe('#all', function() {
-          var promises;
-
-          deferred = promises = person = null;
-          return it('should return models when promise is resolved', function(done) {
+        describe('#every', function() {
+          return it('should fetch models from the server', function(done) {
             var fetched;
 
             fetched = function(people) {
@@ -77,8 +68,8 @@ describe('scopable', function() {
               people[0].name.should.be.string;
               return done();
             };
-            person.every(fetched);
-            deferred.resolveWith(person, [
+            this.person.every(fetched);
+            this.request.resolveWith(this.person, [
               [
                 {
                   name: 'Arthur'
@@ -92,22 +83,22 @@ describe('scopable', function() {
         });
         describe('when string', function() {
           it('should acumulate data in scope object', function() {
-            person.by_name();
-            return person.scope.data.by_name.should.be.a('string');
+            this.person.by_name();
+            return this.person.scope.data.by_name.should.be.a('string');
           });
           return it('should override data throught parameters', function() {
-            person.by_name('Ford');
-            return person.scope.data.by_name.should.be.eq('Ford');
+            this.person.by_name('Ford');
+            return this.person.scope.data.by_name.should.be.eq('Ford');
           });
         });
         describe('when array', function() {
           it('should acumulate data in scope object', function() {
-            person.by_type();
-            return person.scope.data.by_type.should.be.a('array');
+            this.person.by_type();
+            return this.person.scope.data.by_type.should.be.a('array');
           });
           it('should override data throught parameters', function() {
-            person.by_type(1, 2, 3);
-            return person.scope.data.by_type.should.contain(1, 2, 3);
+            this.person.by_type(1, 2, 3);
+            return this.person.scope.data.by_type.should.contain(1, 2, 3);
           });
           it('should use default value');
           it('should allow scope chaining');
@@ -115,45 +106,42 @@ describe('scopable', function() {
             it('should build correct url', function() {
               var settings;
 
-              person.by_type(1, 3, 4).fetch();
+              this.person.by_type(1, 3, 4).fetch();
               settings = jQuery.ajax.firstCall.args[0];
               settings.should.have.property('data');
               settings.data.should.have.property('by_type');
               return settings.data.by_type.should.include(1, 3, 4);
             });
             return it('should make call', function() {
-              person.by_type(1, 3, 4).fetch();
+              this.person.by_type(1, 3, 4).fetch();
               return jQuery.ajax.callCount.should.be.eq(1);
             });
           });
         });
         describe('when boolean', function() {
           it('should acumulate data in scope object', function() {
-            person.hetero();
-            return person.scope.data.hetero.should.be.eq(true);
+            this.person.hetero();
+            return this.person.scope.data.hetero.should.be.eq(true);
           });
           it('should override data throught parameters', function() {
-            person.hetero(false);
-            return person.scope.data.hetero.should.be.eq(false);
+            this.person.hetero(false);
+            return this.person.scope.data.hetero.should.be.eq(false);
           });
           it('should allow scope chaining');
           return it('should make ajax call', function() {
-            person.hetero().fetch();
+            this.person.hetero().fetch();
             return jQuery.ajax.callCount.should.be.eq(1);
           });
         });
         return describe('#{generated_association}', function() {
           describe('of type belongs_to', function() {
-            var towel;
-
-            towel = null;
             beforeEach(function() {
-              person = model.call({
+              this.person = model.call({
                 $hetero: true,
                 $by_type: [],
                 resource: 'person'
               });
-              return towel = model.call({
+              return this.towel = model.call({
                 resource: 'towel',
                 material: 'cotton',
                 belongs_to: 'person'
@@ -163,7 +151,7 @@ describe('scopable', function() {
               return it('can be called on association', function() {
                 var soft_towel;
 
-                soft_towel = towel({
+                soft_towel = this.towel({
                   material: 'silicon microfiber'
                 });
                 soft_towel.build_person();
@@ -172,36 +160,78 @@ describe('scopable', function() {
             });
           });
           return describe('of type has_many', function() {
-            var arthur, towel;
-
-            arthur = towel = null;
             beforeEach(function() {
-              person = model.call({
+              this.person = model.call({
                 $hetero: true,
                 $by_type: [],
                 resource: 'person',
                 has_many: 'towels'
               });
-              towel = model.call({
+              this.towel = model.call({
                 $by_material: [],
                 resource: 'towel',
                 material: 'cotton',
                 belongs_to: 'person'
               });
-              return arthur = person({
+              this.arthur = this.person({
                 name: 'Arthur'
               });
+              return this.person.scope.clear();
             });
             return describe('#{generated_scope}', function() {
               it('can be called on association', function() {
-                return expect(arthur.towels).to.respondTo('by_material');
+                return expect(this.arthur.towels).to.respondTo('by_material');
               });
-              return it('should be serializable into paramenters', function() {
+              it('should be serializable into paramenters', function() {
                 var query_string;
 
-                arthur.towels.by_material('cotton', 'microfiber');
-                query_string = decodeURIComponent(jQuery.param(arthur.towels.scope.data));
+                this.arthur.towels.by_material('cotton', 'microfiber');
+                query_string = decodeURIComponent(jQuery.param(this.arthur.towels.scope.data));
                 return query_string.should.be.eq('by_material[]=cotton&by_material[]=microfiber');
+              });
+              return describe('#every', function() {
+                it('should empty association when no models are returned', function(done) {
+                  var fetched,
+                    _this = this;
+
+                  fetched = function(towels) {
+                    towels.should.be.array;
+                    towels.should.be.empty;
+                    _this.arthur.towels.should.have.length(0);
+                     this.should.have.length(0) ;
+                    return done();
+                  };
+                  this.arthur.towels.every(fetched);
+                  this.request.resolveWith(this.arthur.towels, [[]]);
+                  return jQuery.ajax.callCount.should.be.eq(1);
+                });
+                return it('should update resources when already exists in association', function(done) {
+                  var aditions, fetched,
+                    _this = this;
+
+                  aditions = this.arthur.towels.add({
+                    _id: 1,
+                    material: 'colan'
+                  });
+                  fetched = function(towels) {
+                    towels.should.be.array;
+                    towels.should.have.length(1);
+                    towels[0].material.should.be.eq('cotton');
+                    aditions[0].material.should.be.eq('cotton');
+                    _this.arthur.towels[0].material.should.be.eq('cotton');
+                    return done();
+                  };
+                  this.arthur.towels.every(fetched);
+                  this.request.resolveWith(this.arthur.towels, [
+                    [
+                      {
+                        _id: 1,
+                        material: 'cotton'
+                      }
+                    ]
+                  ]);
+                  return jQuery.ajax.callCount.should.be.eq(1);
+                });
               });
             });
           });

@@ -9,8 +9,7 @@ queryable =
   find: (key) ->
     throw new TypeError "InvalidFind: resource.find was called with a falsey value" unless key
     @storage.store key
-  every: ->
-    @storage.values()
+  every: -> @storage.values()
   where: ->
     throw new Error 'queryable.where: Not implemented yet'
 

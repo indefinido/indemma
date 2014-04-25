@@ -178,6 +178,19 @@ restful =
         @[association_name] = @["build_#{association_name}"] association_attributes if association_attributes
 
 
+      # Nested attributes
+      # TODO implement setter on belongs_to association and move this
+      # code there
+      for association_name in model[@resource.toString()].belongs_to
+        association_attributes = attributes[association_name].json?() ? attributes[association_name]
+
+        # TODO copy attributes object and don't change it inside the
+        # assignment method
+        delete attributes[association_name]
+        delete attributes[association_name + "_attributes"]
+        @[association_name] = @["build_#{association_name}"] association_attributes if association_attributes
+
+
       # Assign remaining attributes
       # TODO see if it is a best practice not overriding unchanged attributes
       # TODO rename attributes for properties
@@ -323,7 +336,7 @@ restful =
     # TODO move this to serializable module
     # TODO figure out why sometimes is rendering a circular referenced json
     # TODO rename to toJSON
-    json: (methods = {}) ->
+    json: (options = {}) ->
       json = {}
 
       definition = model[@resource.toString()]
@@ -356,7 +369,7 @@ restful =
 
             # TODO move nested attributes to model definition and
             # implement toJSON there
-            json["#{name}_attributes"] = value.json methods[name]
+            json["#{name}_attributes"] = value.json options[name]
 
           # Serialize complex type values
           else if value.toJSON? || value.json?
@@ -366,9 +379,9 @@ restful =
 
             # TODO rename json to toJSON
             if value.json?
-              json[name] = value.json methods[name]
+              json[name] = value.json options[name]
             else
-              json[name] = value.toJSON methods[name]
+              json[name] = value.toJSON options[name]
 
           # It is a complex type value without serializtion support so
           # we just ignore it
@@ -381,8 +394,15 @@ restful =
           # Serialize primitive type values
           json[name] = value
 
-      # Remove observable methods and dom node properties
+      # Remove observable options and dom node properties
       json = observable.unobserve json
+
+      for name, value of options.methods ? {}
+        method = @[name]
+        if typeof method  == 'function'
+          json[name] = method()
+        else
+          json[name] = method
 
       # TODO Store reserved words in a array
       # TODO Use _.omit function
@@ -416,7 +436,7 @@ restful =
       json
 
 
-# TODO put deprecation warning on json method
+# TODO pt udeprecation warning on json method
 # TODO rename json method to toJSON
 restful.toJSON = restful.json
 

@@ -32,9 +32,15 @@ plural = # has_many ## TODO embeds_many
   push    : ->
     console.warn "#{@resource}.push is deprecated and will be removed, please use add instead"
     Array.prototype.push.apply @, arguments
+    arguments[0]
 
   length : 0
   json   : (methods, omissions) -> record.json(methods, omissions) for record in @
+
+  find   : (id) -> return resource for resource in @ when resource._id is id
+
+  # TODO better support searching
+  filter   :  Array.prototype.filter || _?.filter
 
 
 singular = # belongs_to, has_one ## TODO embeds_one, embedded_in
