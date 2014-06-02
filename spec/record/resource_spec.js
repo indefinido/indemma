@@ -1,8 +1,8 @@
 var jQuery, model, record, root;
 
-require('indemma/lib/record/restfulable');
+require('indemma/lib/record/restfulable.js');
 
-require('indemma/lib/record/resource');
+require('indemma/lib/record/resource.js');
 
 root = typeof exports !== "undefined" && exports !== null ? exports : window;
 

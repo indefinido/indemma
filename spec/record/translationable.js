@@ -2,7 +2,7 @@ var root;
 
 root = typeof exports !== "undefined" && exports !== null ? exports : window;
 
-require('indemma/lib/record/translationable');
+require('indemma/lib/record/translationable.js');
 
 describe('model', function() {
   var model, person;

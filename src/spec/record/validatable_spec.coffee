@@ -1,6 +1,6 @@
 root = exports ? window
 
-require 'indemma/lib/record/validatable'
+require 'indemma/lib/record/validatable.js'
 
 describe 'model',  ->
   model  = root.model
@@ -96,5 +96,7 @@ describe 'model',  ->
 
         # Record for some reason changed
         anonymous.dirty = true
+        anonymous.observation.scheduler.deliver()
+
         # We expect it to instanitante new validation deferred
         anonymous.validate().should.not.be.eq validation

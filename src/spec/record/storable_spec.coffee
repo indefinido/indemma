@@ -1,6 +1,6 @@
 root = exports ? window
 
-storable = require 'indemma/lib/record/storable'
+storable = require 'indemma/lib/record/storable.js'
 
 describe 'storable',  ->
   it 'should set the storable key', ->

@@ -1,6 +1,6 @@
 root = exports ? window
 
-require 'indemma/lib/record/validatable'
+require 'indemma/lib/record/validatable.js'
 
 describe 'model #() validates_cpf_format',  ->
 

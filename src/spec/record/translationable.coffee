@@ -1,6 +1,6 @@
 root = exports ? window
 
-require 'indemma/lib/record/translationable'
+require 'indemma/lib/record/translationable.js'
 
 describe 'model',  ->
   model  = root.model

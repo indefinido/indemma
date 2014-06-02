@@ -2,7 +2,7 @@ var queryable, root;
 
 root = typeof exports !== "undefined" && exports !== null ? exports : window;
 
-queryable = require('indemma/lib/record/queryable');
+queryable = require('indemma/lib/record/queryable.js');
 
 describe('queryable', function() {
   return describe('model', function() {
@@ -19,11 +19,17 @@ describe('queryable', function() {
     });
     return describe('#find', function() {
       beforeEach(function() {
+        this.xhr = jQuery.Deferred();
+        sinon.stub(jQuery, "ajax").returns(this.xhr);
         this.arthur = this.person({
           _id: '1',
           name: 'Arthur Philip Dent'
         });
-        return this.arthur.save();
+        this.arthur.save();
+        return this.xhr.resolveWith(this.arthur, [this.arthur.json()]);
+      });
+      afterEach(function() {
+        return jQuery.ajax.restore();
       });
       return it('should retrieve a record by key', function() {
         return this.person.find('1').should.have.property('name', this.arthur.name);

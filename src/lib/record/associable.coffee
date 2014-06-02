@@ -53,42 +53,83 @@ singular = # belongs_to, has_one ## TODO embeds_one, embedded_in
     # record
     @owner[@resource.toString()] = model[@resource.toString()] extend {}, @, data
 
-subscribers =
+descriptors =
   belongs_to:
-    foreign_key: (resource_id) ->
-      association_name = @resource.toString()
+    resource_id:
+      getter: -> @owner.observed[@resource + '_id']
+      setter: (resource_id) ->
+        association_name = @resource.toString()
 
-      # TODO faster nullifing association check
-      # TODO check if its usefull to only allow disassociating with null
-      unless resource_id
-        @dirty = true
-        @owner[association_name] = resource_id
-        return resource_id
-
-      # TODO Discover and update inverse side of association
-      # associated[@owner.resource.toString()] = @owner
-      current_resource_id = @owner.observed[association_name]?._id
-      if resource_id != current_resource_id
-        # Update association with blank resource that will update
-        resource = model[association_name]
-        unless resource
-          console.warn "subscribers.belongs_to.foreign_key: associated factory not found for model: #{association_name}"
+        # TODO faster nullifing association check
+        # TODO check if its usefull to only allow disassociating with null
+        unless resource_id
+          @dirty = true
+          @owner[association_name] = resource_id
           return resource_id
 
-        # TODO remote find or local find automatically, and implement find_or_initialize_by
-        # this code is not needed, since the association loader already loads the associated record when trying to get it
-        # associated   = resource.find resource_id
-        # associated ||= resource _id: resource_id
+        # TODO Discover and update inverse side of association
+        # associated[@owner.resource.toString()] = @owner
+        current_resource_id = @owner.observed[association_name]?._id
+        if resource_id != current_resource_id
+          # Update association with blank resource that will update
+          resource = model[association_name]
+          unless resource
+            console.warn "subscribers.belongs_to.foreign_key: associated factory not found for model: #{association_name}"
+            return resource_id
 
-        # Nullify associated object, so next time user accesses it,
-        # association loader loads the new object
-        @owner.observed[association_name] = null
+          # TODO remote find or local find automatically, and implement find_or_initialize_by
+          # this code is not needed, since the association loader already loads the associated record when trying to get it
+          # associated   = resource.find resource_id
+          # associated ||= resource _id: resource_id
 
-      resource_id
+          # Nullify associated object, so next time user accesses it,
+          # association loader loads the new object
+          @owner.observed[association_name] = null
 
-    # Called when associated record changes, so we can silently update the id
-    associated_changed: (associated) ->
-      @owner.observed["#{@resource.toString()}_id"] = if associated then associated._id else null
+        resource_id
+
+    resource:
+      # TODO Use Auto build and Auto load as association options
+      getter: ->
+        # TODO allow custom association names
+        association_name = @resource.toString()
+        associated       = @owner.observed[association_name]
+        associated_id    = @owner.observed[association_name + '_id']
+
+        # Returns null or undefined depending on sustained state of
+        # resource and on retrievability of the resource
+        return associated unless associated?._id? or associated_id
+
+        # Returns imediatelly for resources on storage
+        # TODO make this extenxible
+        return associated if associated?.sustained
+
+
+        # Auto build
+        resource = model[association_name]
+        unless resource
+          console.warn "descriptors.belongs_to.resource.getter: associated factory not found for model '#{association_name}' belonging to '#{@owner.resource}'"
+          return associated
+
+        # Search through stored resources to see if it is stored
+        associated   = resource.find associated_id || associated._id
+
+        # Found associated in storage, update this model and return associated
+        return @owner.observed[association_name] = associated if associated
+
+
+        # Auto load
+        # Not found associated in storage
+        associated ||= resource _id: associated_id  # initialize and store a new record
+        associated.reload()                         # fetch resource
+
+        # Store temporary unloaded resource in this model
+        @owner.observed[association_name] = associated
+
+      # Called when associated record changes, so we can silently update the id
+      setter: (associated) ->
+        @owner.observed[@resource.toString()        ] = associated
+        @owner.observed[@resource.toString() + '_id'] = if associated then associated._id else null
 
 modifiers =
 # Called before record initialization to create the a lazy loader
@@ -326,8 +367,15 @@ associable =
           old_dirty           = @dirty
           @["#{resource}_id"] = null
 
-          @subscribe "#{resource}_id"   , $.proxy subscribers.belongs_to.foreign_key, association_proxy
-          @subscribe resource.toString(), $.proxy subscribers.belongs_to.associated_changed, association_proxy
+          # TODO implement as a class
+          Object.defineProperty @, "#{resource}_id",
+            get: $.proxy descriptors.belongs_to.resource_id.getter, association_proxy
+            set: $.proxy descriptors.belongs_to.resource_id.setter, association_proxy
+            configurable: true
+
+          Object.defineProperty @, resource.toString(),
+            get: $.proxy descriptors.belongs_to.resource.getter, association_proxy
+            set: $.proxy descriptors.belongs_to.resource.setter, association_proxy
 
           # Restore id after loader prevention has passed
           @["#{resource}_id"] = old_resource_id

@@ -1,10 +1,10 @@
 var jQuery, rest, root;
 
-require('indemma/lib/record/resource');
+require('indemma/lib/record/resource.js');
 
 root = typeof exports !== "undefined" && exports !== null ? exports : window;
 
-rest = require('indemma/lib/record/rest');
+rest = require('indemma/lib/record/rest.js');
 
 jQuery = require('component-jquery');
 

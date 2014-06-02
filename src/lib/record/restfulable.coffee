@@ -5,6 +5,8 @@ $          = require 'jquery' # TODO remove jquery dependency and use simple pro
 rest       = require './rest.js'
 root       = exports ? @
 
+`import './dirtyable.js'`
+
 util =
   model:
     map: (records) ->
@@ -63,7 +65,13 @@ restful =
     get: (action, data = {}) ->
       # TODO better way to override route
       old_route     = @route
-      default_route = "/#{model.pluralize @resource.name}"
+
+      # TODO extract route generation concern
+      default_route  = '/'
+      default_route += @resource.scope + '/' if @resource.scope?
+      default_route += if @resource.singular then @resource.name else model.pluralize @resource.name
+
+      # TODO think why this code is here
       @route        = default_route unless default_route == @route
 
       if action
@@ -116,16 +124,22 @@ restful =
 
       promise
 
+
+    # TODO sufix association attributes with '_attributes' and remove
+    # double checking in this method
     assign_attributes: (attributes) ->
 
       # TODO only set associations on nested attributes!
       # First assign has_many associations
       # TODO implement setter on has_many association and move this code there
       for association_name in model[@resource.toString()].has_many
-        associations_attributes = attributes[association_name]
+        associations_attributes = attributes[association_name + "_attributes"] or attributes[association_name]
 
         # TODO copy attributes object and don't change it inside the assignment method
+        # TODO sufix association attributes with '_attributes' and remove
+        # double checking in this method
         delete attributes[association_name] # Remove loaded json data
+        delete attributes[association_name + '_attributes'] # Remove loaded json data
 
         # Clear current stored cache on this association
         # TODO implement setter on this association and let user to set
@@ -152,7 +166,7 @@ restful =
         for association_attributes in associations_attributes
 
           # TODO only nest specified nested attributes on model definition
-          # TODO create special deserialization method no plural association
+          # TODO create special deserialization method on plural association
           # TODO check if we need to nest attributes in other association types
           for association_name in model[singular_resource].has_many
             association_attributes["#{association_name}_attributes"] = association_attributes[association_name]
@@ -182,7 +196,7 @@ restful =
       # TODO implement setter on belongs_to association and move this
       # code there
       for association_name in model[@resource.toString()].belongs_to
-        association_attributes = attributes[association_name].json?() ? attributes[association_name]
+        association_attributes = attributes[association_name]?.json?() ? attributes[association_name]
 
         # TODO copy attributes object and don't change it inside the
         # assignment method
@@ -408,30 +422,30 @@ restful =
       # TODO Use _.omit function
       # TODO Use object.defineProperty to not need to delete this properties
       # Remove model reserved words
-      delete json.dirty
-      delete json.resource
-      delete json.route
-      delete json.initial_route # TODO implement better initial_route and remove attribute from here
+        delete json.dirty
+        delete json.resource
+        delete json.route
+        delete json.initial_route # TODO implement better initial_route and remove attribute from here
 
-      delete json.after_initialize
-      delete json.before_initialize
-      delete json.parent_resource
-      delete json.nested_attributes
+        delete json.after_initialize
+        delete json.before_initialize
+        delete json.parent_resource
+        delete json.nested_attributes
 
-      delete json.reloading
-      delete json.ready
+        delete json.reloading
+        delete json.ready
 
-      delete json.saving
-      delete json.salvation
-      delete json.sustained
+        delete json.saving
+        delete json.salvation
+        delete json.sustained
 
-      delete json.element
-      delete json.default
-      delete json.lock
+        delete json.element
+        delete json.default
+        delete json.lock
 
-      delete json.validated
-      delete json.validation
-      delete json.errors
+        delete json.validated
+        delete json.validation
+        delete json.errors
 
       json
 

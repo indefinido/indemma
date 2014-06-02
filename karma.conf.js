@@ -13,7 +13,6 @@ module.exports = function(config) {
 
     // list of files / patterns to load in the browser
     files: [
-        'vendor/sinon.js',
         'build/test.js',
         'spec/support/**/*.js',
         'spec/spec_helper.js',

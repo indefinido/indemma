@@ -47,8 +47,11 @@ scopable =
           done = data
           data = {}
 
+        # Copy current scope data for request
+        # TODO think in a better way to only copy scope data for the request
         scope = extend {}, @scope.data
-        observable.unobserve scope
+        delete scope[method] for method of observable.methods
+
 
         if scope.noned?
           deferred = $.Deferred()
@@ -126,28 +129,8 @@ scopable =
         association         = @[association_name]
         association.scope   = scopable.builder association
 
-
         for scope in associated_factory.scope.declared
           association.scope scope, associated_factory["$#{scope}"]
-
-        # TODO improve associable inner workings to stampit objects
-      # if factory.belongs_to.length
-      #   generate_forwarder = (associated_resource) ->
-      #     associated_factory = model[associated_resource]
-
-      #     # TODO change this warn message into a exception when
-      #     # associations are renamable
-      #     return console.warn("Associated factory not found for associated resource: #{associated_resource}") unless associated_factory
-
-      #     declared_scopes    = associated_factory.scope.declared
-
-      #     ->
-      #       for scope in declared_scopes
-      #         @[associated_resource][scope] = associated_factory[scope]
-
-      #   for associated_resource in factory.belongs_to
-      #     forwarder = generate_forwarder associated_resource
-      #     @after "build_#{associated_resource}", forwarder
 
       true
   # @ = model instance

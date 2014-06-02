@@ -2,7 +2,7 @@ var root, storable;
 
 root = typeof exports !== "undefined" && exports !== null ? exports : window;
 
-storable = require('indemma/lib/record/storable');
+storable = require('indemma/lib/record/storable.js');
 
 describe('storable', function() {
   it('should set the storable key', function() {

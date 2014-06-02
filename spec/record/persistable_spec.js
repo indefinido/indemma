@@ -1,8 +1,8 @@
-var persistable, root;
+var root;
 
 root = typeof exports !== "undefined" && exports !== null ? exports : window;
 
-persistable = require('indemma/lib/record/persistable');
+require('indemma/lib/record/persistable.js');
 
 describe('persistable', function() {
   return describe('model', function() {
@@ -11,17 +11,27 @@ describe('persistable', function() {
     });
     return describe('#find', function() {
       beforeEach(function() {
+        this.xhr = jQuery.Deferred();
+        sinon.stub(jQuery, "ajax").returns(this.xhr);
         this.person = model.call({
           resource: 'person',
           has_many: 'friends',
           belongs_to: 'corporation'
         });
-        return this.arthur = this.person({
-          _id: '1',
+        this.arthur = this.person({
           name: 'Arthur Philip Dent'
         });
+        this.xhr.resolveWith(this.arthur, [
+          {
+            _id: 1
+          }
+        ]);
+        return this.arthur.dirty = true;
       });
-      return it('should call try to store a record after saving', function(done) {
+      afterEach(function() {
+        return jQuery.ajax.restore();
+      });
+      return it('should try to store a record after saving when initialzed without id', function(done) {
         var _this = this;
 
         sinon.stub(this.person.storage, 'store').returns(true);

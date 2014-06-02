@@ -1,0 +1,21 @@
+{
+  "name": "advisable",
+  "description": "Aspect oriented programming mixin",
+  "version": "0.0.1",
+  "keywords": [
+    "aspect",
+    "aop",
+    "mixin"
+  ],
+  "dependencies": {
+    "component/jquery": "*"
+  },
+  "development": {},
+  "license": "WTFP",
+  "paths": [],
+  "scripts": [
+    "index.js",
+    "lib/advisable.js"
+  ],
+  "repository": "indefinido/advisable"
+}

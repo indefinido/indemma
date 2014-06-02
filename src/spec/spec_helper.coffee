@@ -1,9 +1,11 @@
 root = exports ? window
 
-indemma = require 'indemma'
+root.indemma = require 'indemma'
+root.sinon   = require 'indemma/vendor/spec/sinon.js'
+
 chai    = require 'chaijs-chai'
-
-# sinon is included on karma.conf.js
-
 root.expect = chai.expect
 root.should = chai.should()
+
+jQuery = require("component~jquery@1.9.1")
+

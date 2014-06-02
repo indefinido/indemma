@@ -2,7 +2,7 @@ var root;
 
 root = typeof exports !== "undefined" && exports !== null ? exports : window;
 
-require('indemma/lib/record/validatable');
+require('indemma/lib/record/validatable.js');
 
 describe('model #() validates_cpf_format', function() {
   return describe('basic usage', function() {

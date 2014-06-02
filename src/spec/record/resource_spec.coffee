@@ -1,5 +1,5 @@
-require 'indemma/lib/record/restfulable'
-require 'indemma/lib/record/resource'
+require 'indemma/lib/record/restfulable.js'
+require 'indemma/lib/record/resource.js'
 
 root = exports ? window
 

@@ -1,35 +1,19 @@
-
 /**
- * Require the given path.
+ * Require the module at `name`.
  *
- * @param {String} path
+ * @param {String} name
  * @return {Object} exports
  * @api public
  */
 
-function require(path, parent, orig) {
-  var resolved = require.resolve(path);
+function require(name) {
+  var module = require.modules[name];
+  if (!module) throw new Error('failed to require "' + name + '"');
 
-  // lookup failed
-  if (null == resolved) {
-    orig = orig || path;
-    parent = parent || 'root';
-    var err = new Error('Failed to require "' + orig + '" from "' + parent + '"');
-    err.path = orig;
-    err.parent = parent;
-    err.require = true;
-    throw err;
-  }
-
-  var module = require.modules[resolved];
-
-  // perform real require()
-  // by invoking the module's
-  // registered function
-  if (!module.exports) {
-    module.exports = {};
+  if (!('exports' in module) && typeof module.definition === 'function') {
     module.client = module.component = true;
-    module.call(this, module.exports, require.relative(resolved), module);
+    module.definition.call(this, module.exports = {}, module);
+    delete module.definition;
   }
 
   return module.exports;
@@ -42,289 +26,33 @@ function require(path, parent, orig) {
 require.modules = {};
 
 /**
- * Registered aliases.
- */
-
-require.aliases = {};
-
-/**
- * Resolve `path`.
+ * Register module at `name` with callback `definition`.
  *
- * Lookup:
- *
- *   - PATH/index.js
- *   - PATH.js
- *   - PATH
- *
- * @param {String} path
- * @return {String} path or null
- * @api private
- */
-
-require.resolve = function(path) {
-  if (path.charAt(0) === '/') path = path.slice(1);
-
-  var paths = [
-    path,
-    path + '.js',
-    path + '.json',
-    path + '/index.js',
-    path + '/index.json'
-  ];
-
-  for (var i = 0; i < paths.length; i++) {
-    var path = paths[i];
-    if (require.modules.hasOwnProperty(path)) return path;
-    if (require.aliases.hasOwnProperty(path)) return require.aliases[path];
-  }
-};
-
-/**
- * Normalize `path` relative to the current path.
- *
- * @param {String} curr
- * @param {String} path
- * @return {String}
- * @api private
- */
-
-require.normalize = function(curr, path) {
-  var segs = [];
-
-  if ('.' != path.charAt(0)) return path;
-
-  curr = curr.split('/');
-  path = path.split('/');
-
-  for (var i = 0; i < path.length; ++i) {
-    if ('..' == path[i]) {
-      curr.pop();
-    } else if ('.' != path[i] && '' != path[i]) {
-      segs.push(path[i]);
-    }
-  }
-
-  return curr.concat(segs).join('/');
-};
-
-/**
- * Register module at `path` with callback `definition`.
- *
- * @param {String} path
+ * @param {String} name
  * @param {Function} definition
  * @api private
  */
 
-require.register = function(path, definition) {
-  require.modules[path] = definition;
+require.register = function (name, definition) {
+  require.modules[name] = {
+    definition: definition
+  };
 };
 
 /**
- * Alias a module definition.
+ * Define a module's exports immediately with `exports`.
  *
- * @param {String} from
- * @param {String} to
+ * @param {String} name
+ * @param {Generic} exports
  * @api private
  */
 
-require.alias = function(from, to) {
-  if (!require.modules.hasOwnProperty(from)) {
-    throw new Error('Failed to alias "' + from + '", it does not exist');
-  }
-  require.aliases[to] = from;
-};
-
-/**
- * Return a require function relative to the `parent` path.
- *
- * @param {String} parent
- * @return {Function}
- * @api private
- */
-
-require.relative = function(parent) {
-  var p = require.normalize(parent, '..');
-
-  /**
-   * lastIndexOf helper.
-   */
-
-  function lastIndexOf(arr, obj) {
-    var i = arr.length;
-    while (i--) {
-      if (arr[i] === obj) return i;
-    }
-    return -1;
-  }
-
-  /**
-   * The relative require() itself.
-   */
-
-  function localRequire(path) {
-    var resolved = localRequire.resolve(path);
-    return require(resolved, parent, path);
-  }
-
-  /**
-   * Resolve relative to the parent.
-   */
-
-  localRequire.resolve = function(path) {
-    var c = path.charAt(0);
-    if ('/' == c) return path.slice(1);
-    if ('.' == c) return require.normalize(p, path);
-
-    // resolve deps by returning
-    // the dep in the nearest "deps"
-    // directory
-    var segs = parent.split('/');
-    var i = lastIndexOf(segs, 'deps') + 1;
-    if (!i) i = 0;
-    path = segs.slice(0, i + 1).join('/') + '/deps/' + path;
-    return path;
+require.define = function (name, exports) {
+  require.modules[name] = {
+    exports: exports
   };
-
-  /**
-   * Check if module is defined at `path`.
-   */
-
-  localRequire.exists = function(path) {
-    return require.modules.hasOwnProperty(localRequire.resolve(path));
-  };
-
-  return localRequire;
 };
-require.register("pluma-assimilate/dist/assimilate.js", function(exports, require, module){
-/*! assimilate 0.3.0 Copyright (c) 2013 Alan Plum. MIT licensed. */
-var slice = Array.prototype.slice;
-
-function bind(fn, self) {
-    var args = slice.call(arguments, 2);
-    if (typeof Function.prototype.bind === 'function') {
-        return Function.prototype.bind.apply(fn, [self].concat(args));
-    }
-    return function() {
-        return fn.apply(self, args.concat(slice.call(arguments, 0)));
-    };
-}
-
-function simpleCopy(target, name, source) {
-    target[name] = source[name];
-}
-
-function properCopy(target, name, source) {
-    var descriptor = Object.getOwnPropertyDescriptor(source, name);
-    Object.defineProperty(target, name, descriptor);
-}
-
-function ownProperties(obj) {
-    return Object.getOwnPropertyNames(obj);
-}
-
-function allKeys(obj) {
-    var keys = [];
-    for (var name in obj) {
-        keys.push(name);
-    }
-    return keys;
-}
-
-function ownKeys(obj) {
-    var keys = [];
-    for (var name in obj) {
-        if (obj.hasOwnProperty(name)) {
-            keys.push(name);
-        }
-    }
-    return keys;
-}
-
-function assimilateWithStrategy(target) {
-    var strategy = this,
-    sources = slice.call(arguments, 1),
-    i, source, names, j, name;
-
-    if (target === undefined || target === null) {
-        target = {};
-    }
-
-    for (i = 0; i < sources.length; i++) {
-        source = sources[i];
-        names = strategy.keysFn(source);
-        for (j = 0; j < names.length; j++) {
-            name = names[j];
-            strategy.copyFn(target, name, source);
-        }
-    }
-
-    return target;
-}
-
-var strategies = {
-    DEFAULT: {
-        keysFn: ownKeys,
-        copyFn: simpleCopy
-    },
-    PROPER: {
-        keysFn: ownProperties,
-        copyFn: properCopy
-    },
-    INHERITED: {
-        keysFn: allKeys,
-        copyFn: simpleCopy
-    },
-    DEEP: {
-        keysFn: ownKeys,
-        copyFn: function recursiveCopy(target, name, source) {
-            var val = source[name];
-            var old = target[name];
-            if (typeof val === 'object' && typeof old === 'object') {
-                assimilateWithStrategy.call(strategies.DEEP, old, val);
-            } else {
-                simpleCopy(target, name, source);
-            }
-        }
-    },
-    STRICT: {
-        keysFn: ownKeys,
-        copyFn: function strictCopy(target, name, source) {
-            if (source[name] !== undefined) {
-                simpleCopy(target, name, source);
-            }
-        }
-    },
-    FALLBACK: {
-        keysFn: function fallbackCopy(target, name, source) {
-            if (target[name] === undefined) {
-                simpleCopy(target, name, source);
-            }
-        },
-        copyFn: simpleCopy
-    }
-};
-
-var assimilate = bind(assimilateWithStrategy, strategies.DEFAULT);
-assimilate.strategies = strategies;
-assimilate.withStrategy = function withStrategy(strategy) {
-    if (typeof strategy === 'string') {
-        strategy = strategies[strategy.toUpperCase()];
-    }
-    if (!strategy) {
-        throw new Error('Unknwon or invalid strategy:' + strategy);
-    }
-    if (typeof strategy.copyFn !== 'function') {
-        throw new Error('Strategy missing copy function:' + strategy);
-    }
-    if (typeof strategy.keysFn !== 'function') {
-        throw new Error('Strategy missing keys function:' + strategy);
-    }
-    return bind(assimilateWithStrategy, strategy);
-};
-
-module.exports = assimilate;
-});
-require.register("component-type/index.js", function(exports, require, module){
+require.register("component~type@1.0.0", function (exports, module) {
 
 /**
  * toString ref.
@@ -359,7 +87,8 @@ module.exports = function(val){
 };
 
 });
-require.register("component-bind/index.js", function(exports, require, module){
+
+require.register("component~bind@0.0.1", function (exports, module) {
 
 /**
  * Slice reference.
@@ -386,7 +115,8 @@ module.exports = function(obj, fn){
 };
 
 });
-require.register("component-jquery/index.js", function(exports, require, module){
+
+require.register("component~jquery@1.9.1", function (exports, module) {
 /*!
  * jQuery JavaScript Library v1.9.1
  * http://jquery.com/
@@ -9991,4636 +9721,219 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
 
 });
 
-require.register("indefinido-observable/components/cjohansen-sinon/sinon.js", function(exports, require, module){
-/**
- * Sinon.JS 1.7.3, 2013/06/20
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @author Contributors: https://github.com/cjohansen/Sinon.JS/blob/master/AUTHORS
- *
- * (The BSD License)
- * 
- * Copyright (c) 2010-2013, Christian Johansen, christian@cjohansen.no
- * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- * 
- *     * Redistributions of source code must retain the above copyright notice,
- *       this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright notice,
- *       this list of conditions and the following disclaimer in the documentation
- *       and/or other materials provided with the distribution.
- *     * Neither the name of Christian Johansen nor the names of his contributors
- *       may be used to endorse or promote products derived from this software
- *       without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
-this.sinon = (function () {
-var buster = (function (setTimeout, B) {
-    var isNode = typeof require == "function" && typeof module == "object";
-    var div = typeof document != "undefined" && document.createElement("div");
-    var F = function () {};
-
-    var buster = {
-        bind: function bind(obj, methOrProp) {
-            var method = typeof methOrProp == "string" ? obj[methOrProp] : methOrProp;
-            var args = Array.prototype.slice.call(arguments, 2);
-            return function () {
-                var allArgs = args.concat(Array.prototype.slice.call(arguments));
-                return method.apply(obj, allArgs);
-            };
-        },
-
-        partial: function partial(fn) {
-            var args = [].slice.call(arguments, 1);
-            return function () {
-                return fn.apply(this, args.concat([].slice.call(arguments)));
-            };
-        },
-
-        create: function create(object) {
-            F.prototype = object;
-            return new F();
-        },
-
-        extend: function extend(target) {
-            if (!target) { return; }
-            for (var i = 1, l = arguments.length, prop; i < l; ++i) {
-                for (prop in arguments[i]) {
-                    target[prop] = arguments[i][prop];
-                }
-            }
-            return target;
-        },
-
-        nextTick: function nextTick(callback) {
-            if (typeof process != "undefined" && process.nextTick) {
-                return process.nextTick(callback);
-            }
-            setTimeout(callback, 0);
-        },
-
-        functionName: function functionName(func) {
-            if (!func) return "";
-            if (func.displayName) return func.displayName;
-            if (func.name) return func.name;
-            var matches = func.toString().match(/function\s+([^\(]+)/m);
-            return matches && matches[1] || "";
-        },
-
-        isNode: function isNode(obj) {
-            if (!div) return false;
-            try {
-                obj.appendChild(div);
-                obj.removeChild(div);
-            } catch (e) {
-                return false;
-            }
-            return true;
-        },
-
-        isElement: function isElement(obj) {
-            return obj && obj.nodeType === 1 && buster.isNode(obj);
-        },
-
-        isArray: function isArray(arr) {
-            return Object.prototype.toString.call(arr) == "[object Array]";
-        },
-
-        flatten: function flatten(arr) {
-            var result = [], arr = arr || [];
-            for (var i = 0, l = arr.length; i < l; ++i) {
-                result = result.concat(buster.isArray(arr[i]) ? flatten(arr[i]) : arr[i]);
-            }
-            return result;
-        },
-
-        each: function each(arr, callback) {
-            for (var i = 0, l = arr.length; i < l; ++i) {
-                callback(arr[i]);
-            }
-        },
-
-        map: function map(arr, callback) {
-            var results = [];
-            for (var i = 0, l = arr.length; i < l; ++i) {
-                results.push(callback(arr[i]));
-            }
-            return results;
-        },
-
-        parallel: function parallel(fns, callback) {
-            function cb(err, res) {
-                if (typeof callback == "function") {
-                    callback(err, res);
-                    callback = null;
-                }
-            }
-            if (fns.length == 0) { return cb(null, []); }
-            var remaining = fns.length, results = [];
-            function makeDone(num) {
-                return function done(err, result) {
-                    if (err) { return cb(err); }
-                    results[num] = result;
-                    if (--remaining == 0) { cb(null, results); }
-                };
-            }
-            for (var i = 0, l = fns.length; i < l; ++i) {
-                fns[i](makeDone(i));
-            }
-        },
-
-        series: function series(fns, callback) {
-            function cb(err, res) {
-                if (typeof callback == "function") {
-                    callback(err, res);
-                }
-            }
-            var remaining = fns.slice();
-            var results = [];
-            function callNext() {
-                if (remaining.length == 0) return cb(null, results);
-                var promise = remaining.shift()(next);
-                if (promise && typeof promise.then == "function") {
-                    promise.then(buster.partial(next, null), next);
-                }
-            }
-            function next(err, result) {
-                if (err) return cb(err);
-                results.push(result);
-                callNext();
-            }
-            callNext();
-        },
-
-        countdown: function countdown(num, done) {
-            return function () {
-                if (--num == 0) done();
-            };
-        }
-    };
-
-    if (typeof process === "object" &&
-        typeof require === "function" && typeof module === "object") {
-        var crypto = require("crypto");
-        var path = require("path");
-
-        buster.tmpFile = function (fileName) {
-            var hashed = crypto.createHash("sha1");
-            hashed.update(fileName);
-            var tmpfileName = hashed.digest("hex");
-
-            if (process.platform == "win32") {
-                return path.join(process.env["TEMP"], tmpfileName);
-            } else {
-                return path.join("/tmp", tmpfileName);
-            }
-        };
-    }
-
-    if (Array.prototype.some) {
-        buster.some = function (arr, fn, thisp) {
-            return arr.some(fn, thisp);
-        };
-    } else {
-        // https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Array/some
-        buster.some = function (arr, fun, thisp) {
-                        if (arr == null) { throw new TypeError(); }
-            arr = Object(arr);
-            var len = arr.length >>> 0;
-            if (typeof fun !== "function") { throw new TypeError(); }
-
-            for (var i = 0; i < len; i++) {
-                if (arr.hasOwnProperty(i) && fun.call(thisp, arr[i], i, arr)) {
-                    return true;
-                }
-            }
-
-            return false;
-        };
-    }
-
-    if (Array.prototype.filter) {
-        buster.filter = function (arr, fn, thisp) {
-            return arr.filter(fn, thisp);
-        };
-    } else {
-        // https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Array/filter
-        buster.filter = function (fn, thisp) {
-                        if (this == null) { throw new TypeError(); }
-
-            var t = Object(this);
-            var len = t.length >>> 0;
-            if (typeof fn != "function") { throw new TypeError(); }
-
-            var res = [];
-            for (var i = 0; i < len; i++) {
-                if (i in t) {
-                    var val = t[i]; // in case fun mutates this
-                    if (fn.call(thisp, val, i, t)) { res.push(val); }
-                }
-            }
-
-            return res;
-        };
-    }
-
-    if (isNode) {
-        module.exports = buster;
-        buster.eventEmitter = require("./buster-event-emitter");
-        Object.defineProperty(buster, "defineVersionGetter", {
-            get: function () {
-                return require("./define-version-getter");
-            }
-        });
-    }
-
-    return buster.extend(B || {}, buster);
-}(setTimeout, buster));
-if (typeof buster === "undefined") {
-    var buster = {};
-}
-
-if (typeof module === "object" && typeof require === "function") {
-    buster = require("buster-core");
-}
-
-buster.format = buster.format || {};
-buster.format.excludeConstructors = ["Object", /^.$/];
-buster.format.quoteStrings = true;
-
-buster.format.ascii = (function () {
-    
-    var hasOwn = Object.prototype.hasOwnProperty;
-
-    var specialObjects = [];
-    if (typeof global != "undefined") {
-        specialObjects.push({ obj: global, value: "[object global]" });
-    }
-    if (typeof document != "undefined") {
-        specialObjects.push({ obj: document, value: "[object HTMLDocument]" });
-    }
-    if (typeof window != "undefined") {
-        specialObjects.push({ obj: window, value: "[object Window]" });
-    }
-
-    function keys(object) {
-        var k = Object.keys && Object.keys(object) || [];
-
-        if (k.length == 0) {
-            for (var prop in object) {
-                if (hasOwn.call(object, prop)) {
-                    k.push(prop);
-                }
-            }
-        }
-
-        return k.sort();
-    }
-
-    function isCircular(object, objects) {
-        if (typeof object != "object") {
-            return false;
-        }
-
-        for (var i = 0, l = objects.length; i < l; ++i) {
-            if (objects[i] === object) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    function ascii(object, processed, indent) {
-        if (typeof object == "string") {
-            var quote = typeof this.quoteStrings != "boolean" || this.quoteStrings;
-            return processed || quote ? '"' + object + '"' : object;
-        }
-
-        if (typeof object == "function" && !(object instanceof RegExp)) {
-            return ascii.func(object);
-        }
-
-        processed = processed || [];
-
-        if (isCircular(object, processed)) {
-            return "[Circular]";
-        }
-
-        if (Object.prototype.toString.call(object) == "[object Array]") {
-            return ascii.array.call(this, object, processed);
-        }
-
-        if (!object) {
-            return "" + object;
-        }
-
-        if (buster.isElement(object)) {
-            return ascii.element(object);
-        }
-
-        if (typeof object.toString == "function" &&
-            object.toString !== Object.prototype.toString) {
-            return object.toString();
-        }
-
-        for (var i = 0, l = specialObjects.length; i < l; i++) {
-            if (object === specialObjects[i].obj) {
-                return specialObjects[i].value;
-            }
-        }
-
-        return ascii.object.call(this, object, processed, indent);
-    }
-
-    ascii.func = function (func) {
-        return "function " + buster.functionName(func) + "() {}";
-    };
-
-    ascii.array = function (array, processed) {
-        processed = processed || [];
-        processed.push(array);
-        var pieces = [];
-
-        for (var i = 0, l = array.length; i < l; ++i) {
-            pieces.push(ascii.call(this, array[i], processed));
-        }
-
-        return "[" + pieces.join(", ") + "]";
-    };
-
-    ascii.object = function (object, processed, indent) {
-        processed = processed || [];
-        processed.push(object);
-        indent = indent || 0;
-        var pieces = [], properties = keys(object), prop, str, obj;
-        var is = "";
-        var length = 3;
-
-        for (var i = 0, l = indent; i < l; ++i) {
-            is += " ";
-        }
-
-        for (i = 0, l = properties.length; i < l; ++i) {
-            prop = properties[i];
-            obj = object[prop];
-
-            if (isCircular(obj, processed)) {
-                str = "[Circular]";
-            } else {
-                str = ascii.call(this, obj, processed, indent + 2);
-            }
-
-            str = (/\s/.test(prop) ? '"' + prop + '"' : prop) + ": " + str;
-            length += str.length;
-            pieces.push(str);
-        }
-
-        var cons = ascii.constructorName.call(this, object);
-        var prefix = cons ? "[" + cons + "] " : ""
-
-        return (length + indent) > 80 ?
-            prefix + "{\n  " + is + pieces.join(",\n  " + is) + "\n" + is + "}" :
-            prefix + "{ " + pieces.join(", ") + " }";
-    };
-
-    ascii.element = function (element) {
-        var tagName = element.tagName.toLowerCase();
-        var attrs = element.attributes, attribute, pairs = [], attrName;
-
-        for (var i = 0, l = attrs.length; i < l; ++i) {
-            attribute = attrs.item(i);
-            attrName = attribute.nodeName.toLowerCase().replace("html:", "");
-
-            if (attrName == "contenteditable" && attribute.nodeValue == "inherit") {
-                continue;
-            }
-
-            if (!!attribute.nodeValue) {
-                pairs.push(attrName + "=\"" + attribute.nodeValue + "\"");
-            }
-        }
-
-        var formatted = "<" + tagName + (pairs.length > 0 ? " " : "");
-        var content = element.innerHTML;
-
-        if (content.length > 20) {
-            content = content.substr(0, 20) + "[...]";
-        }
-
-        var res = formatted + pairs.join(" ") + ">" + content + "</" + tagName + ">";
-
-        return res.replace(/ contentEditable="inherit"/, "");
-    };
-
-    ascii.constructorName = function (object) {
-        var name = buster.functionName(object && object.constructor);
-        var excludes = this.excludeConstructors || buster.format.excludeConstructors || [];
-
-        for (var i = 0, l = excludes.length; i < l; ++i) {
-            if (typeof excludes[i] == "string" && excludes[i] == name) {
-                return "";
-            } else if (excludes[i].test && excludes[i].test(name)) {
-                return "";
-            }
-        }
-
-        return name;
-    };
-
-    return ascii;
-}());
-
-if (typeof module != "undefined") {
-    module.exports = buster.format;
-}
-/*jslint eqeqeq: false, onevar: false, forin: true, nomen: false, regexp: false, plusplus: false*/
-/*global module, require, __dirname, document*/
-/**
- * Sinon core utilities. For internal use only.
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-var sinon = (function (buster) {
-    var div = typeof document != "undefined" && document.createElement("div");
-    var hasOwn = Object.prototype.hasOwnProperty;
-
-    function isDOMNode(obj) {
-        var success = false;
-
-        try {
-            obj.appendChild(div);
-            success = div.parentNode == obj;
-        } catch (e) {
-            return false;
-        } finally {
-            try {
-                obj.removeChild(div);
-            } catch (e) {
-                // Remove failed, not much we can do about that
-            }
-        }
-
-        return success;
-    }
-
-    function isElement(obj) {
-        return div && obj && obj.nodeType === 1 && isDOMNode(obj);
-    }
-
-    function isFunction(obj) {
-        return typeof obj === "function" || !!(obj && obj.constructor && obj.call && obj.apply);
-    }
-
-    function mirrorProperties(target, source) {
-        for (var prop in source) {
-            if (!hasOwn.call(target, prop)) {
-                target[prop] = source[prop];
-            }
-        }
-    }
-
-    function isRestorable (obj) {
-        return typeof obj === "function" && typeof obj.restore === "function" && obj.restore.sinon;
-    }
-
-    var sinon = {
-        wrapMethod: function wrapMethod(object, property, method) {
-            if (!object) {
-                throw new TypeError("Should wrap property of object");
-            }
-
-            if (typeof method != "function") {
-                throw new TypeError("Method wrapper should be function");
-            }
-
-            var wrappedMethod = object[property];
-
-            if (!isFunction(wrappedMethod)) {
-                throw new TypeError("Attempted to wrap " + (typeof wrappedMethod) + " property " +
-                                    property + " as function");
-            }
-
-            if (wrappedMethod.restore && wrappedMethod.restore.sinon) {
-                throw new TypeError("Attempted to wrap " + property + " which is already wrapped");
-            }
-
-            if (wrappedMethod.calledBefore) {
-                var verb = !!wrappedMethod.returns ? "stubbed" : "spied on";
-                throw new TypeError("Attempted to wrap " + property + " which is already " + verb);
-            }
-
-            // IE 8 does not support hasOwnProperty on the window object.
-            var owned = hasOwn.call(object, property);
-            object[property] = method;
-            method.displayName = property;
-
-            method.restore = function () {
-                // For prototype properties try to reset by delete first.
-                // If this fails (ex: localStorage on mobile safari) then force a reset
-                // via direct assignment.
-                if (!owned) {
-                    delete object[property];
-                }
-                if (object[property] === method) {
-                    object[property] = wrappedMethod;
-                }
-            };
-
-            method.restore.sinon = true;
-            mirrorProperties(method, wrappedMethod);
-
-            return method;
-        },
-
-        extend: function extend(target) {
-            for (var i = 1, l = arguments.length; i < l; i += 1) {
-                for (var prop in arguments[i]) {
-                    if (arguments[i].hasOwnProperty(prop)) {
-                        target[prop] = arguments[i][prop];
-                    }
-
-                    // DONT ENUM bug, only care about toString
-                    if (arguments[i].hasOwnProperty("toString") &&
-                        arguments[i].toString != target.toString) {
-                        target.toString = arguments[i].toString;
-                    }
-                }
-            }
-
-            return target;
-        },
-
-        create: function create(proto) {
-            var F = function () {};
-            F.prototype = proto;
-            return new F();
-        },
-
-        deepEqual: function deepEqual(a, b) {
-            if (sinon.match && sinon.match.isMatcher(a)) {
-                return a.test(b);
-            }
-            if (typeof a != "object" || typeof b != "object") {
-                return a === b;
-            }
-
-            if (isElement(a) || isElement(b)) {
-                return a === b;
-            }
-
-            if (a === b) {
-                return true;
-            }
-
-            if ((a === null && b !== null) || (a !== null && b === null)) {
-                return false;
-            }
-
-            var aString = Object.prototype.toString.call(a);
-            if (aString != Object.prototype.toString.call(b)) {
-                return false;
-            }
-
-            if (aString == "[object Array]") {
-                if (a.length !== b.length) {
-                    return false;
-                }
-
-                for (var i = 0, l = a.length; i < l; i += 1) {
-                    if (!deepEqual(a[i], b[i])) {
-                        return false;
-                    }
-                }
-
-                return true;
-            }
-
-            if (aString == "[object Date]") {
-                return a.valueOf() === b.valueOf();
-            }
-
-            var prop, aLength = 0, bLength = 0;
-
-            for (prop in a) {
-                aLength += 1;
-
-                if (!deepEqual(a[prop], b[prop])) {
-                    return false;
-                }
-            }
-
-            for (prop in b) {
-                bLength += 1;
-            }
-
-            return aLength == bLength;
-        },
-
-        functionName: function functionName(func) {
-            var name = func.displayName || func.name;
-
-            // Use function decomposition as a last resort to get function
-            // name. Does not rely on function decomposition to work - if it
-            // doesn't debugging will be slightly less informative
-            // (i.e. toString will say 'spy' rather than 'myFunc').
-            if (!name) {
-                var matches = func.toString().match(/function ([^\s\(]+)/);
-                name = matches && matches[1];
-            }
-
-            return name;
-        },
-
-        functionToString: function toString() {
-            if (this.getCall && this.callCount) {
-                var thisValue, prop, i = this.callCount;
-
-                while (i--) {
-                    thisValue = this.getCall(i).thisValue;
-
-                    for (prop in thisValue) {
-                        if (thisValue[prop] === this) {
-                            return prop;
-                        }
-                    }
-                }
-            }
-
-            return this.displayName || "sinon fake";
-        },
-
-        getConfig: function (custom) {
-            var config = {};
-            custom = custom || {};
-            var defaults = sinon.defaultConfig;
-
-            for (var prop in defaults) {
-                if (defaults.hasOwnProperty(prop)) {
-                    config[prop] = custom.hasOwnProperty(prop) ? custom[prop] : defaults[prop];
-                }
-            }
-
-            return config;
-        },
-
-        format: function (val) {
-            return "" + val;
-        },
-
-        defaultConfig: {
-            injectIntoThis: true,
-            injectInto: null,
-            properties: ["spy", "stub", "mock", "clock", "server", "requests"],
-            useFakeTimers: true,
-            useFakeServer: true
-        },
-
-        timesInWords: function timesInWords(count) {
-            return count == 1 && "once" ||
-                count == 2 && "twice" ||
-                count == 3 && "thrice" ||
-                (count || 0) + " times";
-        },
-
-        calledInOrder: function (spies) {
-            for (var i = 1, l = spies.length; i < l; i++) {
-                if (!spies[i - 1].calledBefore(spies[i]) || !spies[i].called) {
-                    return false;
-                }
-            }
-
-            return true;
-        },
-
-        orderByFirstCall: function (spies) {
-            return spies.sort(function (a, b) {
-                // uuid, won't ever be equal
-                var aCall = a.getCall(0);
-                var bCall = b.getCall(0);
-                var aId = aCall && aCall.callId || -1;
-                var bId = bCall && bCall.callId || -1;
-
-                return aId < bId ? -1 : 1;
-            });
-        },
-
-        log: function () {},
-
-        logError: function (label, err) {
-            var msg = label + " threw exception: "
-            sinon.log(msg + "[" + err.name + "] " + err.message);
-            if (err.stack) { sinon.log(err.stack); }
-
-            setTimeout(function () {
-                err.message = msg + err.message;
-                throw err;
-            }, 0);
-        },
-
-        typeOf: function (value) {
-            if (value === null) {
-                return "null";
-            }
-            else if (value === undefined) {
-                return "undefined";
-            }
-            var string = Object.prototype.toString.call(value);
-            return string.substring(8, string.length - 1).toLowerCase();
-        },
-
-        createStubInstance: function (constructor) {
-            if (typeof constructor !== "function") {
-                throw new TypeError("The constructor should be a function.");
-            }
-            return sinon.stub(sinon.create(constructor.prototype));
-        },
-
-        restore: function (object) {
-            if (object !== null && typeof object === "object") {
-                for (var prop in object) {
-                    if (isRestorable(object[prop])) {
-                        object[prop].restore();
-                    }
-                }
-            }
-            else if (isRestorable(object)) {
-                object.restore();
-            }
-        }
-    };
-
-    var isNode = typeof module == "object" && typeof require == "function";
-
-    if (isNode) {
-        try {
-            buster = { format: require("buster-format") };
-        } catch (e) {}
-        module.exports = sinon;
-        module.exports.spy = require("./sinon/spy");
-        module.exports.stub = require("./sinon/stub");
-        module.exports.mock = require("./sinon/mock");
-        module.exports.collection = require("./sinon/collection");
-        module.exports.assert = require("./sinon/assert");
-        module.exports.sandbox = require("./sinon/sandbox");
-        module.exports.test = require("./sinon/test");
-        module.exports.testCase = require("./sinon/test_case");
-        module.exports.assert = require("./sinon/assert");
-        module.exports.match = require("./sinon/match");
-    }
-
-    if (buster) {
-        var formatter = sinon.create(buster.format);
-        formatter.quoteStrings = false;
-        sinon.format = function () {
-            return formatter.ascii.apply(formatter, arguments);
-        };
-    } else if (isNode) {
-        try {
-            var util = require("util");
-            sinon.format = function (value) {
-                return typeof value == "object" && value.toString === Object.prototype.toString ? util.inspect(value) : value;
-            };
-        } catch (e) {
-            /* Node, but no util module - would be very old, but better safe than
-             sorry */
-        }
-    }
-
-    return sinon;
-}(typeof buster == "object" && buster));
-
-/* @depend ../sinon.js */
-/*jslint eqeqeq: false, onevar: false, plusplus: false*/
-/*global module, require, sinon*/
-/**
- * Match functions
- *
- * @author Maximilian Antoni (mail@maxantoni.de)
- * @license BSD
- *
- * Copyright (c) 2012 Maximilian Antoni
- */
-
-(function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-
-    if (!sinon && commonJSModule) {
-        sinon = require("../sinon");
-    }
-
-    if (!sinon) {
-        return;
-    }
-
-    function assertType(value, type, name) {
-        var actual = sinon.typeOf(value);
-        if (actual !== type) {
-            throw new TypeError("Expected type of " + name + " to be " +
-                type + ", but was " + actual);
-        }
-    }
-
-    var matcher = {
-        toString: function () {
-            return this.message;
-        }
-    };
-
-    function isMatcher(object) {
-        return matcher.isPrototypeOf(object);
-    }
-
-    function matchObject(expectation, actual) {
-        if (actual === null || actual === undefined) {
-            return false;
-        }
-        for (var key in expectation) {
-            if (expectation.hasOwnProperty(key)) {
-                var exp = expectation[key];
-                var act = actual[key];
-                if (match.isMatcher(exp)) {
-                    if (!exp.test(act)) {
-                        return false;
-                    }
-                } else if (sinon.typeOf(exp) === "object") {
-                    if (!matchObject(exp, act)) {
-                        return false;
-                    }
-                } else if (!sinon.deepEqual(exp, act)) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    matcher.or = function (m2) {
-        if (!isMatcher(m2)) {
-            throw new TypeError("Matcher expected");
-        }
-        var m1 = this;
-        var or = sinon.create(matcher);
-        or.test = function (actual) {
-            return m1.test(actual) || m2.test(actual);
-        };
-        or.message = m1.message + ".or(" + m2.message + ")";
-        return or;
-    };
-
-    matcher.and = function (m2) {
-        if (!isMatcher(m2)) {
-            throw new TypeError("Matcher expected");
-        }
-        var m1 = this;
-        var and = sinon.create(matcher);
-        and.test = function (actual) {
-            return m1.test(actual) && m2.test(actual);
-        };
-        and.message = m1.message + ".and(" + m2.message + ")";
-        return and;
-    };
-
-    var match = function (expectation, message) {
-        var m = sinon.create(matcher);
-        var type = sinon.typeOf(expectation);
-        switch (type) {
-        case "object":
-            if (typeof expectation.test === "function") {
-                m.test = function (actual) {
-                    return expectation.test(actual) === true;
-                };
-                m.message = "match(" + sinon.functionName(expectation.test) + ")";
-                return m;
-            }
-            var str = [];
-            for (var key in expectation) {
-                if (expectation.hasOwnProperty(key)) {
-                    str.push(key + ": " + expectation[key]);
-                }
-            }
-            m.test = function (actual) {
-                return matchObject(expectation, actual);
-            };
-            m.message = "match(" + str.join(", ") + ")";
-            break;
-        case "number":
-            m.test = function (actual) {
-                return expectation == actual;
-            };
-            break;
-        case "string":
-            m.test = function (actual) {
-                if (typeof actual !== "string") {
-                    return false;
-                }
-                return actual.indexOf(expectation) !== -1;
-            };
-            m.message = "match(\"" + expectation + "\")";
-            break;
-        case "regexp":
-            m.test = function (actual) {
-                if (typeof actual !== "string") {
-                    return false;
-                }
-                return expectation.test(actual);
-            };
-            break;
-        case "function":
-            m.test = expectation;
-            if (message) {
-                m.message = message;
-            } else {
-                m.message = "match(" + sinon.functionName(expectation) + ")";
-            }
-            break;
-        default:
-            m.test = function (actual) {
-              return sinon.deepEqual(expectation, actual);
-            };
-        }
-        if (!m.message) {
-            m.message = "match(" + expectation + ")";
-        }
-        return m;
-    };
-
-    match.isMatcher = isMatcher;
-
-    match.any = match(function () {
-        return true;
-    }, "any");
-
-    match.defined = match(function (actual) {
-        return actual !== null && actual !== undefined;
-    }, "defined");
-
-    match.truthy = match(function (actual) {
-        return !!actual;
-    }, "truthy");
-
-    match.falsy = match(function (actual) {
-        return !actual;
-    }, "falsy");
-
-    match.same = function (expectation) {
-        return match(function (actual) {
-            return expectation === actual;
-        }, "same(" + expectation + ")");
-    };
-
-    match.typeOf = function (type) {
-        assertType(type, "string", "type");
-        return match(function (actual) {
-            return sinon.typeOf(actual) === type;
-        }, "typeOf(\"" + type + "\")");
-    };
-
-    match.instanceOf = function (type) {
-        assertType(type, "function", "type");
-        return match(function (actual) {
-            return actual instanceof type;
-        }, "instanceOf(" + sinon.functionName(type) + ")");
-    };
-
-    function createPropertyMatcher(propertyTest, messagePrefix) {
-        return function (property, value) {
-            assertType(property, "string", "property");
-            var onlyProperty = arguments.length === 1;
-            var message = messagePrefix + "(\"" + property + "\"";
-            if (!onlyProperty) {
-                message += ", " + value;
-            }
-            message += ")";
-            return match(function (actual) {
-                if (actual === undefined || actual === null ||
-                        !propertyTest(actual, property)) {
-                    return false;
-                }
-                return onlyProperty || sinon.deepEqual(value, actual[property]);
-            }, message);
-        };
-    }
-
-    match.has = createPropertyMatcher(function (actual, property) {
-        if (typeof actual === "object") {
-            return property in actual;
-        }
-        return actual[property] !== undefined;
-    }, "has");
-
-    match.hasOwn = createPropertyMatcher(function (actual, property) {
-        return actual.hasOwnProperty(property);
-    }, "hasOwn");
-
-    match.bool = match.typeOf("boolean");
-    match.number = match.typeOf("number");
-    match.string = match.typeOf("string");
-    match.object = match.typeOf("object");
-    match.func = match.typeOf("function");
-    match.array = match.typeOf("array");
-    match.regexp = match.typeOf("regexp");
-    match.date = match.typeOf("date");
-
-    if (commonJSModule) {
-        module.exports = match;
-    } else {
-        sinon.match = match;
-    }
-}(typeof sinon == "object" && sinon || null));
-
-/**
-  * @depend ../sinon.js
-  * @depend match.js
-  */
-/*jslint eqeqeq: false, onevar: false, plusplus: false*/
-/*global module, require, sinon*/
-/**
-  * Spy calls
-  *
-  * @author Christian Johansen (christian@cjohansen.no)
-  * @author Maximilian Antoni (mail@maxantoni.de)
-  * @license BSD
-  *
-  * Copyright (c) 2010-2013 Christian Johansen
-  * Copyright (c) 2013 Maximilian Antoni
-  */
-
-var commonJSModule = typeof module == "object" && typeof require == "function";
-
-if (!this.sinon && commonJSModule) {
-    var sinon = require("../sinon");
-}
-
-(function (sinon) {
-    function throwYieldError(proxy, text, args) {
-        var msg = sinon.functionName(proxy) + text;
-        if (args.length) {
-            msg += " Received [" + slice.call(args).join(", ") + "]";
-        }
-        throw new Error(msg);
-    }
-
-    var slice = Array.prototype.slice;
-
-    var callProto = {
-        calledOn: function calledOn(thisValue) {
-            if (sinon.match && sinon.match.isMatcher(thisValue)) {
-                return thisValue.test(this.thisValue);
-            }
-            return this.thisValue === thisValue;
-        },
-
-        calledWith: function calledWith() {
-            for (var i = 0, l = arguments.length; i < l; i += 1) {
-                if (!sinon.deepEqual(arguments[i], this.args[i])) {
-                    return false;
-                }
-            }
-
-            return true;
-        },
-
-        calledWithMatch: function calledWithMatch() {
-            for (var i = 0, l = arguments.length; i < l; i += 1) {
-                var actual = this.args[i];
-                var expectation = arguments[i];
-                if (!sinon.match || !sinon.match(expectation).test(actual)) {
-                    return false;
-                }
-            }
-            return true;
-        },
-
-        calledWithExactly: function calledWithExactly() {
-            return arguments.length == this.args.length &&
-                this.calledWith.apply(this, arguments);
-        },
-
-        notCalledWith: function notCalledWith() {
-            return !this.calledWith.apply(this, arguments);
-        },
-
-        notCalledWithMatch: function notCalledWithMatch() {
-            return !this.calledWithMatch.apply(this, arguments);
-        },
-
-        returned: function returned(value) {
-            return sinon.deepEqual(value, this.returnValue);
-        },
-
-        threw: function threw(error) {
-            if (typeof error === "undefined" || !this.exception) {
-                return !!this.exception;
-            }
-
-            return this.exception === error || this.exception.name === error;
-        },
-
-        calledWithNew: function calledWithNew(thisValue) {
-            return this.thisValue instanceof this.proxy;
-        },
-
-        calledBefore: function (other) {
-            return this.callId < other.callId;
-        },
-
-        calledAfter: function (other) {
-            return this.callId > other.callId;
-        },
-
-        callArg: function (pos) {
-            this.args[pos]();
-        },
-
-        callArgOn: function (pos, thisValue) {
-            this.args[pos].apply(thisValue);
-        },
-
-        callArgWith: function (pos) {
-            this.callArgOnWith.apply(this, [pos, null].concat(slice.call(arguments, 1)));
-        },
-
-        callArgOnWith: function (pos, thisValue) {
-            var args = slice.call(arguments, 2);
-            this.args[pos].apply(thisValue, args);
-        },
-
-        "yield": function () {
-            this.yieldOn.apply(this, [null].concat(slice.call(arguments, 0)));
-        },
-
-        yieldOn: function (thisValue) {
-            var args = this.args;
-            for (var i = 0, l = args.length; i < l; ++i) {
-                if (typeof args[i] === "function") {
-                    args[i].apply(thisValue, slice.call(arguments, 1));
-                    return;
-                }
-            }
-            throwYieldError(this.proxy, " cannot yield since no callback was passed.", args);
-        },
-
-        yieldTo: function (prop) {
-            this.yieldToOn.apply(this, [prop, null].concat(slice.call(arguments, 1)));
-        },
-
-        yieldToOn: function (prop, thisValue) {
-            var args = this.args;
-            for (var i = 0, l = args.length; i < l; ++i) {
-                if (args[i] && typeof args[i][prop] === "function") {
-                    args[i][prop].apply(thisValue, slice.call(arguments, 2));
-                    return;
-                }
-            }
-            throwYieldError(this.proxy, " cannot yield to '" + prop +
-                "' since no callback was passed.", args);
-        },
-
-        toString: function () {
-            var callStr = this.proxy.toString() + "(";
-            var args = [];
-
-            for (var i = 0, l = this.args.length; i < l; ++i) {
-                args.push(sinon.format(this.args[i]));
-            }
-
-            callStr = callStr + args.join(", ") + ")";
-
-            if (typeof this.returnValue != "undefined") {
-                callStr += " => " + sinon.format(this.returnValue);
-            }
-
-            if (this.exception) {
-                callStr += " !" + this.exception.name;
-
-                if (this.exception.message) {
-                    callStr += "(" + this.exception.message + ")";
-                }
-            }
-
-            return callStr;
-        }
-    };
-
-    callProto.invokeCallback = callProto.yield;
-
-    function createSpyCall(spy, thisValue, args, returnValue, exception, id) {
-        if (typeof id !== "number") {
-            throw new TypeError("Call id is not a number");
-        }
-        var proxyCall = sinon.create(callProto);
-        proxyCall.proxy = spy;
-        proxyCall.thisValue = thisValue;
-        proxyCall.args = args;
-        proxyCall.returnValue = returnValue;
-        proxyCall.exception = exception;
-        proxyCall.callId = id;
-
-        return proxyCall;
-    };
-    createSpyCall.toString = callProto.toString; // used by mocks
-
-    sinon.spyCall = createSpyCall;
-}(typeof sinon == "object" && sinon || null));
-
-/**
-  * @depend ../sinon.js
-  */
-/*jslint eqeqeq: false, onevar: false, plusplus: false*/
-/*global module, require, sinon*/
-/**
-  * Spy functions
-  *
-  * @author Christian Johansen (christian@cjohansen.no)
-  * @license BSD
-  *
-  * Copyright (c) 2010-2013 Christian Johansen
-  */
-
-(function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-    var push = Array.prototype.push;
-    var slice = Array.prototype.slice;
-    var callId = 0;
-
-    function spy(object, property) {
-        if (!property && typeof object == "function") {
-            return spy.create(object);
-        }
-
-        if (!object && !property) {
-            return spy.create(function () { });
-        }
-
-        var method = object[property];
-        return sinon.wrapMethod(object, property, spy.create(method));
-    }
-
-    function matchingFake(fakes, args, strict) {
-        if (!fakes) {
-            return;
-        }
-
-        var alen = args.length;
-
-        for (var i = 0, l = fakes.length; i < l; i++) {
-            if (fakes[i].matches(args, strict)) {
-                return fakes[i];
-            }
-        }
-    }
-
-    function incrementCallCount() {
-        this.called = true;
-        this.callCount += 1;
-        this.notCalled = false;
-        this.calledOnce = this.callCount == 1;
-        this.calledTwice = this.callCount == 2;
-        this.calledThrice = this.callCount == 3;
-    }
-
-    function createCallProperties() {
-        this.firstCall = this.getCall(0);
-        this.secondCall = this.getCall(1);
-        this.thirdCall = this.getCall(2);
-        this.lastCall = this.getCall(this.callCount - 1);
-    }
-
-    var vars = "a,b,c,d,e,f,g,h,i,j,k,l";
-    function createProxy(func) {
-        // Retain the function length:
-        var p;
-        if (func.length) {
-            eval("p = (function proxy(" + vars.substring(0, func.length * 2 - 1) +
-                ") { return p.invoke(func, this, slice.call(arguments)); });");
-        }
-        else {
-            p = function proxy() {
-                return p.invoke(func, this, slice.call(arguments));
-            };
-        }
-        return p;
-    }
-
-    var uuid = 0;
-
-    // Public API
-    var spyApi = {
-        reset: function () {
-            this.called = false;
-            this.notCalled = true;
-            this.calledOnce = false;
-            this.calledTwice = false;
-            this.calledThrice = false;
-            this.callCount = 0;
-            this.firstCall = null;
-            this.secondCall = null;
-            this.thirdCall = null;
-            this.lastCall = null;
-            this.args = [];
-            this.returnValues = [];
-            this.thisValues = [];
-            this.exceptions = [];
-            this.callIds = [];
-            if (this.fakes) {
-                for (var i = 0; i < this.fakes.length; i++) {
-                    this.fakes[i].reset();
-                }
-            }
-        },
-
-        create: function create(func) {
-            var name;
-
-            if (typeof func != "function") {
-                func = function () { };
-            } else {
-                name = sinon.functionName(func);
-            }
-
-            var proxy = createProxy(func);
-
-            sinon.extend(proxy, spy);
-            delete proxy.create;
-            sinon.extend(proxy, func);
-
-            proxy.reset();
-            proxy.prototype = func.prototype;
-            proxy.displayName = name || "spy";
-            proxy.toString = sinon.functionToString;
-            proxy._create = sinon.spy.create;
-            proxy.id = "spy#" + uuid++;
-
-            return proxy;
-        },
-
-        invoke: function invoke(func, thisValue, args) {
-            var matching = matchingFake(this.fakes, args);
-            var exception, returnValue;
-
-            incrementCallCount.call(this);
-            push.call(this.thisValues, thisValue);
-            push.call(this.args, args);
-            push.call(this.callIds, callId++);
-
-            try {
-                if (matching) {
-                    returnValue = matching.invoke(func, thisValue, args);
-                } else {
-                    returnValue = (this.func || func).apply(thisValue, args);
-                }
-            } catch (e) {
-                push.call(this.returnValues, undefined);
-                exception = e;
-                throw e;
-            } finally {
-                push.call(this.exceptions, exception);
-            }
-
-            push.call(this.returnValues, returnValue);
-
-            createCallProperties.call(this);
-
-            return returnValue;
-        },
-
-        getCall: function getCall(i) {
-            if (i < 0 || i >= this.callCount) {
-                return null;
-            }
-
-            return sinon.spyCall(this, this.thisValues[i], this.args[i],
-                                    this.returnValues[i], this.exceptions[i],
-                                    this.callIds[i]);
-        },
-
-        calledBefore: function calledBefore(spyFn) {
-            if (!this.called) {
-                return false;
-            }
-
-            if (!spyFn.called) {
-                return true;
-            }
-
-            return this.callIds[0] < spyFn.callIds[spyFn.callIds.length - 1];
-        },
-
-        calledAfter: function calledAfter(spyFn) {
-            if (!this.called || !spyFn.called) {
-                return false;
-            }
-
-            return this.callIds[this.callCount - 1] > spyFn.callIds[spyFn.callCount - 1];
-        },
-
-        withArgs: function () {
-            var args = slice.call(arguments);
-
-            if (this.fakes) {
-                var match = matchingFake(this.fakes, args, true);
-
-                if (match) {
-                    return match;
-                }
-            } else {
-                this.fakes = [];
-            }
-
-            var original = this;
-            var fake = this._create();
-            fake.matchingAguments = args;
-            push.call(this.fakes, fake);
-
-            fake.withArgs = function () {
-                return original.withArgs.apply(original, arguments);
-            };
-
-            for (var i = 0; i < this.args.length; i++) {
-                if (fake.matches(this.args[i])) {
-                    incrementCallCount.call(fake);
-                    push.call(fake.thisValues, this.thisValues[i]);
-                    push.call(fake.args, this.args[i]);
-                    push.call(fake.returnValues, this.returnValues[i]);
-                    push.call(fake.exceptions, this.exceptions[i]);
-                    push.call(fake.callIds, this.callIds[i]);
-                }
-            }
-            createCallProperties.call(fake);
-
-            return fake;
-        },
-
-        matches: function (args, strict) {
-            var margs = this.matchingAguments;
-
-            if (margs.length <= args.length &&
-                sinon.deepEqual(margs, args.slice(0, margs.length))) {
-                return !strict || margs.length == args.length;
-            }
-        },
-
-        printf: function (format) {
-            var spy = this;
-            var args = slice.call(arguments, 1);
-            var formatter;
-
-            return (format || "").replace(/%(.)/g, function (match, specifyer) {
-                formatter = spyApi.formatters[specifyer];
-
-                if (typeof formatter == "function") {
-                    return formatter.call(null, spy, args);
-                } else if (!isNaN(parseInt(specifyer), 10)) {
-                    return sinon.format(args[specifyer - 1]);
-                }
-
-                return "%" + specifyer;
-            });
-        }
-    };
-
-    function delegateToCalls(method, matchAny, actual, notCalled) {
-        spyApi[method] = function () {
-            if (!this.called) {
-                if (notCalled) {
-                    return notCalled.apply(this, arguments);
-                }
-                return false;
-            }
-
-            var currentCall;
-            var matches = 0;
-
-            for (var i = 0, l = this.callCount; i < l; i += 1) {
-                currentCall = this.getCall(i);
-
-                if (currentCall[actual || method].apply(currentCall, arguments)) {
-                    matches += 1;
-
-                    if (matchAny) {
-                        return true;
-                    }
-                }
-            }
-
-            return matches === this.callCount;
-        };
-    }
-
-    delegateToCalls("calledOn", true);
-    delegateToCalls("alwaysCalledOn", false, "calledOn");
-    delegateToCalls("calledWith", true);
-    delegateToCalls("calledWithMatch", true);
-    delegateToCalls("alwaysCalledWith", false, "calledWith");
-    delegateToCalls("alwaysCalledWithMatch", false, "calledWithMatch");
-    delegateToCalls("calledWithExactly", true);
-    delegateToCalls("alwaysCalledWithExactly", false, "calledWithExactly");
-    delegateToCalls("neverCalledWith", false, "notCalledWith",
-        function () { return true; });
-    delegateToCalls("neverCalledWithMatch", false, "notCalledWithMatch",
-        function () { return true; });
-    delegateToCalls("threw", true);
-    delegateToCalls("alwaysThrew", false, "threw");
-    delegateToCalls("returned", true);
-    delegateToCalls("alwaysReturned", false, "returned");
-    delegateToCalls("calledWithNew", true);
-    delegateToCalls("alwaysCalledWithNew", false, "calledWithNew");
-    delegateToCalls("callArg", false, "callArgWith", function () {
-        throw new Error(this.toString() + " cannot call arg since it was not yet invoked.");
-    });
-    spyApi.callArgWith = spyApi.callArg;
-    delegateToCalls("callArgOn", false, "callArgOnWith", function () {
-        throw new Error(this.toString() + " cannot call arg since it was not yet invoked.");
-    });
-    spyApi.callArgOnWith = spyApi.callArgOn;
-    delegateToCalls("yield", false, "yield", function () {
-        throw new Error(this.toString() + " cannot yield since it was not yet invoked.");
-    });
-    // "invokeCallback" is an alias for "yield" since "yield" is invalid in strict mode.
-    spyApi.invokeCallback = spyApi.yield;
-    delegateToCalls("yieldOn", false, "yieldOn", function () {
-        throw new Error(this.toString() + " cannot yield since it was not yet invoked.");
-    });
-    delegateToCalls("yieldTo", false, "yieldTo", function (property) {
-        throw new Error(this.toString() + " cannot yield to '" + property +
-            "' since it was not yet invoked.");
-    });
-    delegateToCalls("yieldToOn", false, "yieldToOn", function (property) {
-        throw new Error(this.toString() + " cannot yield to '" + property +
-            "' since it was not yet invoked.");
-    });
-
-    spyApi.formatters = {
-        "c": function (spy) {
-            return sinon.timesInWords(spy.callCount);
-        },
-
-        "n": function (spy) {
-            return spy.toString();
-        },
-
-        "C": function (spy) {
-            var calls = [];
-
-            for (var i = 0, l = spy.callCount; i < l; ++i) {
-                var stringifiedCall = "    " + spy.getCall(i).toString();
-                if (/\n/.test(calls[i - 1])) {
-                    stringifiedCall = "\n" + stringifiedCall;
-                }
-                push.call(calls, stringifiedCall);
-            }
-
-            return calls.length > 0 ? "\n" + calls.join("\n") : "";
-        },
-
-        "t": function (spy) {
-            var objects = [];
-
-            for (var i = 0, l = spy.callCount; i < l; ++i) {
-                push.call(objects, sinon.format(spy.thisValues[i]));
-            }
-
-            return objects.join(", ");
-        },
-
-        "*": function (spy, args) {
-            var formatted = [];
-
-            for (var i = 0, l = args.length; i < l; ++i) {
-                push.call(formatted, sinon.format(args[i]));
-            }
-
-            return formatted.join(", ");
-        }
-    };
-
-    sinon.extend(spy, spyApi);
-
-    spy.spyCall = sinon.spyCall;
-
-    if (commonJSModule) {
-        module.exports = spy;
-    } else {
-        sinon.spy = spy;
-    }
-}(typeof sinon == "object" && sinon || null));
-
-/**
- * @depend ../sinon.js
- * @depend spy.js
- */
-/*jslint eqeqeq: false, onevar: false*/
-/*global module, require, sinon*/
-/**
- * Stub functions
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-(function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-
-    if (!sinon && commonJSModule) {
-        sinon = require("../sinon");
-    }
-
-    if (!sinon) {
-        return;
-    }
-
-    function stub(object, property, func) {
-        if (!!func && typeof func != "function") {
-            throw new TypeError("Custom stub should be function");
-        }
-
-        var wrapper;
-
-        if (func) {
-            wrapper = sinon.spy && sinon.spy.create ? sinon.spy.create(func) : func;
-        } else {
-            wrapper = stub.create();
-        }
-
-        if (!object && !property) {
-            return sinon.stub.create();
-        }
-
-        if (!property && !!object && typeof object == "object") {
-            for (var prop in object) {
-                if (typeof object[prop] === "function") {
-                    stub(object, prop);
-                }
-            }
-
-            return object;
-        }
-
-        return sinon.wrapMethod(object, property, wrapper);
-    }
-
-    function getChangingValue(stub, property) {
-        var index = stub.callCount - 1;
-        var values = stub[property];
-        var prop = index in values ? values[index] : values[values.length - 1];
-        stub[property + "Last"] = prop;
-
-        return prop;
-    }
-
-    function getCallback(stub, args) {
-        var callArgAt = getChangingValue(stub, "callArgAts");
-
-        if (callArgAt < 0) {
-            var callArgProp = getChangingValue(stub, "callArgProps");
-
-            for (var i = 0, l = args.length; i < l; ++i) {
-                if (!callArgProp && typeof args[i] == "function") {
-                    return args[i];
-                }
-
-                if (callArgProp && args[i] &&
-                    typeof args[i][callArgProp] == "function") {
-                    return args[i][callArgProp];
-                }
-            }
-
-            return null;
-        }
-
-        return args[callArgAt];
-    }
-
-    var join = Array.prototype.join;
-
-    function getCallbackError(stub, func, args) {
-        if (stub.callArgAtsLast < 0) {
-            var msg;
-
-            if (stub.callArgPropsLast) {
-                msg = sinon.functionName(stub) +
-                    " expected to yield to '" + stub.callArgPropsLast +
-                    "', but no object with such a property was passed."
-            } else {
-                msg = sinon.functionName(stub) +
-                            " expected to yield, but no callback was passed."
-            }
-
-            if (args.length > 0) {
-                msg += " Received [" + join.call(args, ", ") + "]";
-            }
-
-            return msg;
-        }
-
-        return "argument at index " + stub.callArgAtsLast + " is not a function: " + func;
-    }
-
-    var nextTick = (function () {
-        if (typeof process === "object" && typeof process.nextTick === "function") {
-            return process.nextTick;
-        } else if (typeof setImmediate === "function") {
-            return setImmediate;
-        } else {
-            return function (callback) {
-                setTimeout(callback, 0);
-            };
-        }
-    })();
-
-    function callCallback(stub, args) {
-        if (stub.callArgAts.length > 0) {
-            var func = getCallback(stub, args);
-
-            if (typeof func != "function") {
-                throw new TypeError(getCallbackError(stub, func, args));
-            }
-
-            var callbackArguments = getChangingValue(stub, "callbackArguments");
-            var callbackContext = getChangingValue(stub, "callbackContexts");
-
-            if (stub.callbackAsync) {
-                nextTick(function() {
-                    func.apply(callbackContext, callbackArguments);
-                });
-            } else {
-                func.apply(callbackContext, callbackArguments);
-            }
-        }
-    }
-
-    var uuid = 0;
-
-    sinon.extend(stub, (function () {
-        var slice = Array.prototype.slice, proto;
-
-        function throwsException(error, message) {
-            if (typeof error == "string") {
-                this.exception = new Error(message || "");
-                this.exception.name = error;
-            } else if (!error) {
-                this.exception = new Error("Error");
-            } else {
-                this.exception = error;
-            }
-
-            return this;
-        }
-
-        proto = {
-            create: function create() {
-                var functionStub = function () {
-
-                    callCallback(functionStub, arguments);
-
-                    if (functionStub.exception) {
-                        throw functionStub.exception;
-                    } else if (typeof functionStub.returnArgAt == 'number') {
-                        return arguments[functionStub.returnArgAt];
-                    } else if (functionStub.returnThis) {
-                        return this;
-                    }
-                    return functionStub.returnValue;
-                };
-
-                functionStub.id = "stub#" + uuid++;
-                var orig = functionStub;
-                functionStub = sinon.spy.create(functionStub);
-                functionStub.func = orig;
-
-                functionStub.callArgAts = [];
-                functionStub.callbackArguments = [];
-                functionStub.callbackContexts = [];
-                functionStub.callArgProps = [];
-
-                sinon.extend(functionStub, stub);
-                functionStub._create = sinon.stub.create;
-                functionStub.displayName = "stub";
-                functionStub.toString = sinon.functionToString;
-
-                return functionStub;
-            },
-
-            resetBehavior: function () {
-                var i;
-
-                this.callArgAts = [];
-                this.callbackArguments = [];
-                this.callbackContexts = [];
-                this.callArgProps = [];
-
-                delete this.returnValue;
-                delete this.returnArgAt;
-                this.returnThis = false;
-
-                if (this.fakes) {
-                    for (i = 0; i < this.fakes.length; i++) {
-                        this.fakes[i].resetBehavior();
-                    }
-                }
-            },
-
-            returns: function returns(value) {
-                this.returnValue = value;
-
-                return this;
-            },
-
-            returnsArg: function returnsArg(pos) {
-                if (typeof pos != "number") {
-                    throw new TypeError("argument index is not number");
-                }
-
-                this.returnArgAt = pos;
-
-                return this;
-            },
-
-            returnsThis: function returnsThis() {
-                this.returnThis = true;
-
-                return this;
-            },
-
-            "throws": throwsException,
-            throwsException: throwsException,
-
-            callsArg: function callsArg(pos) {
-                if (typeof pos != "number") {
-                    throw new TypeError("argument index is not number");
-                }
-
-                this.callArgAts.push(pos);
-                this.callbackArguments.push([]);
-                this.callbackContexts.push(undefined);
-                this.callArgProps.push(undefined);
-
-                return this;
-            },
-
-            callsArgOn: function callsArgOn(pos, context) {
-                if (typeof pos != "number") {
-                    throw new TypeError("argument index is not number");
-                }
-                if (typeof context != "object") {
-                    throw new TypeError("argument context is not an object");
-                }
-
-                this.callArgAts.push(pos);
-                this.callbackArguments.push([]);
-                this.callbackContexts.push(context);
-                this.callArgProps.push(undefined);
-
-                return this;
-            },
-
-            callsArgWith: function callsArgWith(pos) {
-                if (typeof pos != "number") {
-                    throw new TypeError("argument index is not number");
-                }
-
-                this.callArgAts.push(pos);
-                this.callbackArguments.push(slice.call(arguments, 1));
-                this.callbackContexts.push(undefined);
-                this.callArgProps.push(undefined);
-
-                return this;
-            },
-
-            callsArgOnWith: function callsArgWith(pos, context) {
-                if (typeof pos != "number") {
-                    throw new TypeError("argument index is not number");
-                }
-                if (typeof context != "object") {
-                    throw new TypeError("argument context is not an object");
-                }
-
-                this.callArgAts.push(pos);
-                this.callbackArguments.push(slice.call(arguments, 2));
-                this.callbackContexts.push(context);
-                this.callArgProps.push(undefined);
-
-                return this;
-            },
-
-            yields: function () {
-                this.callArgAts.push(-1);
-                this.callbackArguments.push(slice.call(arguments, 0));
-                this.callbackContexts.push(undefined);
-                this.callArgProps.push(undefined);
-
-                return this;
-            },
-
-            yieldsOn: function (context) {
-                if (typeof context != "object") {
-                    throw new TypeError("argument context is not an object");
-                }
-
-                this.callArgAts.push(-1);
-                this.callbackArguments.push(slice.call(arguments, 1));
-                this.callbackContexts.push(context);
-                this.callArgProps.push(undefined);
-
-                return this;
-            },
-
-            yieldsTo: function (prop) {
-                this.callArgAts.push(-1);
-                this.callbackArguments.push(slice.call(arguments, 1));
-                this.callbackContexts.push(undefined);
-                this.callArgProps.push(prop);
-
-                return this;
-            },
-
-            yieldsToOn: function (prop, context) {
-                if (typeof context != "object") {
-                    throw new TypeError("argument context is not an object");
-                }
-
-                this.callArgAts.push(-1);
-                this.callbackArguments.push(slice.call(arguments, 2));
-                this.callbackContexts.push(context);
-                this.callArgProps.push(prop);
-
-                return this;
-            }
-        };
-
-        // create asynchronous versions of callsArg* and yields* methods
-        for (var method in proto) {
-            // need to avoid creating anotherasync versions of the newly added async methods
-            if (proto.hasOwnProperty(method) &&
-                method.match(/^(callsArg|yields|thenYields$)/) &&
-                !method.match(/Async/)) {
-                proto[method + 'Async'] = (function (syncFnName) {
-                    return function () {
-                        this.callbackAsync = true;
-                        return this[syncFnName].apply(this, arguments);
-                    };
-                })(method);
-            }
-        }
-
-        return proto;
-
-    }()));
-
-    if (commonJSModule) {
-        module.exports = stub;
-    } else {
-        sinon.stub = stub;
-    }
-}(typeof sinon == "object" && sinon || null));
-
-/**
- * @depend ../sinon.js
- * @depend stub.js
- */
-/*jslint eqeqeq: false, onevar: false, nomen: false*/
-/*global module, require, sinon*/
-/**
- * Mock functions.
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-(function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-    var push = [].push;
-
-    if (!sinon && commonJSModule) {
-        sinon = require("../sinon");
-    }
-
-    if (!sinon) {
-        return;
-    }
-
-    function mock(object) {
-        if (!object) {
-            return sinon.expectation.create("Anonymous mock");
-        }
-
-        return mock.create(object);
-    }
-
-    sinon.mock = mock;
-
-    sinon.extend(mock, (function () {
-        function each(collection, callback) {
-            if (!collection) {
-                return;
-            }
-
-            for (var i = 0, l = collection.length; i < l; i += 1) {
-                callback(collection[i]);
-            }
-        }
-
-        return {
-            create: function create(object) {
-                if (!object) {
-                    throw new TypeError("object is null");
-                }
-
-                var mockObject = sinon.extend({}, mock);
-                mockObject.object = object;
-                delete mockObject.create;
-
-                return mockObject;
-            },
-
-            expects: function expects(method) {
-                if (!method) {
-                    throw new TypeError("method is falsy");
-                }
-
-                if (!this.expectations) {
-                    this.expectations = {};
-                    this.proxies = [];
-                }
-
-                if (!this.expectations[method]) {
-                    this.expectations[method] = [];
-                    var mockObject = this;
-
-                    sinon.wrapMethod(this.object, method, function () {
-                        return mockObject.invokeMethod(method, this, arguments);
-                    });
-
-                    push.call(this.proxies, method);
-                }
-
-                var expectation = sinon.expectation.create(method);
-                push.call(this.expectations[method], expectation);
-
-                return expectation;
-            },
-
-            restore: function restore() {
-                var object = this.object;
-
-                each(this.proxies, function (proxy) {
-                    if (typeof object[proxy].restore == "function") {
-                        object[proxy].restore();
-                    }
-                });
-            },
-
-            verify: function verify() {
-                var expectations = this.expectations || {};
-                var messages = [], met = [];
-
-                each(this.proxies, function (proxy) {
-                    each(expectations[proxy], function (expectation) {
-                        if (!expectation.met()) {
-                            push.call(messages, expectation.toString());
-                        } else {
-                            push.call(met, expectation.toString());
-                        }
-                    });
-                });
-
-                this.restore();
-
-                if (messages.length > 0) {
-                    sinon.expectation.fail(messages.concat(met).join("\n"));
-                } else {
-                    sinon.expectation.pass(messages.concat(met).join("\n"));
-                }
-
-                return true;
-            },
-
-            invokeMethod: function invokeMethod(method, thisValue, args) {
-                var expectations = this.expectations && this.expectations[method];
-                var length = expectations && expectations.length || 0, i;
-
-                for (i = 0; i < length; i += 1) {
-                    if (!expectations[i].met() &&
-                        expectations[i].allowsCall(thisValue, args)) {
-                        return expectations[i].apply(thisValue, args);
-                    }
-                }
-
-                var messages = [], available, exhausted = 0;
-
-                for (i = 0; i < length; i += 1) {
-                    if (expectations[i].allowsCall(thisValue, args)) {
-                        available = available || expectations[i];
-                    } else {
-                        exhausted += 1;
-                    }
-                    push.call(messages, "    " + expectations[i].toString());
-                }
-
-                if (exhausted === 0) {
-                    return available.apply(thisValue, args);
-                }
-
-                messages.unshift("Unexpected call: " + sinon.spyCall.toString.call({
-                    proxy: method,
-                    args: args
-                }));
-
-                sinon.expectation.fail(messages.join("\n"));
-            }
-        };
-    }()));
-
-    var times = sinon.timesInWords;
-
-    sinon.expectation = (function () {
-        var slice = Array.prototype.slice;
-        var _invoke = sinon.spy.invoke;
-
-        function callCountInWords(callCount) {
-            if (callCount == 0) {
-                return "never called";
-            } else {
-                return "called " + times(callCount);
-            }
-        }
-
-        function expectedCallCountInWords(expectation) {
-            var min = expectation.minCalls;
-            var max = expectation.maxCalls;
-
-            if (typeof min == "number" && typeof max == "number") {
-                var str = times(min);
-
-                if (min != max) {
-                    str = "at least " + str + " and at most " + times(max);
-                }
-
-                return str;
-            }
-
-            if (typeof min == "number") {
-                return "at least " + times(min);
-            }
-
-            return "at most " + times(max);
-        }
-
-        function receivedMinCalls(expectation) {
-            var hasMinLimit = typeof expectation.minCalls == "number";
-            return !hasMinLimit || expectation.callCount >= expectation.minCalls;
-        }
-
-        function receivedMaxCalls(expectation) {
-            if (typeof expectation.maxCalls != "number") {
-                return false;
-            }
-
-            return expectation.callCount == expectation.maxCalls;
-        }
-
-        return {
-            minCalls: 1,
-            maxCalls: 1,
-
-            create: function create(methodName) {
-                var expectation = sinon.extend(sinon.stub.create(), sinon.expectation);
-                delete expectation.create;
-                expectation.method = methodName;
-
-                return expectation;
-            },
-
-            invoke: function invoke(func, thisValue, args) {
-                this.verifyCallAllowed(thisValue, args);
-
-                return _invoke.apply(this, arguments);
-            },
-
-            atLeast: function atLeast(num) {
-                if (typeof num != "number") {
-                    throw new TypeError("'" + num + "' is not number");
-                }
-
-                if (!this.limitsSet) {
-                    this.maxCalls = null;
-                    this.limitsSet = true;
-                }
-
-                this.minCalls = num;
-
-                return this;
-            },
-
-            atMost: function atMost(num) {
-                if (typeof num != "number") {
-                    throw new TypeError("'" + num + "' is not number");
-                }
-
-                if (!this.limitsSet) {
-                    this.minCalls = null;
-                    this.limitsSet = true;
-                }
-
-                this.maxCalls = num;
-
-                return this;
-            },
-
-            never: function never() {
-                return this.exactly(0);
-            },
-
-            once: function once() {
-                return this.exactly(1);
-            },
-
-            twice: function twice() {
-                return this.exactly(2);
-            },
-
-            thrice: function thrice() {
-                return this.exactly(3);
-            },
-
-            exactly: function exactly(num) {
-                if (typeof num != "number") {
-                    throw new TypeError("'" + num + "' is not a number");
-                }
-
-                this.atLeast(num);
-                return this.atMost(num);
-            },
-
-            met: function met() {
-                return !this.failed && receivedMinCalls(this);
-            },
-
-            verifyCallAllowed: function verifyCallAllowed(thisValue, args) {
-                if (receivedMaxCalls(this)) {
-                    this.failed = true;
-                    sinon.expectation.fail(this.method + " already called " + times(this.maxCalls));
-                }
-
-                if ("expectedThis" in this && this.expectedThis !== thisValue) {
-                    sinon.expectation.fail(this.method + " called with " + thisValue + " as thisValue, expected " +
-                        this.expectedThis);
-                }
-
-                if (!("expectedArguments" in this)) {
-                    return;
-                }
-
-                if (!args) {
-                    sinon.expectation.fail(this.method + " received no arguments, expected " +
-                        sinon.format(this.expectedArguments));
-                }
-
-                if (args.length < this.expectedArguments.length) {
-                    sinon.expectation.fail(this.method + " received too few arguments (" + sinon.format(args) +
-                        "), expected " + sinon.format(this.expectedArguments));
-                }
-
-                if (this.expectsExactArgCount &&
-                    args.length != this.expectedArguments.length) {
-                    sinon.expectation.fail(this.method + " received too many arguments (" + sinon.format(args) +
-                        "), expected " + sinon.format(this.expectedArguments));
-                }
-
-                for (var i = 0, l = this.expectedArguments.length; i < l; i += 1) {
-                    if (!sinon.deepEqual(this.expectedArguments[i], args[i])) {
-                        sinon.expectation.fail(this.method + " received wrong arguments " + sinon.format(args) +
-                            ", expected " + sinon.format(this.expectedArguments));
-                    }
-                }
-            },
-
-            allowsCall: function allowsCall(thisValue, args) {
-                if (this.met() && receivedMaxCalls(this)) {
-                    return false;
-                }
-
-                if ("expectedThis" in this && this.expectedThis !== thisValue) {
-                    return false;
-                }
-
-                if (!("expectedArguments" in this)) {
-                    return true;
-                }
-
-                args = args || [];
-
-                if (args.length < this.expectedArguments.length) {
-                    return false;
-                }
-
-                if (this.expectsExactArgCount &&
-                    args.length != this.expectedArguments.length) {
-                    return false;
-                }
-
-                for (var i = 0, l = this.expectedArguments.length; i < l; i += 1) {
-                    if (!sinon.deepEqual(this.expectedArguments[i], args[i])) {
-                        return false;
-                    }
-                }
-
-                return true;
-            },
-
-            withArgs: function withArgs() {
-                this.expectedArguments = slice.call(arguments);
-                return this;
-            },
-
-            withExactArgs: function withExactArgs() {
-                this.withArgs.apply(this, arguments);
-                this.expectsExactArgCount = true;
-                return this;
-            },
-
-            on: function on(thisValue) {
-                this.expectedThis = thisValue;
-                return this;
-            },
-
-            toString: function () {
-                var args = (this.expectedArguments || []).slice();
-
-                if (!this.expectsExactArgCount) {
-                    push.call(args, "[...]");
-                }
-
-                var callStr = sinon.spyCall.toString.call({
-                    proxy: this.method || "anonymous mock expectation",
-                    args: args
-                });
-
-                var message = callStr.replace(", [...", "[, ...") + " " +
-                    expectedCallCountInWords(this);
-
-                if (this.met()) {
-                    return "Expectation met: " + message;
-                }
-
-                return "Expected " + message + " (" +
-                    callCountInWords(this.callCount) + ")";
-            },
-
-            verify: function verify() {
-                if (!this.met()) {
-                    sinon.expectation.fail(this.toString());
-                } else {
-                    sinon.expectation.pass(this.toString());
-                }
-
-                return true;
-            },
-
-            pass: function(message) {
-              sinon.assert.pass(message);
-            },
-            fail: function (message) {
-                var exception = new Error(message);
-                exception.name = "ExpectationError";
-
-                throw exception;
-            }
-        };
-    }());
-
-    if (commonJSModule) {
-        module.exports = mock;
-    } else {
-        sinon.mock = mock;
-    }
-}(typeof sinon == "object" && sinon || null));
-
-/**
- * @depend ../sinon.js
- * @depend stub.js
- * @depend mock.js
- */
-/*jslint eqeqeq: false, onevar: false, forin: true*/
-/*global module, require, sinon*/
-/**
- * Collections of stubs, spies and mocks.
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-(function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-    var push = [].push;
-    var hasOwnProperty = Object.prototype.hasOwnProperty;
-
-    if (!sinon && commonJSModule) {
-        sinon = require("../sinon");
-    }
-
-    if (!sinon) {
-        return;
-    }
-
-    function getFakes(fakeCollection) {
-        if (!fakeCollection.fakes) {
-            fakeCollection.fakes = [];
-        }
-
-        return fakeCollection.fakes;
-    }
-
-    function each(fakeCollection, method) {
-        var fakes = getFakes(fakeCollection);
-
-        for (var i = 0, l = fakes.length; i < l; i += 1) {
-            if (typeof fakes[i][method] == "function") {
-                fakes[i][method]();
-            }
-        }
-    }
-
-    function compact(fakeCollection) {
-        var fakes = getFakes(fakeCollection);
-        var i = 0;
-        while (i < fakes.length) {
-          fakes.splice(i, 1);
-        }
-    }
-
-    var collection = {
-        verify: function resolve() {
-            each(this, "verify");
-        },
-
-        restore: function restore() {
-            each(this, "restore");
-            compact(this);
-        },
-
-        verifyAndRestore: function verifyAndRestore() {
-            var exception;
-
-            try {
-                this.verify();
-            } catch (e) {
-                exception = e;
-            }
-
-            this.restore();
-
-            if (exception) {
-                throw exception;
-            }
-        },
-
-        add: function add(fake) {
-            push.call(getFakes(this), fake);
-            return fake;
-        },
-
-        spy: function spy() {
-            return this.add(sinon.spy.apply(sinon, arguments));
-        },
-
-        stub: function stub(object, property, value) {
-            if (property) {
-                var original = object[property];
-
-                if (typeof original != "function") {
-                    if (!hasOwnProperty.call(object, property)) {
-                        throw new TypeError("Cannot stub non-existent own property " + property);
-                    }
-
-                    object[property] = value;
-
-                    return this.add({
-                        restore: function () {
-                            object[property] = original;
-                        }
-                    });
-                }
-            }
-            if (!property && !!object && typeof object == "object") {
-                var stubbedObj = sinon.stub.apply(sinon, arguments);
-
-                for (var prop in stubbedObj) {
-                    if (typeof stubbedObj[prop] === "function") {
-                        this.add(stubbedObj[prop]);
-                    }
-                }
-
-                return stubbedObj;
-            }
-
-            return this.add(sinon.stub.apply(sinon, arguments));
-        },
-
-        mock: function mock() {
-            return this.add(sinon.mock.apply(sinon, arguments));
-        },
-
-        inject: function inject(obj) {
-            var col = this;
-
-            obj.spy = function () {
-                return col.spy.apply(col, arguments);
-            };
-
-            obj.stub = function () {
-                return col.stub.apply(col, arguments);
-            };
-
-            obj.mock = function () {
-                return col.mock.apply(col, arguments);
-            };
-
-            return obj;
-        }
-    };
-
-    if (commonJSModule) {
-        module.exports = collection;
-    } else {
-        sinon.collection = collection;
-    }
-}(typeof sinon == "object" && sinon || null));
-
-/*jslint eqeqeq: false, plusplus: false, evil: true, onevar: false, browser: true, forin: false*/
-/*global module, require, window*/
-/**
- * Fake timer API
- * setTimeout
- * setInterval
- * clearTimeout
- * clearInterval
- * tick
- * reset
- * Date
- *
- * Inspired by jsUnitMockTimeOut from JsUnit
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-if (typeof sinon == "undefined") {
-    var sinon = {};
-}
-
-(function (global) {
-    var id = 1;
-
-    function addTimer(args, recurring) {
-        if (args.length === 0) {
-            throw new Error("Function requires at least 1 parameter");
-        }
-
-        var toId = id++;
-        var delay = args[1] || 0;
-
-        if (!this.timeouts) {
-            this.timeouts = {};
-        }
-
-        this.timeouts[toId] = {
-            id: toId,
-            func: args[0],
-            callAt: this.now + delay,
-            invokeArgs: Array.prototype.slice.call(args, 2)
-        };
-
-        if (recurring === true) {
-            this.timeouts[toId].interval = delay;
-        }
-
-        return toId;
-    }
-
-    function parseTime(str) {
-        if (!str) {
-            return 0;
-        }
-
-        var strings = str.split(":");
-        var l = strings.length, i = l;
-        var ms = 0, parsed;
-
-        if (l > 3 || !/^(\d\d:){0,2}\d\d?$/.test(str)) {
-            throw new Error("tick only understands numbers and 'h:m:s'");
-        }
-
-        while (i--) {
-            parsed = parseInt(strings[i], 10);
-
-            if (parsed >= 60) {
-                throw new Error("Invalid time " + str);
-            }
-
-            ms += parsed * Math.pow(60, (l - i - 1));
-        }
-
-        return ms * 1000;
-    }
-
-    function createObject(object) {
-        var newObject;
-
-        if (Object.create) {
-            newObject = Object.create(object);
-        } else {
-            var F = function () {};
-            F.prototype = object;
-            newObject = new F();
-        }
-
-        newObject.Date.clock = newObject;
-        return newObject;
-    }
-
-    sinon.clock = {
-        now: 0,
-
-        create: function create(now) {
-            var clock = createObject(this);
-
-            if (typeof now == "number") {
-                clock.now = now;
-            }
-
-            if (!!now && typeof now == "object") {
-                throw new TypeError("now should be milliseconds since UNIX epoch");
-            }
-
-            return clock;
-        },
-
-        setTimeout: function setTimeout(callback, timeout) {
-            return addTimer.call(this, arguments, false);
-        },
-
-        clearTimeout: function clearTimeout(timerId) {
-            if (!this.timeouts) {
-                this.timeouts = [];
-            }
-
-            if (timerId in this.timeouts) {
-                delete this.timeouts[timerId];
-            }
-        },
-
-        setInterval: function setInterval(callback, timeout) {
-            return addTimer.call(this, arguments, true);
-        },
-
-        clearInterval: function clearInterval(timerId) {
-            this.clearTimeout(timerId);
-        },
-
-        tick: function tick(ms) {
-            ms = typeof ms == "number" ? ms : parseTime(ms);
-            var tickFrom = this.now, tickTo = this.now + ms, previous = this.now;
-            var timer = this.firstTimerInRange(tickFrom, tickTo);
-
-            var firstException;
-            while (timer && tickFrom <= tickTo) {
-                if (this.timeouts[timer.id]) {
-                    tickFrom = this.now = timer.callAt;
-                    try {
-                      this.callTimer(timer);
-                    } catch (e) {
-                      firstException = firstException || e;
-                    }
-                }
-
-                timer = this.firstTimerInRange(previous, tickTo);
-                previous = tickFrom;
-            }
-
-            this.now = tickTo;
-
-            if (firstException) {
-              throw firstException;
-            }
-
-            return this.now;
-        },
-
-        firstTimerInRange: function (from, to) {
-            var timer, smallest, originalTimer;
-
-            for (var id in this.timeouts) {
-                if (this.timeouts.hasOwnProperty(id)) {
-                    if (this.timeouts[id].callAt < from || this.timeouts[id].callAt > to) {
-                        continue;
-                    }
-
-                    if (!smallest || this.timeouts[id].callAt < smallest) {
-                        originalTimer = this.timeouts[id];
-                        smallest = this.timeouts[id].callAt;
-
-                        timer = {
-                            func: this.timeouts[id].func,
-                            callAt: this.timeouts[id].callAt,
-                            interval: this.timeouts[id].interval,
-                            id: this.timeouts[id].id,
-                            invokeArgs: this.timeouts[id].invokeArgs
-                        };
-                    }
-                }
-            }
-
-            return timer || null;
-        },
-
-        callTimer: function (timer) {
-            if (typeof timer.interval == "number") {
-                this.timeouts[timer.id].callAt += timer.interval;
-            } else {
-                delete this.timeouts[timer.id];
-            }
-
-            try {
-                if (typeof timer.func == "function") {
-                    timer.func.apply(null, timer.invokeArgs);
-                } else {
-                    eval(timer.func);
-                }
-            } catch (e) {
-              var exception = e;
-            }
-
-            if (!this.timeouts[timer.id]) {
-                if (exception) {
-                  throw exception;
-                }
-                return;
-            }
-
-            if (exception) {
-              throw exception;
-            }
-        },
-
-        reset: function reset() {
-            this.timeouts = {};
-        },
-
-        Date: (function () {
-            var NativeDate = Date;
-
-            function ClockDate(year, month, date, hour, minute, second, ms) {
-                // Defensive and verbose to avoid potential harm in passing
-                // explicit undefined when user does not pass argument
-                switch (arguments.length) {
-                case 0:
-                    return new NativeDate(ClockDate.clock.now);
-                case 1:
-                    return new NativeDate(year);
-                case 2:
-                    return new NativeDate(year, month);
-                case 3:
-                    return new NativeDate(year, month, date);
-                case 4:
-                    return new NativeDate(year, month, date, hour);
-                case 5:
-                    return new NativeDate(year, month, date, hour, minute);
-                case 6:
-                    return new NativeDate(year, month, date, hour, minute, second);
-                default:
-                    return new NativeDate(year, month, date, hour, minute, second, ms);
-                }
-            }
-
-            return mirrorDateProperties(ClockDate, NativeDate);
-        }())
-    };
-
-    function mirrorDateProperties(target, source) {
-        if (source.now) {
-            target.now = function now() {
-                return target.clock.now;
-            };
-        } else {
-            delete target.now;
-        }
-
-        if (source.toSource) {
-            target.toSource = function toSource() {
-                return source.toSource();
-            };
-        } else {
-            delete target.toSource;
-        }
-
-        target.toString = function toString() {
-            return source.toString();
-        };
-
-        target.prototype = source.prototype;
-        target.parse = source.parse;
-        target.UTC = source.UTC;
-        target.prototype.toUTCString = source.prototype.toUTCString;
-        return target;
-    }
-
-    var methods = ["Date", "setTimeout", "setInterval",
-                   "clearTimeout", "clearInterval"];
-
-    function restore() {
-        var method;
-
-        for (var i = 0, l = this.methods.length; i < l; i++) {
-            method = this.methods[i];
-            if (global[method].hadOwnProperty) {
-                global[method] = this["_" + method];
-            } else {
-                delete global[method];
-            }
-        }
-
-        // Prevent multiple executions which will completely remove these props
-        this.methods = [];
-    }
-
-    function stubGlobal(method, clock) {
-        clock[method].hadOwnProperty = Object.prototype.hasOwnProperty.call(global, method);
-        clock["_" + method] = global[method];
-
-        if (method == "Date") {
-            var date = mirrorDateProperties(clock[method], global[method]);
-            global[method] = date;
-        } else {
-            global[method] = function () {
-                return clock[method].apply(clock, arguments);
-            };
-
-            for (var prop in clock[method]) {
-                if (clock[method].hasOwnProperty(prop)) {
-                    global[method][prop] = clock[method][prop];
-                }
-            }
-        }
-
-        global[method].clock = clock;
-    }
-
-    sinon.useFakeTimers = function useFakeTimers(now) {
-        var clock = sinon.clock.create(now);
-        clock.restore = restore;
-        clock.methods = Array.prototype.slice.call(arguments,
-                                                   typeof now == "number" ? 1 : 0);
-
-        if (clock.methods.length === 0) {
-            clock.methods = methods;
-        }
-
-        for (var i = 0, l = clock.methods.length; i < l; i++) {
-            stubGlobal(clock.methods[i], clock);
-        }
-
-        return clock;
-    };
-}(typeof global != "undefined" && typeof global !== "function" ? global : this));
-
-sinon.timers = {
-    setTimeout: setTimeout,
-    clearTimeout: clearTimeout,
-    setInterval: setInterval,
-    clearInterval: clearInterval,
-    Date: Date
-};
-
-if (typeof module == "object" && typeof require == "function") {
-    module.exports = sinon;
-}
-
-/*jslint eqeqeq: false, onevar: false*/
-/*global sinon, module, require, ActiveXObject, XMLHttpRequest, DOMParser*/
-/**
- * Minimal Event interface implementation
- *
- * Original implementation by Sven Fuchs: https://gist.github.com/995028
- * Modifications and tests by Christian Johansen.
- *
- * @author Sven Fuchs (svenfuchs@artweb-design.de)
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2011 Sven Fuchs, Christian Johansen
- */
-
-if (typeof sinon == "undefined") {
-    this.sinon = {};
-}
-
-(function () {
-    var push = [].push;
-
-    sinon.Event = function Event(type, bubbles, cancelable, target) {
-        this.initEvent(type, bubbles, cancelable, target);
-    };
-
-    sinon.Event.prototype = {
-        initEvent: function(type, bubbles, cancelable, target) {
-            this.type = type;
-            this.bubbles = bubbles;
-            this.cancelable = cancelable;
-            this.target = target;
-        },
-
-        stopPropagation: function () {},
-
-        preventDefault: function () {
-            this.defaultPrevented = true;
-        }
-    };
-
-    sinon.EventTarget = {
-        addEventListener: function addEventListener(event, listener, useCapture) {
-            this.eventListeners = this.eventListeners || {};
-            this.eventListeners[event] = this.eventListeners[event] || [];
-            push.call(this.eventListeners[event], listener);
-        },
-
-        removeEventListener: function removeEventListener(event, listener, useCapture) {
-            var listeners = this.eventListeners && this.eventListeners[event] || [];
-
-            for (var i = 0, l = listeners.length; i < l; ++i) {
-                if (listeners[i] == listener) {
-                    return listeners.splice(i, 1);
-                }
-            }
-        },
-
-        dispatchEvent: function dispatchEvent(event) {
-            var type = event.type;
-            var listeners = this.eventListeners && this.eventListeners[type] || [];
-
-            for (var i = 0; i < listeners.length; i++) {
-                if (typeof listeners[i] == "function") {
-                    listeners[i].call(this, event);
-                } else {
-                    listeners[i].handleEvent(event);
-                }
-            }
-
-            return !!event.defaultPrevented;
-        }
-    };
-}());
-
-/**
- * @depend ../../sinon.js
- * @depend event.js
- */
-/*jslint eqeqeq: false, onevar: false*/
-/*global sinon, module, require, ActiveXObject, XMLHttpRequest, DOMParser*/
-/**
- * Fake XMLHttpRequest object
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-if (typeof sinon == "undefined") {
-    this.sinon = {};
-}
-sinon.xhr = { XMLHttpRequest: this.XMLHttpRequest };
-
-// wrapper for global
-(function(global) {
-    var xhr = sinon.xhr;
-    xhr.GlobalXMLHttpRequest = global.XMLHttpRequest;
-    xhr.GlobalActiveXObject = global.ActiveXObject;
-    xhr.supportsActiveX = typeof xhr.GlobalActiveXObject != "undefined";
-    xhr.supportsXHR = typeof xhr.GlobalXMLHttpRequest != "undefined";
-    xhr.workingXHR = xhr.supportsXHR ? xhr.GlobalXMLHttpRequest : xhr.supportsActiveX
-                                     ? function() { return new xhr.GlobalActiveXObject("MSXML2.XMLHTTP.3.0") } : false;
-
-    /*jsl:ignore*/
-    var unsafeHeaders = {
-        "Accept-Charset": true,
-        "Accept-Encoding": true,
-        "Connection": true,
-        "Content-Length": true,
-        "Cookie": true,
-        "Cookie2": true,
-        "Content-Transfer-Encoding": true,
-        "Date": true,
-        "Expect": true,
-        "Host": true,
-        "Keep-Alive": true,
-        "Referer": true,
-        "TE": true,
-        "Trailer": true,
-        "Transfer-Encoding": true,
-        "Upgrade": true,
-        "User-Agent": true,
-        "Via": true
-    };
-    /*jsl:end*/
-
-    function FakeXMLHttpRequest() {
-        this.readyState = FakeXMLHttpRequest.UNSENT;
-        this.requestHeaders = {};
-        this.requestBody = null;
-        this.status = 0;
-        this.statusText = "";
-
-        var xhr = this;
-        var events = ["loadstart", "load", "abort", "loadend"];
-
-        function addEventListener(eventName) {
-            xhr.addEventListener(eventName, function (event) {
-                var listener = xhr["on" + eventName];
-
-                if (listener && typeof listener == "function") {
-                    listener(event);
-                }
-            });
-        }
-
-        for (var i = events.length - 1; i >= 0; i--) {
-            addEventListener(events[i]);
-        }
-
-        if (typeof FakeXMLHttpRequest.onCreate == "function") {
-            FakeXMLHttpRequest.onCreate(this);
-        }
-    }
-
-    function verifyState(xhr) {
-        if (xhr.readyState !== FakeXMLHttpRequest.OPENED) {
-            throw new Error("INVALID_STATE_ERR");
-        }
-
-        if (xhr.sendFlag) {
-            throw new Error("INVALID_STATE_ERR");
-        }
-    }
-
-    // filtering to enable a white-list version of Sinon FakeXhr,
-    // where whitelisted requests are passed through to real XHR
-    function each(collection, callback) {
-        if (!collection) return;
-        for (var i = 0, l = collection.length; i < l; i += 1) {
-            callback(collection[i]);
-        }
-    }
-    function some(collection, callback) {
-        for (var index = 0; index < collection.length; index++) {
-            if(callback(collection[index]) === true) return true;
-        };
-        return false;
-    }
-    // largest arity in XHR is 5 - XHR#open
-    var apply = function(obj,method,args) {
-        switch(args.length) {
-        case 0: return obj[method]();
-        case 1: return obj[method](args[0]);
-        case 2: return obj[method](args[0],args[1]);
-        case 3: return obj[method](args[0],args[1],args[2]);
-        case 4: return obj[method](args[0],args[1],args[2],args[3]);
-        case 5: return obj[method](args[0],args[1],args[2],args[3],args[4]);
-        };
-    };
-
-    FakeXMLHttpRequest.filters = [];
-    FakeXMLHttpRequest.addFilter = function(fn) {
-        this.filters.push(fn)
-    };
-    var IE6Re = /MSIE 6/;
-    FakeXMLHttpRequest.defake = function(fakeXhr,xhrArgs) {
-        var xhr = new sinon.xhr.workingXHR();
-        each(["open","setRequestHeader","send","abort","getResponseHeader",
-              "getAllResponseHeaders","addEventListener","overrideMimeType","removeEventListener"],
-             function(method) {
-                 fakeXhr[method] = function() {
-                   return apply(xhr,method,arguments);
-                 };
-             });
-
-        var copyAttrs = function(args) {
-            each(args, function(attr) {
-              try {
-                fakeXhr[attr] = xhr[attr]
-              } catch(e) {
-                if(!IE6Re.test(navigator.userAgent)) throw e;
-              }
-            });
-        };
-
-        var stateChange = function() {
-            fakeXhr.readyState = xhr.readyState;
-            if(xhr.readyState >= FakeXMLHttpRequest.HEADERS_RECEIVED) {
-                copyAttrs(["status","statusText"]);
-            }
-            if(xhr.readyState >= FakeXMLHttpRequest.LOADING) {
-                copyAttrs(["responseText"]);
-            }
-            if(xhr.readyState === FakeXMLHttpRequest.DONE) {
-                copyAttrs(["responseXML"]);
-            }
-            if(fakeXhr.onreadystatechange) fakeXhr.onreadystatechange.call(fakeXhr);
-        };
-        if(xhr.addEventListener) {
-          for(var event in fakeXhr.eventListeners) {
-              if(fakeXhr.eventListeners.hasOwnProperty(event)) {
-                  each(fakeXhr.eventListeners[event],function(handler) {
-                      xhr.addEventListener(event, handler);
-                  });
-              }
-          }
-          xhr.addEventListener("readystatechange",stateChange);
-        } else {
-          xhr.onreadystatechange = stateChange;
-        }
-        apply(xhr,"open",xhrArgs);
-    };
-    FakeXMLHttpRequest.useFilters = false;
-
-    function verifyRequestSent(xhr) {
-        if (xhr.readyState == FakeXMLHttpRequest.DONE) {
-            throw new Error("Request done");
-        }
-    }
-
-    function verifyHeadersReceived(xhr) {
-        if (xhr.async && xhr.readyState != FakeXMLHttpRequest.HEADERS_RECEIVED) {
-            throw new Error("No headers received");
-        }
-    }
-
-    function verifyResponseBodyType(body) {
-        if (typeof body != "string") {
-            var error = new Error("Attempted to respond to fake XMLHttpRequest with " +
-                                 body + ", which is not a string.");
-            error.name = "InvalidBodyException";
-            throw error;
-        }
-    }
-
-    sinon.extend(FakeXMLHttpRequest.prototype, sinon.EventTarget, {
-        async: true,
-
-        open: function open(method, url, async, username, password) {
-            this.method = method;
-            this.url = url;
-            this.async = typeof async == "boolean" ? async : true;
-            this.username = username;
-            this.password = password;
-            this.responseText = null;
-            this.responseXML = null;
-            this.requestHeaders = {};
-            this.sendFlag = false;
-            if(sinon.FakeXMLHttpRequest.useFilters === true) {
-                var xhrArgs = arguments;
-                var defake = some(FakeXMLHttpRequest.filters,function(filter) {
-                    return filter.apply(this,xhrArgs)
-                });
-                if (defake) {
-                  return sinon.FakeXMLHttpRequest.defake(this,arguments);
-                }
-            }
-            this.readyStateChange(FakeXMLHttpRequest.OPENED);
-        },
-
-        readyStateChange: function readyStateChange(state) {
-            this.readyState = state;
-
-            if (typeof this.onreadystatechange == "function") {
-                try {
-                    this.onreadystatechange();
-                } catch (e) {
-                    sinon.logError("Fake XHR onreadystatechange handler", e);
-                }
-            }
-
-            this.dispatchEvent(new sinon.Event("readystatechange"));
-
-            switch (this.readyState) {
-                case FakeXMLHttpRequest.DONE:
-                    this.dispatchEvent(new sinon.Event("load", false, false, this));
-                    this.dispatchEvent(new sinon.Event("loadend", false, false, this));
-                    break;
-            }
-        },
-
-        setRequestHeader: function setRequestHeader(header, value) {
-            verifyState(this);
-
-            if (unsafeHeaders[header] || /^(Sec-|Proxy-)/.test(header)) {
-                throw new Error("Refused to set unsafe header \"" + header + "\"");
-            }
-
-            if (this.requestHeaders[header]) {
-                this.requestHeaders[header] += "," + value;
-            } else {
-                this.requestHeaders[header] = value;
-            }
-        },
-
-        // Helps testing
-        setResponseHeaders: function setResponseHeaders(headers) {
-            this.responseHeaders = {};
-
-            for (var header in headers) {
-                if (headers.hasOwnProperty(header)) {
-                    this.responseHeaders[header] = headers[header];
-                }
-            }
-
-            if (this.async) {
-                this.readyStateChange(FakeXMLHttpRequest.HEADERS_RECEIVED);
-            } else {
-                this.readyState = FakeXMLHttpRequest.HEADERS_RECEIVED;
-            }
-        },
-
-        // Currently treats ALL data as a DOMString (i.e. no Document)
-        send: function send(data) {
-            verifyState(this);
-
-            if (!/^(get|head)$/i.test(this.method)) {
-                if (this.requestHeaders["Content-Type"]) {
-                    var value = this.requestHeaders["Content-Type"].split(";");
-                    this.requestHeaders["Content-Type"] = value[0] + ";charset=utf-8";
-                } else {
-                    this.requestHeaders["Content-Type"] = "text/plain;charset=utf-8";
-                }
-
-                this.requestBody = data;
-            }
-
-            this.errorFlag = false;
-            this.sendFlag = this.async;
-            this.readyStateChange(FakeXMLHttpRequest.OPENED);
-
-            if (typeof this.onSend == "function") {
-                this.onSend(this);
-            }
-
-            this.dispatchEvent(new sinon.Event("loadstart", false, false, this));
-        },
-
-        abort: function abort() {
-            this.aborted = true;
-            this.responseText = null;
-            this.errorFlag = true;
-            this.requestHeaders = {};
-
-            if (this.readyState > sinon.FakeXMLHttpRequest.UNSENT && this.sendFlag) {
-                this.readyStateChange(sinon.FakeXMLHttpRequest.DONE);
-                this.sendFlag = false;
-            }
-
-            this.readyState = sinon.FakeXMLHttpRequest.UNSENT;
-
-            this.dispatchEvent(new sinon.Event("abort", false, false, this));
-            if (typeof this.onerror === "function") {
-                this.onerror();
-            }
-        },
-
-        getResponseHeader: function getResponseHeader(header) {
-            if (this.readyState < FakeXMLHttpRequest.HEADERS_RECEIVED) {
-                return null;
-            }
-
-            if (/^Set-Cookie2?$/i.test(header)) {
-                return null;
-            }
-
-            header = header.toLowerCase();
-
-            for (var h in this.responseHeaders) {
-                if (h.toLowerCase() == header) {
-                    return this.responseHeaders[h];
-                }
-            }
-
-            return null;
-        },
-
-        getAllResponseHeaders: function getAllResponseHeaders() {
-            if (this.readyState < FakeXMLHttpRequest.HEADERS_RECEIVED) {
-                return "";
-            }
-
-            var headers = "";
-
-            for (var header in this.responseHeaders) {
-                if (this.responseHeaders.hasOwnProperty(header) &&
-                    !/^Set-Cookie2?$/i.test(header)) {
-                    headers += header + ": " + this.responseHeaders[header] + "\r\n";
-                }
-            }
-
-            return headers;
-        },
-
-        setResponseBody: function setResponseBody(body) {
-            verifyRequestSent(this);
-            verifyHeadersReceived(this);
-            verifyResponseBodyType(body);
-
-            var chunkSize = this.chunkSize || 10;
-            var index = 0;
-            this.responseText = "";
-
-            do {
-                if (this.async) {
-                    this.readyStateChange(FakeXMLHttpRequest.LOADING);
-                }
-
-                this.responseText += body.substring(index, index + chunkSize);
-                index += chunkSize;
-            } while (index < body.length);
-
-            var type = this.getResponseHeader("Content-Type");
-
-            if (this.responseText &&
-                (!type || /(text\/xml)|(application\/xml)|(\+xml)/.test(type))) {
-                try {
-                    this.responseXML = FakeXMLHttpRequest.parseXML(this.responseText);
-                } catch (e) {
-                    // Unable to parse XML - no biggie
-                }
-            }
-
-            if (this.async) {
-                this.readyStateChange(FakeXMLHttpRequest.DONE);
-            } else {
-                this.readyState = FakeXMLHttpRequest.DONE;
-            }
-        },
-
-        respond: function respond(status, headers, body) {
-            this.setResponseHeaders(headers || {});
-            this.status = typeof status == "number" ? status : 200;
-            this.statusText = FakeXMLHttpRequest.statusCodes[this.status];
-            this.setResponseBody(body || "");
-            if (typeof this.onload === "function"){
-                this.onload();
-            }
-
-        }
-    });
-
-    sinon.extend(FakeXMLHttpRequest, {
-        UNSENT: 0,
-        OPENED: 1,
-        HEADERS_RECEIVED: 2,
-        LOADING: 3,
-        DONE: 4
-    });
-
-    // Borrowed from JSpec
-    FakeXMLHttpRequest.parseXML = function parseXML(text) {
-        var xmlDoc;
-
-        if (typeof DOMParser != "undefined") {
-            var parser = new DOMParser();
-            xmlDoc = parser.parseFromString(text, "text/xml");
-        } else {
-            xmlDoc = new ActiveXObject("Microsoft.XMLDOM");
-            xmlDoc.async = "false";
-            xmlDoc.loadXML(text);
-        }
-
-        return xmlDoc;
-    };
-
-    FakeXMLHttpRequest.statusCodes = {
-        100: "Continue",
-        101: "Switching Protocols",
-        200: "OK",
-        201: "Created",
-        202: "Accepted",
-        203: "Non-Authoritative Information",
-        204: "No Content",
-        205: "Reset Content",
-        206: "Partial Content",
-        300: "Multiple Choice",
-        301: "Moved Permanently",
-        302: "Found",
-        303: "See Other",
-        304: "Not Modified",
-        305: "Use Proxy",
-        307: "Temporary Redirect",
-        400: "Bad Request",
-        401: "Unauthorized",
-        402: "Payment Required",
-        403: "Forbidden",
-        404: "Not Found",
-        405: "Method Not Allowed",
-        406: "Not Acceptable",
-        407: "Proxy Authentication Required",
-        408: "Request Timeout",
-        409: "Conflict",
-        410: "Gone",
-        411: "Length Required",
-        412: "Precondition Failed",
-        413: "Request Entity Too Large",
-        414: "Request-URI Too Long",
-        415: "Unsupported Media Type",
-        416: "Requested Range Not Satisfiable",
-        417: "Expectation Failed",
-        422: "Unprocessable Entity",
-        500: "Internal Server Error",
-        501: "Not Implemented",
-        502: "Bad Gateway",
-        503: "Service Unavailable",
-        504: "Gateway Timeout",
-        505: "HTTP Version Not Supported"
-    };
-
-    sinon.useFakeXMLHttpRequest = function () {
-        sinon.FakeXMLHttpRequest.restore = function restore(keepOnCreate) {
-            if (xhr.supportsXHR) {
-                global.XMLHttpRequest = xhr.GlobalXMLHttpRequest;
-            }
-
-            if (xhr.supportsActiveX) {
-                global.ActiveXObject = xhr.GlobalActiveXObject;
-            }
-
-            delete sinon.FakeXMLHttpRequest.restore;
-
-            if (keepOnCreate !== true) {
-                delete sinon.FakeXMLHttpRequest.onCreate;
-            }
-        };
-        if (xhr.supportsXHR) {
-            global.XMLHttpRequest = sinon.FakeXMLHttpRequest;
-        }
-
-        if (xhr.supportsActiveX) {
-            global.ActiveXObject = function ActiveXObject(objId) {
-                if (objId == "Microsoft.XMLHTTP" || /^Msxml2\.XMLHTTP/i.test(objId)) {
-
-                    return new sinon.FakeXMLHttpRequest();
-                }
-
-                return new xhr.GlobalActiveXObject(objId);
-            };
-        }
-
-        return sinon.FakeXMLHttpRequest;
-    };
-
-    sinon.FakeXMLHttpRequest = FakeXMLHttpRequest;
-})(this);
-
-if (typeof module == "object" && typeof require == "function") {
-    module.exports = sinon;
-}
-
-/**
- * @depend fake_xml_http_request.js
- */
-/*jslint eqeqeq: false, onevar: false, regexp: false, plusplus: false*/
-/*global module, require, window*/
-/**
- * The Sinon "server" mimics a web server that receives requests from
- * sinon.FakeXMLHttpRequest and provides an API to respond to those requests,
- * both synchronously and asynchronously. To respond synchronuously, canned
- * answers have to be provided upfront.
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-if (typeof sinon == "undefined") {
-    var sinon = {};
-}
-
-sinon.fakeServer = (function () {
-    var push = [].push;
-    function F() {}
-
-    function create(proto) {
-        F.prototype = proto;
-        return new F();
-    }
-
-    function responseArray(handler) {
-        var response = handler;
-
-        if (Object.prototype.toString.call(handler) != "[object Array]") {
-            response = [200, {}, handler];
-        }
-
-        if (typeof response[2] != "string") {
-            throw new TypeError("Fake server response body should be string, but was " +
-                                typeof response[2]);
-        }
-
-        return response;
-    }
-
-    var wloc = typeof window !== "undefined" ? window.location : {};
-    var rCurrLoc = new RegExp("^" + wloc.protocol + "//" + wloc.host);
-
-    function matchOne(response, reqMethod, reqUrl) {
-        var rmeth = response.method;
-        var matchMethod = !rmeth || rmeth.toLowerCase() == reqMethod.toLowerCase();
-        var url = response.url;
-        var matchUrl = !url || url == reqUrl || (typeof url.test == "function" && url.test(reqUrl));
-
-        return matchMethod && matchUrl;
-    }
-
-    function match(response, request) {
-        var requestMethod = this.getHTTPMethod(request);
-        var requestUrl = request.url;
-
-        if (!/^https?:\/\//.test(requestUrl) || rCurrLoc.test(requestUrl)) {
-            requestUrl = requestUrl.replace(rCurrLoc, "");
-        }
-
-        if (matchOne(response, this.getHTTPMethod(request), requestUrl)) {
-            if (typeof response.response == "function") {
-                var ru = response.url;
-                var args = [request].concat(!ru ? [] : requestUrl.match(ru).slice(1));
-                return response.response.apply(response, args);
-            }
-
-            return true;
-        }
-
-        return false;
-    }
-
-    function log(response, request) {
-        var str;
-
-        str =  "Request:\n"  + sinon.format(request)  + "\n\n";
-        str += "Response:\n" + sinon.format(response) + "\n\n";
-
-        sinon.log(str);
-    }
-
-    return {
-        create: function () {
-            var server = create(this);
-            this.xhr = sinon.useFakeXMLHttpRequest();
-            server.requests = [];
-
-            this.xhr.onCreate = function (xhrObj) {
-                server.addRequest(xhrObj);
-            };
-
-            return server;
-        },
-
-        addRequest: function addRequest(xhrObj) {
-            var server = this;
-            push.call(this.requests, xhrObj);
-
-            xhrObj.onSend = function () {
-                server.handleRequest(this);
-            };
-
-            if (this.autoRespond && !this.responding) {
-                setTimeout(function () {
-                    server.responding = false;
-                    server.respond();
-                }, this.autoRespondAfter || 10);
-
-                this.responding = true;
-            }
-        },
-
-        getHTTPMethod: function getHTTPMethod(request) {
-            if (this.fakeHTTPMethods && /post/i.test(request.method)) {
-                var matches = (request.requestBody || "").match(/_method=([^\b;]+)/);
-                return !!matches ? matches[1] : request.method;
-            }
-
-            return request.method;
-        },
-
-        handleRequest: function handleRequest(xhr) {
-            if (xhr.async) {
-                if (!this.queue) {
-                    this.queue = [];
-                }
-
-                push.call(this.queue, xhr);
-            } else {
-                this.processRequest(xhr);
-            }
-        },
-
-        respondWith: function respondWith(method, url, body) {
-            if (arguments.length == 1 && typeof method != "function") {
-                this.response = responseArray(method);
-                return;
-            }
-
-            if (!this.responses) { this.responses = []; }
-
-            if (arguments.length == 1) {
-                body = method;
-                url = method = null;
-            }
-
-            if (arguments.length == 2) {
-                body = url;
-                url = method;
-                method = null;
-            }
-
-            push.call(this.responses, {
-                method: method,
-                url: url,
-                response: typeof body == "function" ? body : responseArray(body)
-            });
-        },
-
-        respond: function respond() {
-            if (arguments.length > 0) this.respondWith.apply(this, arguments);
-            var queue = this.queue || [];
-            var request;
-
-            while(request = queue.shift()) {
-                this.processRequest(request);
-            }
-        },
-
-        processRequest: function processRequest(request) {
-            try {
-                if (request.aborted) {
-                    return;
-                }
-
-                var response = this.response || [404, {}, ""];
-
-                if (this.responses) {
-                    for (var i = 0, l = this.responses.length; i < l; i++) {
-                        if (match.call(this, this.responses[i], request)) {
-                            response = this.responses[i].response;
-                            break;
-                        }
-                    }
-                }
-
-                if (request.readyState != 4) {
-                    log(response, request);
-
-                    request.respond(response[0], response[1], response[2]);
-                }
-            } catch (e) {
-                sinon.logError("Fake server request processing", e);
-            }
-        },
-
-        restore: function restore() {
-            return this.xhr.restore && this.xhr.restore.apply(this.xhr, arguments);
-        }
-    };
-}());
-
-if (typeof module == "object" && typeof require == "function") {
-    module.exports = sinon;
-}
-
-/**
- * @depend fake_server.js
- * @depend fake_timers.js
- */
-/*jslint browser: true, eqeqeq: false, onevar: false*/
-/*global sinon*/
-/**
- * Add-on for sinon.fakeServer that automatically handles a fake timer along with
- * the FakeXMLHttpRequest. The direct inspiration for this add-on is jQuery
- * 1.3.x, which does not use xhr object's onreadystatehandler at all - instead,
- * it polls the object for completion with setInterval. Dispite the direct
- * motivation, there is nothing jQuery-specific in this file, so it can be used
- * in any environment where the ajax implementation depends on setInterval or
- * setTimeout.
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-(function () {
-    function Server() {}
-    Server.prototype = sinon.fakeServer;
-
-    sinon.fakeServerWithClock = new Server();
-
-    sinon.fakeServerWithClock.addRequest = function addRequest(xhr) {
-        if (xhr.async) {
-            if (typeof setTimeout.clock == "object") {
-                this.clock = setTimeout.clock;
-            } else {
-                this.clock = sinon.useFakeTimers();
-                this.resetClock = true;
-            }
-
-            if (!this.longestTimeout) {
-                var clockSetTimeout = this.clock.setTimeout;
-                var clockSetInterval = this.clock.setInterval;
-                var server = this;
-
-                this.clock.setTimeout = function (fn, timeout) {
-                    server.longestTimeout = Math.max(timeout, server.longestTimeout || 0);
-
-                    return clockSetTimeout.apply(this, arguments);
-                };
-
-                this.clock.setInterval = function (fn, timeout) {
-                    server.longestTimeout = Math.max(timeout, server.longestTimeout || 0);
-
-                    return clockSetInterval.apply(this, arguments);
-                };
-            }
-        }
-
-        return sinon.fakeServer.addRequest.call(this, xhr);
-    };
-
-    sinon.fakeServerWithClock.respond = function respond() {
-        var returnVal = sinon.fakeServer.respond.apply(this, arguments);
-
-        if (this.clock) {
-            this.clock.tick(this.longestTimeout || 0);
-            this.longestTimeout = 0;
-
-            if (this.resetClock) {
-                this.clock.restore();
-                this.resetClock = false;
-            }
-        }
-
-        return returnVal;
-    };
-
-    sinon.fakeServerWithClock.restore = function restore() {
-        if (this.clock) {
-            this.clock.restore();
-        }
-
-        return sinon.fakeServer.restore.apply(this, arguments);
-    };
-}());
-
-/**
- * @depend ../sinon.js
- * @depend collection.js
- * @depend util/fake_timers.js
- * @depend util/fake_server_with_clock.js
- */
-/*jslint eqeqeq: false, onevar: false, plusplus: false*/
-/*global require, module*/
-/**
- * Manages fake collections as well as fake utilities such as Sinon's
- * timers and fake XHR implementation in one convenient object.
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-if (typeof module == "object" && typeof require == "function") {
-    var sinon = require("../sinon");
-    sinon.extend(sinon, require("./util/fake_timers"));
-}
-
-(function () {
-    var push = [].push;
-
-    function exposeValue(sandbox, config, key, value) {
-        if (!value) {
-            return;
-        }
-
-        if (config.injectInto) {
-            config.injectInto[key] = value;
-        } else {
-            push.call(sandbox.args, value);
-        }
-    }
-
-    function prepareSandboxFromConfig(config) {
-        var sandbox = sinon.create(sinon.sandbox);
-
-        if (config.useFakeServer) {
-            if (typeof config.useFakeServer == "object") {
-                sandbox.serverPrototype = config.useFakeServer;
-            }
-
-            sandbox.useFakeServer();
-        }
-
-        if (config.useFakeTimers) {
-            if (typeof config.useFakeTimers == "object") {
-                sandbox.useFakeTimers.apply(sandbox, config.useFakeTimers);
-            } else {
-                sandbox.useFakeTimers();
-            }
-        }
-
-        return sandbox;
-    }
-
-    sinon.sandbox = sinon.extend(sinon.create(sinon.collection), {
-        useFakeTimers: function useFakeTimers() {
-            this.clock = sinon.useFakeTimers.apply(sinon, arguments);
-
-            return this.add(this.clock);
-        },
-
-        serverPrototype: sinon.fakeServer,
-
-        useFakeServer: function useFakeServer() {
-            var proto = this.serverPrototype || sinon.fakeServer;
-
-            if (!proto || !proto.create) {
-                return null;
-            }
-
-            this.server = proto.create();
-            return this.add(this.server);
-        },
-
-        inject: function (obj) {
-            sinon.collection.inject.call(this, obj);
-
-            if (this.clock) {
-                obj.clock = this.clock;
-            }
-
-            if (this.server) {
-                obj.server = this.server;
-                obj.requests = this.server.requests;
-            }
-
-            return obj;
-        },
-
-        create: function (config) {
-            if (!config) {
-                return sinon.create(sinon.sandbox);
-            }
-
-            var sandbox = prepareSandboxFromConfig(config);
-            sandbox.args = sandbox.args || [];
-            var prop, value, exposed = sandbox.inject({});
-
-            if (config.properties) {
-                for (var i = 0, l = config.properties.length; i < l; i++) {
-                    prop = config.properties[i];
-                    value = exposed[prop] || prop == "sandbox" && sandbox;
-                    exposeValue(sandbox, config, prop, value);
-                }
-            } else {
-                exposeValue(sandbox, config, "sandbox", value);
-            }
-
-            return sandbox;
-        }
-    });
-
-    sinon.sandbox.useFakeXMLHttpRequest = sinon.sandbox.useFakeServer;
-
-    if (typeof module == "object" && typeof require == "function") {
-        module.exports = sinon.sandbox;
-    }
-}());
-
-/**
- * @depend ../sinon.js
- * @depend stub.js
- * @depend mock.js
- * @depend sandbox.js
- */
-/*jslint eqeqeq: false, onevar: false, forin: true, plusplus: false*/
-/*global module, require, sinon*/
-/**
- * Test function, sandboxes fakes
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-(function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-
-    if (!sinon && commonJSModule) {
-        sinon = require("../sinon");
-    }
-
-    if (!sinon) {
-        return;
-    }
-
-    function test(callback) {
-        var type = typeof callback;
-
-        if (type != "function") {
-            throw new TypeError("sinon.test needs to wrap a test function, got " + type);
-        }
-
-        return function () {
-            var config = sinon.getConfig(sinon.config);
-            config.injectInto = config.injectIntoThis && this || config.injectInto;
-            var sandbox = sinon.sandbox.create(config);
-            var exception, result;
-            var args = Array.prototype.slice.call(arguments).concat(sandbox.args);
-
-            try {
-                result = callback.apply(this, args);
-            } catch (e) {
-                exception = e;
-            }
-
-            if (typeof exception !== "undefined") {
-                sandbox.restore();
-                throw exception;
-            }
-            else {
-                sandbox.verifyAndRestore();
-            }
-
-            return result;
-        };
-    }
-
-    test.config = {
-        injectIntoThis: true,
-        injectInto: null,
-        properties: ["spy", "stub", "mock", "clock", "server", "requests"],
-        useFakeTimers: true,
-        useFakeServer: true
-    };
-
-    if (commonJSModule) {
-        module.exports = test;
-    } else {
-        sinon.test = test;
-    }
-}(typeof sinon == "object" && sinon || null));
-
-/**
- * @depend ../sinon.js
- * @depend test.js
- */
-/*jslint eqeqeq: false, onevar: false, eqeqeq: false*/
-/*global module, require, sinon*/
-/**
- * Test case, sandboxes all test functions
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-(function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-
-    if (!sinon && commonJSModule) {
-        sinon = require("../sinon");
-    }
-
-    if (!sinon || !Object.prototype.hasOwnProperty) {
-        return;
-    }
-
-    function createTest(property, setUp, tearDown) {
-        return function () {
-            if (setUp) {
-                setUp.apply(this, arguments);
-            }
-
-            var exception, result;
-
-            try {
-                result = property.apply(this, arguments);
-            } catch (e) {
-                exception = e;
-            }
-
-            if (tearDown) {
-                tearDown.apply(this, arguments);
-            }
-
-            if (exception) {
-                throw exception;
-            }
-
-            return result;
-        };
-    }
-
-    function testCase(tests, prefix) {
-        /*jsl:ignore*/
-        if (!tests || typeof tests != "object") {
-            throw new TypeError("sinon.testCase needs an object with test functions");
-        }
-        /*jsl:end*/
-
-        prefix = prefix || "test";
-        var rPrefix = new RegExp("^" + prefix);
-        var methods = {}, testName, property, method;
-        var setUp = tests.setUp;
-        var tearDown = tests.tearDown;
-
-        for (testName in tests) {
-            if (tests.hasOwnProperty(testName)) {
-                property = tests[testName];
-
-                if (/^(setUp|tearDown)$/.test(testName)) {
-                    continue;
-                }
-
-                if (typeof property == "function" && rPrefix.test(testName)) {
-                    method = property;
-
-                    if (setUp || tearDown) {
-                        method = createTest(property, setUp, tearDown);
-                    }
-
-                    methods[testName] = sinon.test(method);
-                } else {
-                    methods[testName] = tests[testName];
-                }
-            }
-        }
-
-        return methods;
-    }
-
-    if (commonJSModule) {
-        module.exports = testCase;
-    } else {
-        sinon.testCase = testCase;
-    }
-}(typeof sinon == "object" && sinon || null));
-
-/**
- * @depend ../sinon.js
- * @depend stub.js
- */
-/*jslint eqeqeq: false, onevar: false, nomen: false, plusplus: false*/
-/*global module, require, sinon*/
-/**
- * Assertions matching the test spy retrieval interface.
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-(function (sinon, global) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-    var slice = Array.prototype.slice;
-    var assert;
-
-    if (!sinon && commonJSModule) {
-        sinon = require("../sinon");
-    }
-
-    if (!sinon) {
-        return;
-    }
-
-    function verifyIsStub() {
-        var method;
-
-        for (var i = 0, l = arguments.length; i < l; ++i) {
-            method = arguments[i];
-
-            if (!method) {
-                assert.fail("fake is not a spy");
-            }
-
-            if (typeof method != "function") {
-                assert.fail(method + " is not a function");
-            }
-
-            if (typeof method.getCall != "function") {
-                assert.fail(method + " is not stubbed");
-            }
-        }
-    }
-
-    function failAssertion(object, msg) {
-        object = object || global;
-        var failMethod = object.fail || assert.fail;
-        failMethod.call(object, msg);
-    }
-
-    function mirrorPropAsAssertion(name, method, message) {
-        if (arguments.length == 2) {
-            message = method;
-            method = name;
-        }
-
-        assert[name] = function (fake) {
-            verifyIsStub(fake);
-
-            var args = slice.call(arguments, 1);
-            var failed = false;
-
-            if (typeof method == "function") {
-                failed = !method(fake);
-            } else {
-                failed = typeof fake[method] == "function" ?
-                    !fake[method].apply(fake, args) : !fake[method];
-            }
-
-            if (failed) {
-                failAssertion(this, fake.printf.apply(fake, [message].concat(args)));
-            } else {
-                assert.pass(name);
-            }
-        };
-    }
-
-    function exposedName(prefix, prop) {
-        return !prefix || /^fail/.test(prop) ? prop :
-            prefix + prop.slice(0, 1).toUpperCase() + prop.slice(1);
-    };
-
-    assert = {
-        failException: "AssertError",
-
-        fail: function fail(message) {
-            var error = new Error(message);
-            error.name = this.failException || assert.failException;
-
-            throw error;
-        },
-
-        pass: function pass(assertion) {},
-
-        callOrder: function assertCallOrder() {
-            verifyIsStub.apply(null, arguments);
-            var expected = "", actual = "";
-
-            if (!sinon.calledInOrder(arguments)) {
-                try {
-                    expected = [].join.call(arguments, ", ");
-                    var calls = slice.call(arguments);
-                    var i = calls.length;
-                    while (i) {
-                        if (!calls[--i].called) {
-                            calls.splice(i, 1);
-                        }
-                    }
-                    actual = sinon.orderByFirstCall(calls).join(", ");
-                } catch (e) {
-                    // If this fails, we'll just fall back to the blank string
-                }
-
-                failAssertion(this, "expected " + expected + " to be " +
-                              "called in order but were called as " + actual);
-            } else {
-                assert.pass("callOrder");
-            }
-        },
-
-        callCount: function assertCallCount(method, count) {
-            verifyIsStub(method);
-
-            if (method.callCount != count) {
-                var msg = "expected %n to be called " + sinon.timesInWords(count) +
-                    " but was called %c%C";
-                failAssertion(this, method.printf(msg));
-            } else {
-                assert.pass("callCount");
-            }
-        },
-
-        expose: function expose(target, options) {
-            if (!target) {
-                throw new TypeError("target is null or undefined");
-            }
-
-            var o = options || {};
-            var prefix = typeof o.prefix == "undefined" && "assert" || o.prefix;
-            var includeFail = typeof o.includeFail == "undefined" || !!o.includeFail;
-
-            for (var method in this) {
-                if (method != "export" && (includeFail || !/^(fail)/.test(method))) {
-                    target[exposedName(prefix, method)] = this[method];
-                }
-            }
-
-            return target;
-        }
-    };
-
-    mirrorPropAsAssertion("called", "expected %n to have been called at least once but was never called");
-    mirrorPropAsAssertion("notCalled", function (spy) { return !spy.called; },
-                          "expected %n to not have been called but was called %c%C");
-    mirrorPropAsAssertion("calledOnce", "expected %n to be called once but was called %c%C");
-    mirrorPropAsAssertion("calledTwice", "expected %n to be called twice but was called %c%C");
-    mirrorPropAsAssertion("calledThrice", "expected %n to be called thrice but was called %c%C");
-    mirrorPropAsAssertion("calledOn", "expected %n to be called with %1 as this but was called with %t");
-    mirrorPropAsAssertion("alwaysCalledOn", "expected %n to always be called with %1 as this but was called with %t");
-    mirrorPropAsAssertion("calledWithNew", "expected %n to be called with new");
-    mirrorPropAsAssertion("alwaysCalledWithNew", "expected %n to always be called with new");
-    mirrorPropAsAssertion("calledWith", "expected %n to be called with arguments %*%C");
-    mirrorPropAsAssertion("calledWithMatch", "expected %n to be called with match %*%C");
-    mirrorPropAsAssertion("alwaysCalledWith", "expected %n to always be called with arguments %*%C");
-    mirrorPropAsAssertion("alwaysCalledWithMatch", "expected %n to always be called with match %*%C");
-    mirrorPropAsAssertion("calledWithExactly", "expected %n to be called with exact arguments %*%C");
-    mirrorPropAsAssertion("alwaysCalledWithExactly", "expected %n to always be called with exact arguments %*%C");
-    mirrorPropAsAssertion("neverCalledWith", "expected %n to never be called with arguments %*%C");
-    mirrorPropAsAssertion("neverCalledWithMatch", "expected %n to never be called with match %*%C");
-    mirrorPropAsAssertion("threw", "%n did not throw exception%C");
-    mirrorPropAsAssertion("alwaysThrew", "%n did not always throw exception%C");
-
-    if (commonJSModule) {
-        module.exports = assert;
-    } else {
-        sinon.assert = assert;
-    }
-}(typeof sinon == "object" && sinon || null, typeof window != "undefined" ? window : (typeof self != "undefined") ? self : global));
-
-return sinon;}.call(typeof window != 'undefined' && window || {}));
+require.register("indefinido~advisable@master", function (exports, module) {
+module.exports = require("indefinido~advisable@master/lib/advisable.js");
 
 });
-require.register("indefinido-observable/index.js", function(exports, require, module){
-module.exports = require('./lib/observable');
 
-});
-require.register("indefinido-observable/lib/observable.js", function(exports, require, module){
-// TODO Better keypath support
+require.register("indefinido~advisable@master/lib/advisable.js", function (exports, module) {
+var $, advice, mixin;
 
-// Shim older browsers
-if (!Object.create          ) require('../vendor/shims/object.create');
-if (!Array.prototype.indexOf) require('../vendor/shims/array.indexOf');
+$ = require("component~jquery@1.9.1");
 
-// Object.defineProperty (for ie5+)
-if (typeof require != 'undefined') {
-  require('../vendor/shims/accessors.js');
+advice = {
+  around: function(base, wrapped) {
+    return function() {
+      var args;
 
-  // __lookup*__ and __define*__ for browsers with defineProperty support
-  // TODO Figure out why gives an infinity loop
-  require('../vendor/shims/accessors-legacy.js');
-}
-
-// Require Dependencies
-if (!window['jQuery']) jQuery = $ = require('jquery');
-
-// Observable Implementation
-var observable, requiresDomElement, check, lookup, mixin, generator, mutations;
-
-// Support objects
-
-// TODO implement Object.getOwnPropertyDescriptor
-lookup = {
-  setter: Object.prototype.__lookupSetter__ || function (property) {
-    return this.observed && this.observed[property + '_setter'];
+      args = $.makeArray(arguments);
+      return wrapped.apply(this, [$.proxy(base, this)].concat(args));
+    };
   },
-  getter: Object.prototype.__lookupGetter__ || function (property) {
-    var default_getter;
-    return this.observed && this.observed[property + '_getter'] || (
-      (default_getter = $.proxy(lookup.default_getter, this, property)) &&
-      (default_getter.is_default = true) &&
-      (default_getter)
-    );
+  before: function(base, before) {
+    return this.around(base, function() {
+      var args, orig;
+
+      args = $.makeArray(arguments);
+      orig = args.shift();
+      before.apply(this, args);
+      return orig.apply(this, args);
+    });
   },
-  types: {
-    'undefined': undefined,
-    'null': null,
-    'true': true,
-    'false': false,
-    'NaN': NaN
-  },
-  // overrides: [Object.prototype.toString, String.prototype.toString, Array.prototype.toString, Number.prototype.toString],
-  basic_types: [undefined, null],
-  default_getter: function (property) {
-    var possible_value = this[property];
+  after: function(base, after) {
+    return this.around(base, function() {
+      var args, orig, res;
 
-    // Getter is the toString property of object
-    if (possible_value && possible_value.hasOwnProperty('toString')) {
-
-      if (possible_value.toString.is_default) return this.observed[property];
-
-      return possible_value.toString.call(this);
-
-    } else if (possible_value in lookup.types) {
-
-      return lookup.types[possible_value];
-
-    } else return possible_value;
+      args = $.makeArray(arguments);
+      orig = args.shift();
+      res = orig.apply(this, args);
+      after.apply(this, args);
+      return res;
+    });
   }
 };
-
-
-// Core Implementation
-
-requiresDomElement = Object.defineProperty['requiresDomElement'];
 
 mixin = {
-  subscribe: function observable_subscribe (keypath, callback) {
-    if (keypath == 'observed') throw new TypeError('observable.subscribe: cannot observe reserved property observed');
-    if ($.isArray(this[keypath])) generator.mutations.call(this, keypath);
-    generator.observe.call(this, keypath, callback);
-    return true;
+  before: function(method, advicer) {
+    if (typeof this[method] === 'function') {
+      return this[method] = advice.before(this[method], advicer);
+    }
+    throw new TypeError("Can only advice functions, attribute " + method + " of " + this + " is of type " + (typeof this[method]));
   },
-  unsubscribe: function (object, keypath, callback) {
-    console.error("observable.unsubscribe not implemented yet.");
-    console.log(object, keypath, callback);
+  after: function(method, advicer) {
+    if (typeof this[method] === 'function') {
+      return this[method] = advice.after(this[method], advicer);
+    }
+    throw new TypeError("Can only advice functions, attribute " + method + " of " + this + " is of type " + (typeof this[method]));
   },
-  publish: function observable_publish (keypath, value) {
-    // TODO actually call callbacks
-    return this[keypath] = value;
+  around: function(method, advicer) {
+    if (typeof this[method] === 'function') {
+      return this[method] = advice.around(this[method], advicer);
+    }
+    throw new TypeError("Can only advice functions, attribute " + method + " of " + this + " is of type " + (typeof this[method]));
   }
 };
 
+exports.mixin = function(object) {
+  return $.extend(object, mixin);
+};
 
-if (requiresDomElement) {
+});
 
-  observable = function (object) {
+require.register("pluma~assimilate@0.3.0", function (exports, module) {
+/*! assimilate 0.3.0 Copyright (c) 2013 Alan Plum. MIT licensed. */
+var slice = Array.prototype.slice;
 
-    // observable() or observable(object)
-      if (this.document && this.location) {
-      if (!object) {
-        object = {};
-      }
-      // observable.call(...)
-    } else {
-      // observable.call(param, param)
-      if (object) {
-        throw new TypeError('Two objects provided! Call either with observable.call(object) or observable(object), not with observable.call(param, param)');
-        // observable.call(object)
-      } else {
-        object = this;
-      }
+function bind(fn, self) {
+    var args = slice.call(arguments, 2);
+    if (typeof Function.prototype.bind === 'function') {
+        return Function.prototype.bind.apply(fn, [self].concat(args));
     }
-
-    if (!jQuery.isReady) throw new Error('observable.call: For compatibility reasons, observable can only be called when dom is loaded.');
-    var fix = document.createElement('fix');
-
-    if (!jQuery.isReady) $(function () {document.body.appendChild(fix);});
-    else document.body.appendChild(fix);
-
-    if (!object.observed) generator.observable_for(fix);
-
-    return $.extend(fix, object, mixin);
-  };
-
-  var ignores = document.createElement('fix'), fix_ignores = [], property;
-
-  for (property in ignores) {
-    fix_ignores.push(property);
-  }
-
-  observable.ignores = fix_ignores;
-
-} else {
-
-  observable = function (object) {
-    // observable() or observable(object)
-    if (this === window) {
-      if (!object) {
-        object = {};
-      }
-    // observable.call(...)
-    } else if (this !== window) {
-      // observable.call(param, param)
-      if (object) {
-        throw new TypeError('Two objects provided! Call either with observable.call(object) or observable(object), not with observable.call(param, param)');
-      // observable.call(object)
-      } else {
-        object = this;
-      }
-    }
-
-    if (!object.observed) generator.observable_for(object);
-
-    return $.extend(object, mixin);
-  };
-
-  observable.ignores = [];
+    return function() {
+        return fn.apply(self, args.concat(slice.call(arguments, 0)));
+    };
 }
 
+function simpleCopy(target, name, source) {
+    target[name] = source[name];
+}
 
-observable.unobserve = function (object) {
-    var property;
+function properCopy(target, name, source) {
+    var descriptor = Object.getOwnPropertyDescriptor(source, name);
+    Object.defineProperty(target, name, descriptor);
+}
 
-  for (property in mixin) {
-    delete object[property];
-  }
+function ownProperties(obj) {
+    return Object.getOwnPropertyNames(obj);
+}
 
-  delete object.observed;
-  return true;
-};
-
-check = function (keypath, value) {
-  this.observed[keypath] = value;
-
-  // TODO implement subscription
-  (this.dirty === false) && (this.dirty = true);
-  return true;
-};
-
-generator = {
-  observe: function(keypath, callback) {
-    return Object.defineProperty(this, keypath, {
-      get: generator.getter.call(this, keypath),
-      set: generator.setter.call(this, keypath, callback),
-      enumerable: true
-    });
-  },
-
-  observable_for: function (object) {
-    return Object.defineProperty(object, 'observed', {
-      configurable: true,
-      enumerable: false,
-      value: {}
-    });
-  },
-
-  // TODO improve readability
-  // TODO implement linked list
-  setter: function subscribed_setter (keypath, callback) {
-    var setter = lookup.setter.call(this, keypath), current, getter, old_setter;
-
-    // Set value
-    this.observed[keypath] = lookup.getter.call(this, keypath) && lookup.getter.call(this, keypath)() || this[keypath];
-
-    // First time subscribing
-    if (!setter) {
-      setter = function setter (value) {
-        check.call(this, keypath, value) !== false && setter.callback_thread.call(this, value);
-      };
-
-      // First time subscribing but does not have callback_thread associated
-    } else if (!setter.callback_thread) {
-      old_setter = setter;
-      setter = function setter (value) {
-        check.call(this, keypath, value) !== false && setter.callback_thread.call(this, value);
-      };
-
-      setter.callback_thread = old_setter;
+function allKeys(obj) {
+    var keys = [];
+    for (var name in obj) {
+        keys.push(name);
     }
+    return keys;
+}
 
-    current = setter.callback_thread || $.noop;
-
-    setter.callback_thread = function thread (value) {
-      current.call(this, value) !== false && callback.call(this, value);
-    };
-
-    // TODO better implementation of loookup setter / lookup getter on accessors shim
-    if (requiresDomElement) this.observed[keypath + '_setter'] = setter;
-
-    return setter;
-  },
-  getter: function subscribed_getter (keypath) {
-    var object = this, getter;
-
-    getter = lookup.getter.call(this, keypath) || function root_getter () {
-      return object.observed[keypath];
-    };
-
-    // TODO better implementation of loookup setter / lookup getter on accessors shim
-    if (requiresDomElement) this.observed[keypath + '_getter'] = getter;
-
-    return getter;
-  },
-  mutations: function(keypath) {
-    var setter = lookup.setter.call(this, keypath),
-    array = this[keypath];
-
-    // First time subscribing, and it is an array
-    if (!setter) {
-      // TODO use this.subscribe instead of generator.observe.call
-      generator.observe.call(this, keypath, function(new_array) {
-        var i, type, j;
-
-        // Avoid non push operations!
-        // TODO remove jquery dependency
-        if ($.type(new_array) !== 'array') return;
-
-        // Skip this if it is not the first time
-        if (new_array.object === array.object && new_array.thread === array.thread) return;
-        i = new_array.length;
-        j = new_array.length;
-
-        new_array.thread = array.thread;
-        new_array.object = array.object;
-        new_array.key = keypath;
-
-        while (i--) {
-          // TODO remove jquery dependency
-          type = $.type(arguments[i]);
-          if (!new_array[i].observed
-              && (type != 'object' || type != 'array')) {
-            new_array[i] = observable(new_array[i]);
-          }
+function ownKeys(obj) {
+    var keys = [];
+    for (var name in obj) {
+        if (obj.hasOwnProperty(name)) {
+            keys.push(name);
         }
-
-        new_array.length = j;
-
-        // Update internal property value
-        $.extend(new_array, mutations.overrides);
-      });
-
-      setter = lookup.setter.call(this, keypath);
     }
-
-    // TODO Transform this code to define property
-    array.thread = setter.callback_thread;
-    array.object = this;
-    array.key = keypath;
-
-    // Override default array methods
-    $.extend(array, mutations.overrides);
-
-    if (!this.observed.mutate) this.observed.mutate = mutations.mutate;
-  }
-};
-
-mutations = {
-  mutate: function(thread, method, array) {
-    array.method = method;
-    thread.call(this, array);
-    this.publish(array.key, array); // TODO ver se é uma boa
-    delete array.method;
-  },
-  overrides: {
-    push: function() {
-      var i = arguments.length, operation;
-
-      while (i--) {
-        !arguments[i].observed && $.type(arguments[i]) == 'object' && (arguments[i] = observable(arguments[i]));
-      }
-
-      operation = Array.prototype.push.apply(this, arguments); // TODO Convert arguments for real array
-      this.object.observed.mutate.call(this.object, this.thread, 'push', this);
-      return operation;
-    }
-  }
-};
-
-$('pop shift unshift'.split(' ')).each(function (i, method) {
-  mutations.overrides[method] = function () {
-    Array.prototype[method].apply(this, arguments);
-    this.object.observed.mutate.call(this.object, this.thread, method, this);
-  };
-});
-
-if (typeof exports != 'undefined') {
-  exports.mixin = observable;
-} else {
-  window.observable = observable;
+    return keys;
 }
 
+function assimilateWithStrategy(target) {
+    var strategy = this,
+    sources = slice.call(arguments, 1),
+    i, source, names, j, name;
+
+    if (target === undefined || target === null) {
+        target = {};
+    }
+
+    for (i = 0; i < sources.length; i++) {
+        source = sources[i];
+        names = strategy.keysFn(source);
+        for (j = 0; j < names.length; j++) {
+            name = names[j];
+            strategy.copyFn(target, name, source);
+        }
+    }
+
+    return target;
+}
+
+var strategies = {
+    DEFAULT: {
+        keysFn: ownKeys,
+        copyFn: simpleCopy
+    },
+    PROPER: {
+        keysFn: ownProperties,
+        copyFn: properCopy
+    },
+    INHERITED: {
+        keysFn: allKeys,
+        copyFn: simpleCopy
+    },
+    DEEP: {
+        keysFn: ownKeys,
+        copyFn: function recursiveCopy(target, name, source) {
+            var val = source[name];
+            var old = target[name];
+            if (typeof val === 'object' && typeof old === 'object') {
+                assimilateWithStrategy.call(strategies.DEEP, old, val);
+            } else {
+                simpleCopy(target, name, source);
+            }
+        }
+    },
+    STRICT: {
+        keysFn: ownKeys,
+        copyFn: function strictCopy(target, name, source) {
+            if (source[name] !== undefined) {
+                simpleCopy(target, name, source);
+            }
+        }
+    },
+    FALLBACK: {
+        keysFn: function fallbackCopy(target, name, source) {
+            if (target[name] === undefined) {
+                simpleCopy(target, name, source);
+            }
+        },
+        copyFn: simpleCopy
+    }
+};
+
+var assimilate = bind(assimilateWithStrategy, strategies.DEFAULT);
+assimilate.strategies = strategies;
+assimilate.withStrategy = function withStrategy(strategy) {
+    if (typeof strategy === 'string') {
+        strategy = strategies[strategy.toUpperCase()];
+    }
+    if (!strategy) {
+        throw new Error('Unknwon or invalid strategy:' + strategy);
+    }
+    if (typeof strategy.copyFn !== 'function') {
+        throw new Error('Strategy missing copy function:' + strategy);
+    }
+    if (typeof strategy.keysFn !== 'function') {
+        throw new Error('Strategy missing keys function:' + strategy);
+    }
+    return bind(assimilateWithStrategy, strategy);
+};
+
+module.exports = assimilate;
 });
-require.register("indefinido-observable/lib/adapters/rivets.js", function(exports, require, module){
+
+require.register("indefinido~observable@es6-modules", function (exports, module) {
+module.exports = require("indefinido~observable@es6-modules/lib/observable.js");
+
+});
+
+require.register("indefinido~observable@es6-modules/lib/adapters/rivets.js", function (exports, module) {
 exports.adapter = {
   subscribe: function(record, attribute_path, callback) {
     if (record == null) {
       throw new TypeError('observable.adapters.rivets.subscribe: No record provided for subscription');
     }
-    return record.subscribe(attribute_path, callback);
+    if (attribute_path) {
+      return record.subscribe(attribute_path, callback);
+    }
   },
   unsubscribe: function(record, attribute_path, callback) {
     if (record == null) {
@@ -14643,183 +9956,2242 @@ exports.adapter = {
 };
 
 });
-require.register("indefinido-observable/vendor/shims/accessors.js", function(exports, require, module){
-'use strict';
 
-(function () {
-  // Cache native objects for better performacy and easy to use
-  // references
-  var ObjectProto = Object.prototype,
-  hasOwnProp = ObjectProto.hasOwnProperty,
-  getProp    = Object.getOwnPropertyDescriptor,
-  defineProp = Object.defineProperty,
-  toStrings = [],
-  features = null,
-  stack = [], detach,
-  prototypeBase = [Object, String, Array, Function, Boolean, Number, RegExp, Date, Error];
+require.register("indefinido~observable@es6-modules/lib/legacy/notifierable.js", function (exports, module) {
+var jQuery = require("component~jquery@1.9.1");
+var mutations, notifierable, subscribed_getter;
 
-  // IE7 Does not have Element and Window defined, so only add them if
-  // they exists check here
-  if (typeof Element != 'undefined') prototypeBase.push(Element);
-  if (typeof Window  != 'undefined') prototypeBase.push(Window);
+notifierable = {
+  observe: function(object, keypath, callback) {
+    return Object.defineProperty(object, keypath, {
+      get: this.getter(object, keypath),
+      set: this.setter(object, keypath, callback),
+      enumerable: true
+    });
+  },
+  storage_for: function(object) {
+    var toJSON;
 
-  features = {
-    allowsNonEnumerableProperty: function () {
-      var broken = false;
-      try {
-        defineProp({}, 'x', {})
-      } catch(e) {
-        broken = true;
-      }
+    toJSON = void 0;
+    Object.defineProperty(object, "observed", {
+      configurable: true,
+      enumerable: false,
+      value: {}
+    });
+    toJSON = object.json || object.toJSON;
+    if (toJSON) {
+      return Object.defineProperty(object, "toJSON", {
+        enumerable: false,
+        value: function() {
+          var json;
 
-      return (!broken) && (!!defineProp);
-    },
-    supportsOnPropertyChangeEvent: function () {
-      var test = document.createElement('domo');
-      return 'onpropertychange' in test
+          json = void 0;
+          json = toJSON.apply(this, arguments);
+          return observable.unobserve(_.omit(json, observable.ignores, ["toJSON", "observed"]));
+        }
+      });
     }
-  }
+  },
+  setter: function(object, keypath, callback) {
+    var current, old_setter, setter, thread;
 
-  if (!features.allowsNonEnumerableProperty() && features.supportsOnPropertyChangeEvent()) {
+    setter = lookup.setter.call(object, keypath);
+    this.observed[keypath] = lookup.getter.call(object, keypath) && lookup.getter.call(object, keypath)() || object[keypath];
+    if (!setter) {
+      setter = function(value) {
+        return check.call(object, keypath, value) !== false && setter.callback_thread.call(object, value);
+      };
+    } else if (!setter.callback_thread) {
+      old_setter = setter;
+      setter = function(value) {
+        return check.call(object, keypath, value) !== false && setter.callback_thread.call(object, value);
+      };
+      setter.callback_thread = old_setter;
+    }
+    current = setter.callback_thread || $.noop;
+    setter.callback_thread = thread = function(value) {
+      return current.call(object, value) !== false && callback.call(object, value);
+    };
+    if (requiresDomElement) {
+      this.observed[keypath + "_setter"] = setter;
+    }
+    return setter;
+  },
+  getter: subscribed_getter = function(object, keypath) {
+    var getter, root_getter;
 
-    // Check if node is on document
-    var inDocument = function inDocument (node) {
-      var curr = node;
-      while (curr != null) {
-        curr = curr.parentNode;
-        if (curr == document) return true;
-      }
-      return false;
-    },
+    getter = lookup.getter.call(object, keypath) || (root_getter = function() {
+      return object.observed[keypath];
+    });
+    if (requiresDomElement) {
+      this.observed[keypath + "_getter"] = getter;
+    }
+    return getter;
+  },
+  mutations: function(keypath) {
+    var array, setter;
 
-    // Generate property event handler for setting some property
-    generate_setter = function generate_setter (object, property, descriptor) {
-      var setter = function object_define_property_shim_change_listener (event) {
-        var current_value, changed_value;
-        if (
-          // if we are setting this property
-          event.propertyName == property
+    setter = lookup.setter.call(this, keypath);
+    array = this[keypath];
+    if (!setter) {
+      this.observe.call(this, keypath, function(new_array) {
+        var i, j, type;
 
-          // prevent firing setters again
-          // by checking callstack
-          && stack.indexOf(property) === -1
-        ) {
-          // Remove the event so it doesn't fire again and
-          // create a loop
-          object.detachEvent("onpropertychange", setter);
-
-          // If detaching the current setter
-          // just remove the event listener
-          if (detach) return;
-
-          // get the changed value, run it through the set function
-          changed_value = object[property];
-          descriptor.set.call(object, changed_value);
-
-          // Restore get function if it exists and there's no falsey value
-          if (descriptor.get && descriptor.value && descriptor.value.toString != descriptor.bound_getter) {
-            // TODO if (descriptor.get + '' === 'undefined') descriptor.get = '';        // Handle undefined getter
-            descriptor.value.toString = descriptor.bound_getter
+        i = void 0;
+        type = void 0;
+        j = void 0;
+        if ($.type(new_array) !== "array") {
+          return;
+        }
+        if (new_array.object === array.object && new_array.thread === array.thread) {
+          return;
+        }
+        i = new_array.length;
+        j = new_array.length;
+        new_array.thread = array.thread;
+        new_array.object = array.object;
+        new_array.key = keypath;
+        while (i--) {
+          type = $.type(new_array[i]);
+          if (!new_array[i].observed && (type === "object" || type === "array")) {
+            new_array[i] = observable(new_array[i]);
           }
-
-          // Update stored values
-          object[property] = descriptor.value = changed_value;
-
-          // restore the event handler
-          object.attachEvent("onpropertychange", setter);
-
-          // stack.pop();
-          return false;
         }
-      }
-
-      return setter;
+        new_array.length = j;
+        $.extend(new_array, mutations.overrides);
+      });
+      setter = lookup.setter.call(this, keypath);
     }
+    array.thread = setter.callback_thread;
+    array.object = this;
+    array.key = keypath;
+    $.extend(array, mutations.overrides);
+    if (!this.observed.mutate) {
+      this.observed.mutate = mutations.mutate;
+    }
+  }
+};
 
-    // Shim define property with apropriated fail cases exceptions
-    Object.defineProperty = function (obj, prop, descriptor) {
-      var fix;
+mutations = {
+  mutate: function(thread, method, array) {
+    array.method = method;
+    thread.call(this, array);
+    this.publish(array.key, array);
+    delete array.method;
+  },
+  overrides: {
+    push: function() {
+      var i, operation;
 
-      if (!obj.attachEvent) throw new TypeError('Object.defineProperty: First parameter must be a dom element.');
+      i = arguments.length;
+      operation = void 0;
+      while (i--) {
+        !arguments[i].observed && $.type(arguments[i]) === "object" && (arguments[i] = observable(arguments[i]));
+      }
+      operation = Array.prototype.push.apply(this, arguments);
+      this.object.observed.mutate.call(this.object, this.thread, "push", this);
+      return operation;
+    }
+  }
+};
 
-      if (!fix && !inDocument(obj)) throw new TypeError('Object.defineProperty: Dom element must be attached in document.');
+jQuery("pop shift unshift".split(" ")).each(function(i, method) {
+  return mutations.overrides[method] = function() {
+    Array.prototype[method].apply(this, arguments);
+    return this.object.observed.mutate.call(this.object, this.thread, method, this);
+  };
+});
 
-      if (!descriptor) throw new TypeError('Object.defineProperty (object, property, descriptor): Descriptor must be an object, was \'' + descriptor + '\'.');
+module.exports = notifierable;
 
-      if ((descriptor.get || descriptor.set) && descriptor.value) throw new TypeError('Object.defineProperty: Descriptor must have only getters and setters or value.');
+});
 
-      // Store current value in descriptor
-      descriptor.value = descriptor.value || (descriptor.get && descriptor.get.call(obj)) || obj[prop];
+require.register("indefinido~observable@es6-modules/lib/legacy/schedulerable.js", function (exports, module) {
+var lookup = require("indefinido~observable@es6-modules/lib/lookup.js");
+var jQuery = require("component~jquery@1.9.1");
+var scheduler, schedulerable;
 
-      if (descriptor.get || descriptor.set) {
-        // Detach old listeners if any
-        detach = true;
-        obj[prop] = 'detaching';
-        detach = false;
+scheduler = function(options) {
+  var name, timeout, value;
 
-        if (descriptor.get) {
-          descriptor.bound_getter   = $.extend($.proxy(descriptor.get, obj), descriptor.get);
+  if (options == null) {
+    options = {};
+  }
+  timeout = null;
+  for (name in options) {
+    value = options[name];
+    options[name] = {
+      value: value
+    };
+  }
+  jQuery.extend(options, {
+    keypaths: {
+      value: []
+    },
+    schedule: {
+      value: function() {
+        var deliver,
+          _this = this;
 
-          // We only bind the getter when we have a non falsey value
-          if (descriptor.value) descriptor.value.toString = descriptor.bound_getter;
+        deliver = function() {
+          return _this.deliver();
+        };
+        clearTimeout(timeout);
+        return timeout = setTimeout(deliver, 500 || options.wait);
+      }
+    }
+  });
+  return Object.create(scheduler.methods, options);
+};
 
-          // Although its not allowed for convention to have getters
-          // and setters with the descriptor value, here we just reuse
-          // the descriptor stored value
-          obj[prop] = descriptor.value;
-        }
+jQuery.extend(scheduler, {
+  methods: {
+    property: function(object, keypath) {
+      if (this.keypaths.indexOf(keypath) !== -1) {
+        return;
+      }
+      this.keypaths.push(keypath);
+      return Object.defineProperty(object, keypath, {
+        get: this.getter(object, keypath),
+        set: this.setter(object, keypath),
+        enumerable: true,
+        configurable: true
+      });
+    },
+    deliver: function() {
+      var keypath, observer, _ref;
 
-        (fix || obj).attachEvent("onpropertychange", generate_setter(obj, prop, descriptor));
+      _ref = this.target.observation.observers;
+      for (keypath in _ref) {
+        observer = _ref[keypath];
+        observer.deliver();
+      }
+      return true;
+    },
+    setter: function(object, keypath, callback) {
+      var current_setter;
 
+      current_setter = lookup.setter.call(object, keypath);
+      if (current_setter) {
+        return function(value) {
+          current_setter.call(this, value);
+          this.observed[keypath] = value;
+          return this.observation.scheduler.schedule();
+        };
       } else {
-        obj[prop] = descriptor.value;
+        return function(value) {
+          this.observed[keypath] = value;
+          return this.observation.scheduler.schedule();
+        };
       }
+    },
+    getter: function(object, keypath) {
+      var root_getter;
 
-      return obj;
+      return lookup.getter.call(object, keypath) || (root_getter = function() {
+        return this.observed[keypath];
+      });
+    },
+    destroy: function() {
+      return this.target = null;
     }
+  }
+});
 
-    // Allow others to check requirements for define property
-    Object.defineProperty.requiresDomElement = true
+schedulerable = function(observable) {
+  var original;
+
+  original = observable.methods.subscribe;
+  observable.methods.subscribe = function(keypath, callback) {
+    original.apply(this, arguments);
+    return this.observation.scheduler.property(this, keypath);
+  };
+  return jQuery.extend((function() {
+    var object;
+
+    object = observable.apply(this, arguments);
+    object.observation.scheduler = scheduler({
+      target: object
+    });
+    return object;
+  }), observable);
+};
+
+module.exports = schedulerable;
+
+});
+
+require.register("indefinido~observable@es6-modules/lib/lookup.js", function (exports, module) {
+var lookup;
+
+lookup = {
+  setter: Object.prototype.__lookupSetter__ || function(property) {
+    return this.observed && this.observed[property + "_setter"];
+  },
+  getter: Object.prototype.__lookupGetter__ || function(property) {
+    var default_getter;
+
+    default_getter = void 0;
+    return this.observed && this.observed[property + "_getter"] || ((default_getter = $.proxy(lookup.default_getter, this, property)) && (default_getter.is_default = true) && default_getter);
+  },
+  types: {
+    undefined: undefined,
+    "null": null,
+    "true": true,
+    "false": false,
+    NaN: NaN
+  },
+  basic_types: [undefined, null],
+  default_getter: function(property) {
+    var possible_value;
+
+    possible_value = this[property];
+    if (possible_value && possible_value.hasOwnProperty("toString")) {
+      if (possible_value.toString.is_default) {
+        return this.observed[property];
+      }
+      return possible_value.toString.call(this);
+    } else if (possible_value in lookup.types) {
+      return lookup.types[possible_value];
+    } else {
+      return possible_value;
+    }
+  }
+};
+
+module.exports = lookup;
+
+});
+
+require.register("indefinido~observable@es6-modules/lib/observable.js", function (exports, module) {
+require("indefinido~observable@es6-modules/lib/platform.js");
+var jQuery = require("component~jquery@1.9.1");
+var observation = require("indefinido~observable@es6-modules/lib/observable/observation.js");
+var selection = require("indefinido~observable@es6-modules/lib/observable/selection.js");
+var KeypathObserver = require("indefinido~observable@es6-modules/lib/observable/keypath_observer.js");
+var SelfObserver = require("indefinido~observable@es6-modules/lib/observable/self_observer.js");
+var observable;
+
+observable = function() {
+  var object;
+
+  object = observable.select.apply(this, arguments);
+  if (object.observation) {
+    return object;
+  }
+  return jQuery.extend(observable.observe(object), observable.methods);
+};
+
+jQuery.extend(observable, {
+  select: selection(observable),
+  observe: function(object) {
+    return Object.defineProperty(object, "observation", {
+      configurable: true,
+      enumerable: false,
+      value: observation(object)
+    }, Object.defineProperty(object, "observed", {
+      configurable: true,
+      enumerable: false,
+      value: {}
+    }));
+  },
+  self: function(object) {
+    var observer, observers;
+
+    observers = object.observation.observers;
+    return observer = observers.self || (observers.self = new SelfObserver(object));
+  },
+  keypath: function(object, keypath) {
+    var observer, observers;
+
+    observers = object.observation.observers;
+    return observer = observers[keypath] || (observers[keypath] = new KeypathObserver(object, keypath));
+  },
+  unobserve: function(object) {
+    var name, unobserved;
+
+    if (!object.observation) {
+      return object;
+    }
+    unobserved = {};
+    for (name in observation.methods) {
+      delete object[name];
+    }
+    object.observation.destroy();
+    object.observation.scheduler.destroy();
+    delete object.observation;
+    delete object.observed;
+    return unobserved;
+  },
+  methods: {
+    subscribe: function(keypath_or_callback, callback) {
+      var observer;
+
+      switch (arguments.length) {
+        case 1:
+          observer = observable.self(this);
+          return this.observation.add('self', keypath_or_callback);
+        case 2:
+          observable.keypath(this, keypath_or_callback);
+          return this.observation.add(keypath_or_callback, callback);
+      }
+    },
+    unsubscribe: function(keypath, callback) {
+      return this.observation[callback ? 'remove' : 'mute'](keypath, callback);
+    },
+    publish: function(keypath, value) {
+      return this[keypath] = value;
+    }
+  },
+  ignores: []
+});
+
+if (!Object.observe) {
+  var schedulerable = require("indefinido~observable@es6-modules/lib/legacy/schedulerable.js");
+  observable = schedulerable(observable);
+}
+
+observable.mixin = observable;
+
+module.exports = observable;
+
+});
+
+require.register("indefinido~observable@es6-modules/lib/observable/keypath_observer.js", function (exports, module) {
+var PathObserver = require("indefinido~observable@es6-modules/vendor/observe-js/observe.js").PathObserver;
+var Callbacks = require("component~jquery@1.9.1").Callbacks;
+var KeypathObserver,
+  __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+
+KeypathObserver = (function(_super) {
+  __extends(KeypathObserver, _super);
+
+  function KeypathObserver(object, keypath) {
+    _super.call(this, object, keypath);
+    this.callbacks = Callbacks();
+    this.open((function() {
+      return this.fireWith(object, arguments);
+    }), this.callbacks);
   }
 
+  KeypathObserver.prototype.add = function(callback) {
+    return this.callbacks.add(callback);
+  };
 
-  // Since we shimed define property, we can also shim defineProperties
-  if (!Object.defineProperties) {
-    Object.defineProperties = function (obj, props) {
-      for (var prop in props) {
-        if (hasOwnProp.call(props, prop)) {
-          Object.defineProperty(obj, prop, props[prop]);
-        }
+  KeypathObserver.prototype.remove = function() {
+    var _ref;
+
+    return (_ref = this.callbacks).remove.apply(_ref, arguments);
+  };
+
+  KeypathObserver.prototype.close = function() {
+    KeypathObserver.__super__.close.apply(this, arguments);
+    this.callbacks.empty();
+    return delete this.callbacks;
+  };
+
+  return KeypathObserver;
+
+})(PathObserver);
+
+module.exports = KeypathObserver;
+
+});
+
+require.register("indefinido~observable@es6-modules/lib/observable/observation.js", function (exports, module) {
+var observation, observationable;
+
+observation = {
+  add: function(keypath, callback) {
+    return this.observers[keypath].add(callback);
+  },
+  remove: function(keypath, callback) {
+    return this.observers[keypath].remove(callback);
+  },
+  mute: function(keypath) {
+    this.observers[keypath].close();
+    return delete this.observers[keypath];
+  },
+  destroy: function(keypath) {
+    var observer, _ref;
+
+    _ref = this.observers;
+    for (keypath in _ref) {
+      observer = _ref[keypath];
+      observer.close();
+    }
+    return delete this.observers;
+  }
+};
+
+observationable = function(object) {
+  return Object.create(observation, {
+    observers: {
+      value: {}
+    }
+  });
+};
+
+module.exports = observationable;
+
+});
+
+require.register("indefinido~observable@es6-modules/lib/observable/selection.js", function (exports, module) {
+var jQuery = require("component~jquery@1.9.1");
+var requiresDomElement, selection;
+
+requiresDomElement = Object.defineProperty.requiresDomElement;
+
+selection = function(observable) {
+  if (requiresDomElement) {
+    selection.generate_ignores(observable);
+    return selection.legacy;
+  } else {
+    return selection.from_call;
+  }
+};
+
+selection.legacy = function() {
+  var fix, object;
+
+  object = selection.from_call.apply(this, arguments);
+  if (!jQuery.isReady) {
+    throw new Error("observable.call: For compatibility reasons, observable can only be called when dom is loaded.");
+  }
+  if (typeof object.nodeName !== "string") {
+    fix = document.createElement("fix");
+    document.body.appendChild(fix);
+    object = jQuery.extend(fix, object);
+  }
+  return object;
+};
+
+selection.generate_ignores = function(observable) {
+  var fix_ignores, ignores, property;
+
+  ignores = document.createElement("fix");
+  fix_ignores = [];
+  property = void 0;
+  for (property in ignores) {
+    fix_ignores.push(property);
+  }
+  return observable.ignores = fix_ignores;
+};
+
+selection.from_call = function(param) {
+  var object;
+
+  if (this === window) {
+    object = param || {};
+  } else if (this !== window) {
+    if (param) {
+      throw new TypeError("Two objects provided! Call either with observable.call(object) or observable(object), not with observable.call(param, param)");
+    } else {
+      object = this;
+    }
+  }
+  return object;
+};
+
+module.exports = selection;
+
+});
+
+require.register("indefinido~observable@es6-modules/lib/observable/self_observer.js", function (exports, module) {
+var ObjectObserver = require("indefinido~observable@es6-modules/vendor/observe-js/observe.js").ObjectObserver;
+var Callbacks = require("component~jquery@1.9.1").Callbacks;
+var SelfObserver,
+  __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+
+SelfObserver = (function(_super) {
+  __extends(SelfObserver, _super);
+
+  function SelfObserver(object) {
+    _super.call(this, object);
+    this.callbacks = Callbacks();
+    this.open((function() {
+      return this.fireWith(object, arguments);
+    }), this.callbacks);
+  }
+
+  SelfObserver.prototype.add = function(callback) {
+    return this.callbacks.add(callback);
+  };
+
+  SelfObserver.prototype.remove = function() {
+    var _ref;
+
+    return (_ref = this.callbacks).remove.apply(_ref, arguments);
+  };
+
+  SelfObserver.prototype.close = function() {
+    SelfObserver.__super__.close.apply(this, arguments);
+    this.callbacks.empty();
+    return delete this.callbacks;
+  };
+
+  return SelfObserver;
+
+})(ObjectObserver);
+
+module.exports = SelfObserver;
+
+});
+
+require.register("indefinido~observable@es6-modules/lib/platform.js", function (exports, module) {
+if (!Object.prototype.create) {
+  require("indefinido~observable@es6-modules/vendor/shims/object.create.js");
+}
+
+if (!Array.prototype.indexOf) {
+  require("indefinido~observable@es6-modules/vendor/shims/array.indexOf.js");
+}
+
+if (typeof require !== "undefined") {
+  require("indefinido~observable@es6-modules/vendor/shims/accessors-legacy.js");
+  require("indefinido~observable@es6-modules/vendor/shims/accessors.js");
+}
+
+});
+
+require.register("indefinido~observable@es6-modules/vendor/observe-js/observe.js", function (exports, module) {
+// Copyright 2012 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+(function(global) {
+  'use strict';
+
+  // Detect and do basic sanity checking on Object/Array.observe.
+  function detectObjectObserve() {
+    if (typeof Object.observe !== 'function' ||
+        typeof Array.observe !== 'function') {
+      return false;
+    }
+
+    var records = [];
+
+    function callback(recs) {
+      records = recs;
+    }
+
+    var test = {};
+    var arr = [];
+    Object.observe(test, callback);
+    Array.observe(arr, callback);
+    test.id = 1;
+    test.id = 2;
+    delete test.id;
+    arr.push(1, 2);
+    arr.length = 0;
+
+    Object.deliverChangeRecords(callback);
+    if (records.length !== 5)
+      return false;
+
+    if (records[0].type != 'add' ||
+        records[1].type != 'update' ||
+        records[2].type != 'delete' ||
+        records[3].type != 'splice' ||
+        records[4].type != 'splice') {
+      return false;
+    }
+
+    Object.unobserve(test, callback);
+    Array.unobserve(arr, callback);
+
+    return true;
+  }
+
+  var hasObserve = detectObjectObserve();
+
+  function detectEval() {
+    // Don't test for eval if we're running in a Chrome App environment.
+    // We check for APIs set that only exist in a Chrome App context.
+    if (typeof chrome !== 'undefined' && chrome.app && chrome.app.runtime) {
+      return false;
+    }
+
+    try {
+      var f = new Function('', 'return true;');
+      return f();
+    } catch (ex) {
+      return false;
+    }
+  }
+
+  var hasEval = detectEval();
+
+  function isIndex(s) {
+    return +s === s >>> 0;
+  }
+
+  function toNumber(s) {
+    return +s;
+  }
+
+  function isObject(obj) {
+    return obj === Object(obj);
+  }
+
+  var numberIsNaN = Number.isNaN || function isNaN(value) {
+    return typeof value === 'number' && global.isNaN(value);
+  }
+
+  function areSameValue(left, right) {
+    if (left === right)
+      return left !== 0 || 1 / left === 1 / right;
+    if (numberIsNaN(left) && numberIsNaN(right))
+      return true;
+
+    return left !== left && right !== right;
+  }
+
+  var createObject = ('__proto__' in {}) ?
+    function(obj) { return obj; } :
+    function(obj) {
+      var proto = obj.__proto__;
+      if (!proto)
+        return obj;
+      var newObject = Object.create(proto);
+      Object.getOwnPropertyNames(obj).forEach(function(name) {
+        Object.defineProperty(newObject, name,
+                             Object.getOwnPropertyDescriptor(obj, name));
+      });
+      return newObject;
+    };
+
+  var identStart = '[\$_a-zA-Z]';
+  var identPart = '[\$_a-zA-Z0-9]';
+  var ident = identStart + '+' + identPart + '*';
+  var elementIndex = '(?:[0-9]|[1-9]+[0-9]+)';
+  var identOrElementIndex = '(?:' + ident + '|' + elementIndex + ')';
+  var path = '(?:' + identOrElementIndex + ')(?:\\s*\\.\\s*' + identOrElementIndex + ')*';
+  var pathRegExp = new RegExp('^' + path + '$');
+
+  function isPathValid(s) {
+    if (typeof s != 'string')
+      return false;
+    s = s.trim();
+
+    if (s == '')
+      return true;
+
+    if (s[0] == '.')
+      return false;
+
+    return pathRegExp.test(s);
+  }
+
+  var constructorIsPrivate = {};
+
+  function Path(s, privateToken) {
+    if (privateToken !== constructorIsPrivate)
+      throw Error('Use Path.get to retrieve path objects');
+
+    if (s.trim() == '')
+      return this;
+
+    if (isIndex(s)) {
+      this.push(s);
+      return this;
+    }
+
+    s.split(/\s*\.\s*/).filter(function(part) {
+      return part;
+    }).forEach(function(part) {
+      this.push(part);
+    }, this);
+
+    if (hasEval && this.length) {
+      this.getValueFrom = this.compiledGetValueFromFn();
+    }
+  }
+
+  // TODO(rafaelw): Make simple LRU cache
+  var pathCache = {};
+
+  function getPath(pathString) {
+    if (pathString instanceof Path)
+      return pathString;
+
+    if (pathString == null)
+      pathString = '';
+
+    if (typeof pathString !== 'string')
+      pathString = String(pathString);
+
+    var path = pathCache[pathString];
+    if (path)
+      return path;
+    if (!isPathValid(pathString))
+      return invalidPath;
+    var path = new Path(pathString, constructorIsPrivate);
+    pathCache[pathString] = path;
+    return path;
+  }
+
+  Path.get = getPath;
+
+  Path.prototype = createObject({
+    __proto__: [],
+    valid: true,
+
+    toString: function() {
+      return this.join('.');
+    },
+
+    getValueFrom: function(obj, directObserver) {
+      for (var i = 0; i < this.length; i++) {
+        if (obj == null)
+          return;
+        obj = obj[this[i]];
+      }
+      return obj;
+    },
+
+    iterateObjects: function(obj, observe) {
+      for (var i = 0; i < this.length; i++) {
+        if (i)
+          obj = obj[this[i - 1]];
+        if (!isObject(obj))
+          return;
+        observe(obj, this[0]);
+      }
+    },
+
+    compiledGetValueFromFn: function() {
+      var accessors = this.map(function(ident) {
+        return isIndex(ident) ? '["' + ident + '"]' : '.' + ident;
+      });
+
+      var str = '';
+      var pathString = 'obj';
+      str += 'if (obj != null';
+      var i = 0;
+      for (; i < (this.length - 1); i++) {
+        var ident = this[i];
+        pathString += accessors[i];
+        str += ' &&\n     ' + pathString + ' != null';
+      }
+      str += ')\n';
+
+      pathString += accessors[i];
+
+      str += '  return ' + pathString + ';\nelse\n  return undefined;';
+      return new Function('obj', str);
+    },
+
+    setValueFrom: function(obj, value) {
+      if (!this.length)
+        return false;
+
+      for (var i = 0; i < this.length - 1; i++) {
+        if (!isObject(obj))
+          return false;
+        obj = obj[this[i]];
+      }
+
+      if (!isObject(obj))
+        return false;
+
+      obj[this[i]] = value;
+      return true;
+    }
+  });
+
+  var invalidPath = new Path('', constructorIsPrivate);
+  invalidPath.valid = false;
+  invalidPath.getValueFrom = invalidPath.setValueFrom = function() {};
+
+  var MAX_DIRTY_CHECK_CYCLES = 1000;
+
+  function dirtyCheck(observer) {
+    var cycles = 0;
+    while (cycles < MAX_DIRTY_CHECK_CYCLES && observer.check_()) {
+      cycles++;
+    }
+    if (global.testingExposeCycleCount)
+      global.dirtyCheckCycleCount = cycles;
+
+    return cycles > 0;
+  }
+
+  function objectIsEmpty(object) {
+    for (var prop in object)
+      return false;
+    return true;
+  }
+
+  function diffIsEmpty(diff) {
+    return objectIsEmpty(diff.added) &&
+           objectIsEmpty(diff.removed) &&
+           objectIsEmpty(diff.changed);
+  }
+
+  function diffObjectFromOldObject(object, oldObject) {
+    var added = {};
+    var removed = {};
+    var changed = {};
+
+    for (var prop in oldObject) {
+      var newValue = object[prop];
+
+      if (newValue !== undefined && newValue === oldObject[prop])
+        continue;
+
+      if (!(prop in object)) {
+        removed[prop] = undefined;
+        continue;
+      }
+
+      if (newValue !== oldObject[prop])
+        changed[prop] = newValue;
+    }
+
+    for (var prop in object) {
+      if (prop in oldObject)
+        continue;
+
+      added[prop] = object[prop];
+    }
+
+    if (Array.isArray(object) && object.length !== oldObject.length)
+      changed.length = object.length;
+
+    return {
+      added: added,
+      removed: removed,
+      changed: changed
+    };
+  }
+
+  var eomTasks = [];
+  function runEOMTasks() {
+    if (!eomTasks.length)
+      return false;
+
+    for (var i = 0; i < eomTasks.length; i++) {
+      eomTasks[i]();
+    }
+    eomTasks.length = 0;
+    return true;
+  }
+
+  var runEOM = hasObserve ? (function(){
+    var eomObj = { pingPong: true };
+    var eomRunScheduled = false;
+
+    Object.observe(eomObj, function() {
+      runEOMTasks();
+      eomRunScheduled = false;
+    });
+
+    return function(fn) {
+      eomTasks.push(fn);
+      if (!eomRunScheduled) {
+        eomRunScheduled = true;
+        eomObj.pingPong = !eomObj.pingPong;
+      }
+    };
+  })() :
+  (function() {
+    return function(fn) {
+      eomTasks.push(fn);
+    };
+  })();
+
+  var observedObjectCache = [];
+
+  function newObservedObject() {
+    var observer;
+    var object;
+    var discardRecords = false;
+    var first = true;
+
+    function callback(records) {
+      if (observer && observer.state_ === OPENED && !discardRecords)
+        observer.check_(records);
+    }
+
+    return {
+      open: function(obs) {
+        if (observer)
+          throw Error('ObservedObject in use');
+
+        if (!first)
+          Object.deliverChangeRecords(callback);
+
+        observer = obs;
+        first = false;
+      },
+      observe: function(obj, arrayObserve) {
+        object = obj;
+        if (arrayObserve)
+          Array.observe(object, callback);
+        else
+          Object.observe(object, callback);
+      },
+      deliver: function(discard) {
+        discardRecords = discard;
+        Object.deliverChangeRecords(callback);
+        discardRecords = false;
+      },
+      close: function() {
+        observer = undefined;
+        Object.unobserve(object, callback);
+        observedObjectCache.push(this);
       }
     };
   }
 
-  /* TODO Use define Property, and only define if
-     non-enumerable properties are allowed
+  /*
+   * The observedSet abstraction is a perf optimization which reduces the total
+   * number of Object.observe observations of a set of objects. The idea is that
+   * groups of Observers will have some object dependencies in common and this
+   * observed set ensures that each object in the transitive closure of
+   * dependencies is only observed once. The observedSet acts as a write barrier
+   * such that whenever any change comes through, all Observers are checked for
+   * changed values.
+   *
+   * Note that this optimization is explicitly moving work from setup-time to
+   * change-time.
+   *
+   * TODO(rafaelw): Implement "garbage collection". In order to move work off
+   * the critical path, when Observers are closed, their observed objects are
+   * not Object.unobserve(d). As a result, it's possible that if the observedSet
+   * is kept open, but some Observers have been closed, it could cause "leaks"
+   * (prevent otherwise collectable objects from being collected). At some
+   * point, we should implement incremental "gc" which keeps a list of
+   * observedSets which may need clean-up and does small amounts of cleanup on a
+   * timeout until all is clean.
+   */
 
-     also define __defineGetter__ and __defineSetter__
-  if (!Object.defineProperty.requiresDomElement) {
-    if (!Object.prototype.__lookupGetter__) {
-      Object.__lookupGetter__ = function () {
-      console && console.log('__lookupGetter__ not implemented yet');
-        return null;
+  function getObservedObject(observer, object, arrayObserve) {
+    var dir = observedObjectCache.pop() || newObservedObject();
+    dir.open(observer);
+    dir.observe(object, arrayObserve);
+    return dir;
+  }
+
+  var observedSetCache = [];
+
+  function newObservedSet() {
+    var observerCount = 0;
+    var observers = [];
+    var objects = [];
+    var rootObj;
+    var rootObjProps;
+
+    function observe(obj, prop) {
+      if (!obj)
+        return;
+
+      if (obj === rootObj)
+        rootObjProps[prop] = true;
+
+      if (objects.indexOf(obj) < 0) {
+        objects.push(obj);
+        Object.observe(obj, callback);
+      }
+
+      observe(Object.getPrototypeOf(obj), prop);
+    }
+
+    function allRootObjNonObservedProps(recs) {
+      for (var i = 0; i < recs.length; i++) {
+        var rec = recs[i];
+        if (rec.object !== rootObj ||
+            rootObjProps[rec.name] ||
+            rec.type === 'setPrototype') {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function callback(recs) {
+      if (allRootObjNonObservedProps(recs))
+        return;
+
+      var observer;
+      for (var i = 0; i < observers.length; i++) {
+        observer = observers[i];
+        if (observer.state_ == OPENED) {
+          observer.iterateObjects_(observe);
+        }
+      }
+
+      for (var i = 0; i < observers.length; i++) {
+        observer = observers[i];
+        if (observer.state_ == OPENED) {
+          observer.check_();
+        }
+      }
+    }
+
+    var record = {
+      object: undefined,
+      objects: objects,
+      open: function(obs, object) {
+        if (!rootObj) {
+          rootObj = object;
+          rootObjProps = {};
+        }
+
+        observers.push(obs);
+        observerCount++;
+        obs.iterateObjects_(observe);
+      },
+      close: function(obs) {
+        observerCount--;
+        if (observerCount > 0) {
+          return;
+        }
+
+        for (var i = 0; i < objects.length; i++) {
+          Object.unobserve(objects[i], callback);
+          Observer.unobservedCount++;
+        }
+
+        observers.length = 0;
+        objects.length = 0;
+        rootObj = undefined;
+        rootObjProps = undefined;
+        observedSetCache.push(this);
+      }
+    };
+
+    return record;
+  }
+
+  var lastObservedSet;
+
+  function getObservedSet(observer, obj) {
+    if (!lastObservedSet || lastObservedSet.object !== obj) {
+      lastObservedSet = observedSetCache.pop() || newObservedSet();
+      lastObservedSet.object = obj;
+    }
+    lastObservedSet.open(observer, obj);
+    return lastObservedSet;
+  }
+
+  var UNOPENED = 0;
+  var OPENED = 1;
+  var CLOSED = 2;
+  var RESETTING = 3;
+
+  var nextObserverId = 1;
+
+  function Observer() {
+    this.state_ = UNOPENED;
+    this.callback_ = undefined;
+    this.target_ = undefined; // TODO(rafaelw): Should be WeakRef
+    this.directObserver_ = undefined;
+    this.value_ = undefined;
+    this.id_ = nextObserverId++;
+  }
+
+  Observer.prototype = {
+    open: function(callback, target) {
+      if (this.state_ != UNOPENED)
+        throw Error('Observer has already been opened.');
+
+      addToAll(this);
+      this.callback_ = callback;
+      this.target_ = target;
+      this.connect_();
+      this.state_ = OPENED;
+      return this.value_;
+    },
+
+    close: function() {
+      if (this.state_ != OPENED)
+        return;
+
+      removeFromAll(this);
+      this.disconnect_();
+      this.value_ = undefined;
+      this.callback_ = undefined;
+      this.target_ = undefined;
+      this.state_ = CLOSED;
+    },
+
+    deliver: function() {
+      if (this.state_ != OPENED)
+        return;
+
+      dirtyCheck(this);
+    },
+
+    report_: function(changes) {
+      try {
+        this.callback_.apply(this.target_, changes);
+      } catch (ex) {
+        Observer._errorThrownDuringCallback = true;
+        console.error('Exception caught during observer callback: ' +
+                       (ex.stack || ex));
+      }
+    },
+
+    discardChanges: function() {
+      this.check_(undefined, true);
+      return this.value_;
     }
   }
 
-  if (!Object.__lookupSetter__) {
-    Object.prototype.__lookupSetter__ = function () {
-      console && console.log('__lookupSetter__ not implemented yet');
-      return null;
+  var collectObservers = !hasObserve;
+  var allObservers;
+  Observer._allObserversCount = 0;
+
+  if (collectObservers) {
+    allObservers = [];
+  }
+
+  function addToAll(observer) {
+    Observer._allObserversCount++;
+    if (!collectObservers)
+      return;
+
+    allObservers.push(observer);
+  }
+
+  function removeFromAll(observer) {
+    Observer._allObserversCount--;
+  }
+
+  var runningMicrotaskCheckpoint = false;
+
+  var hasDebugForceFullDelivery = hasObserve && (function() {
+    try {
+      eval('%RunMicrotasks()');
+      return true;
+    } catch (ex) {
+      return false;
+    }
+  })();
+
+  global.Platform = global.Platform || {};
+
+  global.Platform.performMicrotaskCheckpoint = function() {
+    if (runningMicrotaskCheckpoint)
+      return;
+
+    if (hasDebugForceFullDelivery) {
+      eval('%RunMicrotasks()');
+      return;
+    }
+
+    if (!collectObservers)
+      return;
+
+    runningMicrotaskCheckpoint = true;
+
+    var cycles = 0;
+    var anyChanged, toCheck;
+
+    do {
+      cycles++;
+      toCheck = allObservers;
+      allObservers = [];
+      anyChanged = false;
+
+      for (var i = 0; i < toCheck.length; i++) {
+        var observer = toCheck[i];
+        if (observer.state_ != OPENED)
+          continue;
+
+        if (observer.check_())
+          anyChanged = true;
+
+        allObservers.push(observer);
       }
+      if (runEOMTasks())
+        anyChanged = true;
+    } while (cycles < MAX_DIRTY_CHECK_CYCLES && anyChanged);
+
+    if (global.testingExposeCycleCount)
+      global.dirtyCheckCycleCount = cycles;
+
+    runningMicrotaskCheckpoint = false;
+  };
+
+  if (collectObservers) {
+    global.Platform.clearObservers = function() {
+      allObservers = [];
+    };
+  }
+
+  function ObjectObserver(object) {
+    Observer.call(this);
+    this.value_ = object;
+    this.oldObject_ = undefined;
+  }
+
+  ObjectObserver.prototype = createObject({
+    __proto__: Observer.prototype,
+
+    arrayObserve: false,
+
+    connect_: function(callback, target) {
+      if (hasObserve) {
+        this.directObserver_ = getObservedObject(this, this.value_,
+                                                 this.arrayObserve);
+      } else {
+        this.oldObject_ = this.copyObject(this.value_);
+      }
+
+    },
+
+    copyObject: function(object) {
+      var copy = Array.isArray(object) ? [] : {};
+      for (var prop in object) {
+        copy[prop] = object[prop];
+      };
+      if (Array.isArray(object))
+        copy.length = object.length;
+      return copy;
+    },
+
+    check_: function(changeRecords, skipChanges) {
+      var diff;
+      var oldValues;
+      if (hasObserve) {
+        if (!changeRecords)
+          return false;
+
+        oldValues = {};
+        diff = diffObjectFromChangeRecords(this.value_, changeRecords,
+                                           oldValues);
+      } else {
+        oldValues = this.oldObject_;
+        diff = diffObjectFromOldObject(this.value_, this.oldObject_);
+      }
+
+      if (diffIsEmpty(diff))
+        return false;
+
+      if (!hasObserve)
+        this.oldObject_ = this.copyObject(this.value_);
+
+      this.report_([
+        diff.added || {},
+        diff.removed || {},
+        diff.changed || {},
+        function(property) {
+          return oldValues[property];
+        }
+      ]);
+
+      return true;
+    },
+
+    disconnect_: function() {
+      if (hasObserve) {
+        this.directObserver_.close();
+        this.directObserver_ = undefined;
+      } else {
+        this.oldObject_ = undefined;
+      }
+    },
+
+    deliver: function() {
+      if (this.state_ != OPENED)
+        return;
+
+      if (hasObserve)
+        this.directObserver_.deliver(false);
+      else
+        dirtyCheck(this);
+    },
+
+    discardChanges: function() {
+      if (this.directObserver_)
+        this.directObserver_.deliver(true);
+      else
+        this.oldObject_ = this.copyObject(this.value_);
+
+      return this.value_;
+    }
+  });
+
+  function ArrayObserver(array) {
+    if (!Array.isArray(array))
+      throw Error('Provided object is not an Array');
+    ObjectObserver.call(this, array);
+  }
+
+  ArrayObserver.prototype = createObject({
+
+    __proto__: ObjectObserver.prototype,
+
+    arrayObserve: true,
+
+    copyObject: function(arr) {
+      return arr.slice();
+    },
+
+    check_: function(changeRecords) {
+      var splices;
+      if (hasObserve) {
+        if (!changeRecords)
+          return false;
+        splices = projectArraySplices(this.value_, changeRecords);
+      } else {
+        splices = calcSplices(this.value_, 0, this.value_.length,
+                              this.oldObject_, 0, this.oldObject_.length);
+      }
+
+      if (!splices || !splices.length)
+        return false;
+
+      if (!hasObserve)
+        this.oldObject_ = this.copyObject(this.value_);
+
+      this.report_([splices]);
+      return true;
+    }
+  });
+
+  ArrayObserver.applySplices = function(previous, current, splices) {
+    splices.forEach(function(splice) {
+      var spliceArgs = [splice.index, splice.removed.length];
+      var addIndex = splice.index;
+      while (addIndex < splice.index + splice.addedCount) {
+        spliceArgs.push(current[addIndex]);
+        addIndex++;
+      }
+
+      Array.prototype.splice.apply(previous, spliceArgs);
+    });
+  };
+
+  function PathObserver(object, path) {
+    Observer.call(this);
+
+    this.object_ = object;
+    this.path_ = getPath(path);
+    this.directObserver_ = undefined;
+  }
+
+  PathObserver.prototype = createObject({
+    __proto__: Observer.prototype,
+
+    connect_: function() {
+      if (hasObserve)
+        this.directObserver_ = getObservedSet(this, this.object_);
+
+      this.check_(undefined, true);
+    },
+
+    disconnect_: function() {
+      this.value_ = undefined;
+
+      if (this.directObserver_) {
+        this.directObserver_.close(this);
+        this.directObserver_ = undefined;
+      }
+    },
+
+    iterateObjects_: function(observe) {
+      this.path_.iterateObjects(this.object_, observe);
+    },
+
+    check_: function(changeRecords, skipChanges) {
+      var oldValue = this.value_;
+      this.value_ = this.path_.getValueFrom(this.object_);
+      if (skipChanges || areSameValue(this.value_, oldValue))
+        return false;
+
+      this.report_([this.value_, oldValue]);
+      return true;
+    },
+
+    setValue: function(newValue) {
+      if (this.path_)
+        this.path_.setValueFrom(this.object_, newValue);
+    }
+  });
+
+  function CompoundObserver(reportChangesOnOpen) {
+    Observer.call(this);
+
+    this.reportChangesOnOpen_ = reportChangesOnOpen;
+    this.value_ = [];
+    this.directObserver_ = undefined;
+    this.observed_ = [];
+  }
+
+  var observerSentinel = {};
+
+  CompoundObserver.prototype = createObject({
+    __proto__: Observer.prototype,
+
+    connect_: function() {
+      if (hasObserve) {
+        var object;
+        var needsDirectObserver = false;
+        for (var i = 0; i < this.observed_.length; i += 2) {
+          object = this.observed_[i]
+          if (object !== observerSentinel) {
+            needsDirectObserver = true;
+            break;
+          }
+        }
+
+        if (needsDirectObserver)
+          this.directObserver_ = getObservedSet(this, object);
+      }
+
+      this.check_(undefined, !this.reportChangesOnOpen_);
+    },
+
+    disconnect_: function() {
+      for (var i = 0; i < this.observed_.length; i += 2) {
+        if (this.observed_[i] === observerSentinel)
+          this.observed_[i + 1].close();
+      }
+      this.observed_.length = 0;
+      this.value_.length = 0;
+
+      if (this.directObserver_) {
+        this.directObserver_.close(this);
+        this.directObserver_ = undefined;
+      }
+    },
+
+    addPath: function(object, path) {
+      if (this.state_ != UNOPENED && this.state_ != RESETTING)
+        throw Error('Cannot add paths once started.');
+
+      var path = getPath(path);
+      this.observed_.push(object, path);
+      if (!this.reportChangesOnOpen_)
+        return;
+      var index = this.observed_.length / 2 - 1;
+      this.value_[index] = path.getValueFrom(object);
+    },
+
+    addObserver: function(observer) {
+      if (this.state_ != UNOPENED && this.state_ != RESETTING)
+        throw Error('Cannot add observers once started.');
+
+      this.observed_.push(observerSentinel, observer);
+      if (!this.reportChangesOnOpen_)
+        return;
+      var index = this.observed_.length / 2 - 1;
+      this.value_[index] = observer.open(this.deliver, this);
+    },
+
+    startReset: function() {
+      if (this.state_ != OPENED)
+        throw Error('Can only reset while open');
+
+      this.state_ = RESETTING;
+      this.disconnect_();
+    },
+
+    finishReset: function() {
+      if (this.state_ != RESETTING)
+        throw Error('Can only finishReset after startReset');
+      this.state_ = OPENED;
+      this.connect_();
+
+      return this.value_;
+    },
+
+    iterateObjects_: function(observe) {
+      var object;
+      for (var i = 0; i < this.observed_.length; i += 2) {
+        object = this.observed_[i]
+        if (object !== observerSentinel)
+          this.observed_[i + 1].iterateObjects(object, observe)
+      }
+    },
+
+    check_: function(changeRecords, skipChanges) {
+      var oldValues;
+      for (var i = 0; i < this.observed_.length; i += 2) {
+        var object = this.observed_[i];
+        var path = this.observed_[i+1];
+        var value;
+        if (object === observerSentinel) {
+          var observable = path;
+          value = this.state_ === UNOPENED ?
+              observable.open(this.deliver, this) :
+              observable.discardChanges();
+        } else {
+          value = path.getValueFrom(object);
+        }
+
+        if (skipChanges) {
+          this.value_[i / 2] = value;
+          continue;
+        }
+
+        if (areSameValue(value, this.value_[i / 2]))
+          continue;
+
+        oldValues = oldValues || [];
+        oldValues[i / 2] = this.value_[i / 2];
+        this.value_[i / 2] = value;
+      }
+
+      if (!oldValues)
+        return false;
+
+      // TODO(rafaelw): Having observed_ as the third callback arg here is
+      // pretty lame API. Fix.
+      this.report_([this.value_, oldValues, this.observed_]);
+      return true;
+    }
+  });
+
+  function identFn(value) { return value; }
+
+  function ObserverTransform(observable, getValueFn, setValueFn,
+                             dontPassThroughSet) {
+    this.callback_ = undefined;
+    this.target_ = undefined;
+    this.value_ = undefined;
+    this.observable_ = observable;
+    this.getValueFn_ = getValueFn || identFn;
+    this.setValueFn_ = setValueFn || identFn;
+    // TODO(rafaelw): This is a temporary hack. PolymerExpressions needs this
+    // at the moment because of a bug in it's dependency tracking.
+    this.dontPassThroughSet_ = dontPassThroughSet;
+  }
+
+  ObserverTransform.prototype = {
+    open: function(callback, target) {
+      this.callback_ = callback;
+      this.target_ = target;
+      this.value_ =
+          this.getValueFn_(this.observable_.open(this.observedCallback_, this));
+      return this.value_;
+    },
+
+    observedCallback_: function(value) {
+      value = this.getValueFn_(value);
+      if (areSameValue(value, this.value_))
+        return;
+      var oldValue = this.value_;
+      this.value_ = value;
+      this.callback_.call(this.target_, this.value_, oldValue);
+    },
+
+    discardChanges: function() {
+      this.value_ = this.getValueFn_(this.observable_.discardChanges());
+      return this.value_;
+    },
+
+    deliver: function() {
+      return this.observable_.deliver();
+    },
+
+    setValue: function(value) {
+      value = this.setValueFn_(value);
+      if (!this.dontPassThroughSet_ && this.observable_.setValue)
+        return this.observable_.setValue(value);
+    },
+
+    close: function() {
+      if (this.observable_)
+        this.observable_.close();
+      this.callback_ = undefined;
+      this.target_ = undefined;
+      this.observable_ = undefined;
+      this.value_ = undefined;
+      this.getValueFn_ = undefined;
+      this.setValueFn_ = undefined;
+    }
+  }
+
+  var expectedRecordTypes = {
+    add: true,
+    update: true,
+    delete: true
+  };
+
+ var updateRecord = {
+    object: undefined,
+    type: 'update',
+    name: undefined,
+    oldValue: undefined
+  };
+
+  function notify(object, name, value, oldValue) {
+    if (areSameValue(value, oldValue))
+      return;
+
+    // TODO(rafaelw): Hack hack hack. This entire code really needs to move
+    // out of observe-js into polymer.
+    if (typeof object.propertyChanged_ == 'function')
+      object.propertyChanged_(name, value, oldValue);
+
+    if (!hasObserve)
+      return;
+
+    var notifier = object.notifier_;
+    if (!notifier)
+      notifier = object.notifier_ = Object.getNotifier(object);
+
+    updateRecord.object = object;
+    updateRecord.name = name;
+    updateRecord.oldValue = oldValue;
+
+    notifier.notify(updateRecord);
+  }
+
+  Observer.createBindablePrototypeAccessor = function(proto, name) {
+    var privateName = name + '_';
+    var privateObservable  = name + 'Observable_';
+
+    proto[privateName] = proto[name];
+
+    Object.defineProperty(proto, name, {
+      get: function() {
+        var observable = this[privateObservable];
+        if (observable)
+          observable.deliver();
+
+        return this[privateName];
+      },
+      set: function(value) {
+        var observable = this[privateObservable];
+        if (observable) {
+          observable.setValue(value);
+          return;
+        }
+
+        var oldValue = this[privateName];
+        this[privateName] = value;
+        notify(this, name, value, oldValue);
+
+        return value;
+      },
+      configurable: true
+    });
+  }
+
+  Observer.bindToInstance = function(instance, name, observable, resolveFn) {
+    var privateName = name + '_';
+    var privateObservable  = name + 'Observable_';
+
+    instance[privateObservable] = observable;
+    var oldValue = instance[privateName];
+    var value = observable.open(function(value, oldValue) {
+      instance[privateName] = value;
+      notify(instance, name, value, oldValue);
+    });
+
+    if (resolveFn && !areSameValue(oldValue, value)) {
+      var resolvedValue = resolveFn(oldValue, value);
+      if (!areSameValue(value, resolvedValue)) {
+        value = resolvedValue;
+        if (observable.setValue)
+          observable.setValue(value);
       }
     }
-  */
 
-})();
+    instance[privateName] = value;
+    notify(instance, name, value, oldValue);
 
+    return {
+      close: function() {
+        observable.close();
+        instance[privateObservable] = undefined;
+      }
+    };
+  }
+
+  function diffObjectFromChangeRecords(object, changeRecords, oldValues) {
+    var added = {};
+    var removed = {};
+
+    for (var i = 0; i < changeRecords.length; i++) {
+      var record = changeRecords[i];
+      if (!expectedRecordTypes[record.type]) {
+        console.error('Unknown changeRecord type: ' + record.type);
+        console.error(record);
+        continue;
+      }
+
+      if (!(record.name in oldValues))
+        oldValues[record.name] = record.oldValue;
+
+      if (record.type == 'update')
+        continue;
+
+      if (record.type == 'add') {
+        if (record.name in removed)
+          delete removed[record.name];
+        else
+          added[record.name] = true;
+
+        continue;
+      }
+
+      // type = 'delete'
+      if (record.name in added) {
+        delete added[record.name];
+        delete oldValues[record.name];
+      } else {
+        removed[record.name] = true;
+      }
+    }
+
+    for (var prop in added)
+      added[prop] = object[prop];
+
+    for (var prop in removed)
+      removed[prop] = undefined;
+
+    var changed = {};
+    for (var prop in oldValues) {
+      if (prop in added || prop in removed)
+        continue;
+
+      var newValue = object[prop];
+      if (oldValues[prop] !== newValue)
+        changed[prop] = newValue;
+    }
+
+    return {
+      added: added,
+      removed: removed,
+      changed: changed
+    };
+  }
+
+  function newSplice(index, removed, addedCount) {
+    return {
+      index: index,
+      removed: removed,
+      addedCount: addedCount
+    };
+  }
+
+  var EDIT_LEAVE = 0;
+  var EDIT_UPDATE = 1;
+  var EDIT_ADD = 2;
+  var EDIT_DELETE = 3;
+
+  function ArraySplice() {}
+
+  ArraySplice.prototype = {
+
+    // Note: This function is *based* on the computation of the Levenshtein
+    // "edit" distance. The one change is that "updates" are treated as two
+    // edits - not one. With Array splices, an update is really a delete
+    // followed by an add. By retaining this, we optimize for "keeping" the
+    // maximum array items in the original array. For example:
+    //
+    //   'xxxx123' -> '123yyyy'
+    //
+    // With 1-edit updates, the shortest path would be just to update all seven
+    // characters. With 2-edit updates, we delete 4, leave 3, and add 4. This
+    // leaves the substring '123' intact.
+    calcEditDistances: function(current, currentStart, currentEnd,
+                                old, oldStart, oldEnd) {
+      // "Deletion" columns
+      var rowCount = oldEnd - oldStart + 1;
+      var columnCount = currentEnd - currentStart + 1;
+      var distances = new Array(rowCount);
+
+      // "Addition" rows. Initialize null column.
+      for (var i = 0; i < rowCount; i++) {
+        distances[i] = new Array(columnCount);
+        distances[i][0] = i;
+      }
+
+      // Initialize null row
+      for (var j = 0; j < columnCount; j++)
+        distances[0][j] = j;
+
+      for (var i = 1; i < rowCount; i++) {
+        for (var j = 1; j < columnCount; j++) {
+          if (this.equals(current[currentStart + j - 1], old[oldStart + i - 1]))
+            distances[i][j] = distances[i - 1][j - 1];
+          else {
+            var north = distances[i - 1][j] + 1;
+            var west = distances[i][j - 1] + 1;
+            distances[i][j] = north < west ? north : west;
+          }
+        }
+      }
+
+      return distances;
+    },
+
+    // This starts at the final weight, and walks "backward" by finding
+    // the minimum previous weight recursively until the origin of the weight
+    // matrix.
+    spliceOperationsFromEditDistances: function(distances) {
+      var i = distances.length - 1;
+      var j = distances[0].length - 1;
+      var current = distances[i][j];
+      var edits = [];
+      while (i > 0 || j > 0) {
+        if (i == 0) {
+          edits.push(EDIT_ADD);
+          j--;
+          continue;
+        }
+        if (j == 0) {
+          edits.push(EDIT_DELETE);
+          i--;
+          continue;
+        }
+        var northWest = distances[i - 1][j - 1];
+        var west = distances[i - 1][j];
+        var north = distances[i][j - 1];
+
+        var min;
+        if (west < north)
+          min = west < northWest ? west : northWest;
+        else
+          min = north < northWest ? north : northWest;
+
+        if (min == northWest) {
+          if (northWest == current) {
+            edits.push(EDIT_LEAVE);
+          } else {
+            edits.push(EDIT_UPDATE);
+            current = northWest;
+          }
+          i--;
+          j--;
+        } else if (min == west) {
+          edits.push(EDIT_DELETE);
+          i--;
+          current = west;
+        } else {
+          edits.push(EDIT_ADD);
+          j--;
+          current = north;
+        }
+      }
+
+      edits.reverse();
+      return edits;
+    },
+
+    /**
+     * Splice Projection functions:
+     *
+     * A splice map is a representation of how a previous array of items
+     * was transformed into a new array of items. Conceptually it is a list of
+     * tuples of
+     *
+     *   <index, removed, addedCount>
+     *
+     * which are kept in ascending index order of. The tuple represents that at
+     * the |index|, |removed| sequence of items were removed, and counting forward
+     * from |index|, |addedCount| items were added.
+     */
+
+    /**
+     * Lacking individual splice mutation information, the minimal set of
+     * splices can be synthesized given the previous state and final state of an
+     * array. The basic approach is to calculate the edit distance matrix and
+     * choose the shortest path through it.
+     *
+     * Complexity: O(l * p)
+     *   l: The length of the current array
+     *   p: The length of the old array
+     */
+    calcSplices: function(current, currentStart, currentEnd,
+                          old, oldStart, oldEnd) {
+      var prefixCount = 0;
+      var suffixCount = 0;
+
+      var minLength = Math.min(currentEnd - currentStart, oldEnd - oldStart);
+      if (currentStart == 0 && oldStart == 0)
+        prefixCount = this.sharedPrefix(current, old, minLength);
+
+      if (currentEnd == current.length && oldEnd == old.length)
+        suffixCount = this.sharedSuffix(current, old, minLength - prefixCount);
+
+      currentStart += prefixCount;
+      oldStart += prefixCount;
+      currentEnd -= suffixCount;
+      oldEnd -= suffixCount;
+
+      if (currentEnd - currentStart == 0 && oldEnd - oldStart == 0)
+        return [];
+
+      if (currentStart == currentEnd) {
+        var splice = newSplice(currentStart, [], 0);
+        while (oldStart < oldEnd)
+          splice.removed.push(old[oldStart++]);
+
+        return [ splice ];
+      } else if (oldStart == oldEnd)
+        return [ newSplice(currentStart, [], currentEnd - currentStart) ];
+
+      var ops = this.spliceOperationsFromEditDistances(
+          this.calcEditDistances(current, currentStart, currentEnd,
+                                 old, oldStart, oldEnd));
+
+      var splice = undefined;
+      var splices = [];
+      var index = currentStart;
+      var oldIndex = oldStart;
+      for (var i = 0; i < ops.length; i++) {
+        switch(ops[i]) {
+          case EDIT_LEAVE:
+            if (splice) {
+              splices.push(splice);
+              splice = undefined;
+            }
+
+            index++;
+            oldIndex++;
+            break;
+          case EDIT_UPDATE:
+            if (!splice)
+              splice = newSplice(index, [], 0);
+
+            splice.addedCount++;
+            index++;
+
+            splice.removed.push(old[oldIndex]);
+            oldIndex++;
+            break;
+          case EDIT_ADD:
+            if (!splice)
+              splice = newSplice(index, [], 0);
+
+            splice.addedCount++;
+            index++;
+            break;
+          case EDIT_DELETE:
+            if (!splice)
+              splice = newSplice(index, [], 0);
+
+            splice.removed.push(old[oldIndex]);
+            oldIndex++;
+            break;
+        }
+      }
+
+      if (splice) {
+        splices.push(splice);
+      }
+      return splices;
+    },
+
+    sharedPrefix: function(current, old, searchLength) {
+      for (var i = 0; i < searchLength; i++)
+        if (!this.equals(current[i], old[i]))
+          return i;
+      return searchLength;
+    },
+
+    sharedSuffix: function(current, old, searchLength) {
+      var index1 = current.length;
+      var index2 = old.length;
+      var count = 0;
+      while (count < searchLength && this.equals(current[--index1], old[--index2]))
+        count++;
+
+      return count;
+    },
+
+    calculateSplices: function(current, previous) {
+      return this.calcSplices(current, 0, current.length, previous, 0,
+                              previous.length);
+    },
+
+    equals: function(currentValue, previousValue) {
+      return currentValue === previousValue;
+    }
+  };
+
+  var arraySplice = new ArraySplice();
+
+  function calcSplices(current, currentStart, currentEnd,
+                       old, oldStart, oldEnd) {
+    return arraySplice.calcSplices(current, currentStart, currentEnd,
+                                   old, oldStart, oldEnd);
+  }
+
+  function intersect(start1, end1, start2, end2) {
+    // Disjoint
+    if (end1 < start2 || end2 < start1)
+      return -1;
+
+    // Adjacent
+    if (end1 == start2 || end2 == start1)
+      return 0;
+
+    // Non-zero intersect, span1 first
+    if (start1 < start2) {
+      if (end1 < end2)
+        return end1 - start2; // Overlap
+      else
+        return end2 - start2; // Contained
+    } else {
+      // Non-zero intersect, span2 first
+      if (end2 < end1)
+        return end2 - start1; // Overlap
+      else
+        return end1 - start1; // Contained
+    }
+  }
+
+  function mergeSplice(splices, index, removed, addedCount) {
+
+    var splice = newSplice(index, removed, addedCount);
+
+    var inserted = false;
+    var insertionOffset = 0;
+
+    for (var i = 0; i < splices.length; i++) {
+      var current = splices[i];
+      current.index += insertionOffset;
+
+      if (inserted)
+        continue;
+
+      var intersectCount = intersect(splice.index,
+                                     splice.index + splice.removed.length,
+                                     current.index,
+                                     current.index + current.addedCount);
+
+      if (intersectCount >= 0) {
+        // Merge the two splices
+
+        splices.splice(i, 1);
+        i--;
+
+        insertionOffset -= current.addedCount - current.removed.length;
+
+        splice.addedCount += current.addedCount - intersectCount;
+        var deleteCount = splice.removed.length +
+                          current.removed.length - intersectCount;
+
+        if (!splice.addedCount && !deleteCount) {
+          // merged splice is a noop. discard.
+          inserted = true;
+        } else {
+          var removed = current.removed;
+
+          if (splice.index < current.index) {
+            // some prefix of splice.removed is prepended to current.removed.
+            var prepend = splice.removed.slice(0, current.index - splice.index);
+            Array.prototype.push.apply(prepend, removed);
+            removed = prepend;
+          }
+
+          if (splice.index + splice.removed.length > current.index + current.addedCount) {
+            // some suffix of splice.removed is appended to current.removed.
+            var append = splice.removed.slice(current.index + current.addedCount - splice.index);
+            Array.prototype.push.apply(removed, append);
+          }
+
+          splice.removed = removed;
+          if (current.index < splice.index) {
+            splice.index = current.index;
+          }
+        }
+      } else if (splice.index < current.index) {
+        // Insert splice here.
+
+        inserted = true;
+
+        splices.splice(i, 0, splice);
+        i++;
+
+        var offset = splice.addedCount - splice.removed.length
+        current.index += offset;
+        insertionOffset += offset;
+      }
+    }
+
+    if (!inserted)
+      splices.push(splice);
+  }
+
+  function createInitialSplices(array, changeRecords) {
+    var splices = [];
+
+    for (var i = 0; i < changeRecords.length; i++) {
+      var record = changeRecords[i];
+      switch(record.type) {
+        case 'splice':
+          mergeSplice(splices, record.index, record.removed.slice(), record.addedCount);
+          break;
+        case 'add':
+        case 'update':
+        case 'delete':
+          if (!isIndex(record.name))
+            continue;
+          var index = toNumber(record.name);
+          if (index < 0)
+            continue;
+          mergeSplice(splices, index, [record.oldValue], 1);
+          break;
+        default:
+          console.error('Unexpected record type: ' + JSON.stringify(record));
+          break;
+      }
+    }
+
+    return splices;
+  }
+
+  function projectArraySplices(array, changeRecords) {
+    var splices = [];
+
+    createInitialSplices(array, changeRecords).forEach(function(splice) {
+      if (splice.addedCount == 1 && splice.removed.length == 1) {
+        if (splice.removed[0] !== array[splice.index])
+          splices.push(splice);
+
+        return
+      };
+
+      splices = splices.concat(calcSplices(array, splice.index, splice.index + splice.addedCount,
+                                           splice.removed, 0, splice.removed.length));
+    });
+
+    return splices;
+  }
+
+  global.Observer = Observer;
+  global.Observer.runEOM_ = runEOM;
+  global.Observer.observerSentinel_ = observerSentinel; // for testing.
+  global.Observer.hasObjectObserve = hasObserve;
+  global.ArrayObserver = ArrayObserver;
+  global.ArrayObserver.calculateSplices = function(current, previous) {
+    return arraySplice.calculateSplices(current, previous);
+  };
+
+  global.ArraySplice = ArraySplice;
+  global.ObjectObserver = ObjectObserver;
+  global.PathObserver = PathObserver;
+  global.CompoundObserver = CompoundObserver;
+  global.Path = Path;
+  global.ObserverTransform = ObserverTransform;
+})(typeof global !== 'undefined' && global && typeof module !== 'undefined' && module ? exports || global : this || window);
 
 });
-require.register("indefinido-observable/vendor/shims/accessors-legacy.js", function(exports, require, module){
+
+require.register("indefinido~observable@es6-modules/vendor/shims/accessors-legacy.js", function (exports, module) {
 /*
  * Xccessors Legacy: Cross-browser legacy non-standard accessors
  * http://github.com/eligrey/Xccessors
@@ -14914,7 +12286,260 @@ require.register("indefinido-observable/vendor/shims/accessors-legacy.js", funct
 }());
 
 });
-require.register("indefinido-observable/vendor/shims/array.indexOf.js", function(exports, require, module){
+
+require.register("indefinido~observable@es6-modules/vendor/shims/accessors.js", function (exports, module) {
+'use strict';
+
+(function () {
+  // Cache native objects for better performacy and easy to use
+  // references
+  var ObjectProto = Object.prototype,
+  hasOwnProp = ObjectProto.hasOwnProperty,
+  getProp    = Object.getOwnPropertyDescriptor,
+  defineProp = Object.defineProperty,
+  objectCreate = Object.create,
+  toStrings = [],
+  features = null,
+  stack = [], detach,
+  fixedOwnProperty,
+   prototypeBase = [Object, String, Array, Function, Boolean, Number, RegExp, Date, Error];
+
+  // IE7 Does not have Element and Window defined, so only add them if
+  // they exists check here
+  if (typeof Element != 'undefined') prototypeBase.push(Element);
+  if (typeof Window  != 'undefined') prototypeBase.push(Window);
+
+  features = {
+    allowsNonEnumerableProperty: function () {
+      var broken = false;
+      try {
+        defineProp({}, 'x', {})
+      } catch(e) {
+        broken = true;
+      }
+
+      return (!broken) && (!!defineProp);
+    },
+    supportsOnPropertyChangeEvent: function () {
+      var test = document.createElement('domo');
+      return 'onpropertychange' in test
+    }
+  }
+
+  if (!features.allowsNonEnumerableProperty() && features.supportsOnPropertyChangeEvent()) {
+
+    // Check if node is on document
+    var inDocument = function inDocument (node) {
+      var curr = node;
+      while (curr != null) {
+        curr = curr.parentNode;
+        if (curr == document) return true;
+      }
+      return false;
+    },
+
+    // Generate property event handler for setting some property
+    generate_setter = function generate_setter (object, property, descriptor) {
+      var setter = function object_define_property_shim_change_listener (event) {
+        var current_value, changed_value;
+        if (
+          // if we are setting this property
+          event.propertyName == property
+
+          // prevent firing setters again
+          // by checking callstack
+          && stack.indexOf(property) === -1
+        ) {
+          // Remove the event so it doesn't fire again and
+          // create a loop
+          object.detachEvent("onpropertychange", setter);
+
+          // If detaching the current setter
+          // just remove the event listener
+          if (detach) return;
+
+          // get the changed value, run it through the set function
+          changed_value = object[property];
+          descriptor.set.call(object, changed_value);
+
+          // Restore get function if:
+          //  it was mentioned on definition
+          //  there's no falsey value, in that case we just need to return falsey value
+          //  current toString is not the getter, to prevent further unecessary redefinitions
+          if (descriptor.get && descriptor.value && descriptor.value.toString != descriptor.bound_getter) {
+            // TODO if (descriptor.get + '' === 'undefined') descriptor.get = '';        // Handle undefined getter
+            descriptor.value.toString = descriptor.bound_getter
+          }
+
+          // Update stored values
+          object[property] = descriptor.value = changed_value;
+
+          // restore the event handler
+          object.attachEvent("onpropertychange", setter);
+
+          // stack.pop();
+          return false;
+        }
+      }
+
+      return setter;
+    };
+
+    // Shim define property with apropriated fail cases exceptions
+    Object.defineProperty = function (obj, prop, descriptor) {
+      var fix;
+
+      if (!prop)
+
+      if (descriptor.set) {
+        if (!obj.attachEvent) throw new TypeError('Object.defineProperty: First parameter must be a dom element. When descriptor has \'set\' property.');
+
+        if (!fix && !inDocument(obj)) throw new TypeError('Object.defineProperty: Dom element must be attached in document.');
+      }
+
+      if (!descriptor) throw new TypeError('Object.defineProperty (object, property, descriptor): Descriptor must be an object, was \'' + descriptor + '\'.');
+
+      // Store current value in descriptor
+      // TODO only try to set descriptor value if it was passed as parameter
+      descriptor.value = descriptor.value || (descriptor.get && descriptor.get.call(obj)) || obj[prop];
+
+      if (descriptor.set) {
+        // Detach old listeners if any
+        detach = true;
+        obj[prop] = 'detaching';
+        detach = false;
+
+        if (descriptor.get) {
+          // TODO remove jquery dependency
+          descriptor.bound_getter   = $.extend($.proxy(descriptor.get, obj), descriptor.get);
+
+          // Why? we only bind the getter when we have a non falsey value
+          if (descriptor.value) descriptor.value.toString = descriptor.bound_getter;
+
+          // Although its not allowed for convention to have getters
+          // and setters with the descriptor value, here we just reuse
+          // the descriptor stored value
+          obj[prop] = descriptor.value;
+        }
+
+        (fix || obj).attachEvent("onpropertychange", generate_setter(obj, prop, descriptor));
+
+      } else if (descriptor.get) {
+        descriptor.bound_getter   = $.extend($.proxy(descriptor.get, obj), descriptor.get);
+
+        // Why? we only bind the getter when we have a non falsey value
+        if (descriptor.value) descriptor.value.toString = descriptor.bound_getter;
+
+        // Although its not allowed for convention to have getters
+        // and setters with the descriptor value, here we just reuse
+        // the descriptor stored value
+        obj[prop] = descriptor.value;
+      } else {
+        obj[prop] = descriptor.value;
+      }
+
+      return obj;
+    }
+
+    // Allow others to check requirements for define property
+    Object.defineProperty.requiresDomElement = true
+  }
+
+
+  // Since we shimed define property, we can also shim defineProperties
+  if (!Object.defineProperties) {
+    Object.defineProperties = function (obj, props) {
+      for (var prop in props) {
+        if (hasOwnProp.call(props, prop)) {
+          Object.defineProperty(obj, prop, props[prop]);
+        }
+      }
+    };
+
+    baseElement      = document.createElement('fix');
+    fixedOwnProperty = function (name) {
+      if (name in baseElement) return false;
+      return hasOwnProp.call(this, name);
+    };
+
+
+    Object.create = function (prototype, properties) {
+      var complexDescriptor, fix, descriptor, name;
+
+      for (name in properties) {
+        descriptor = properties[name]
+        if (descriptor instanceof Object) {
+          complexDescriptor = !!(descriptor.get || descriptor.set)
+
+          if (complexDescriptor) {
+            break;
+          }
+        }
+      }
+
+      if (complexDescriptor || prototype.nodeName === 'fix' || properties && properties._shim) {
+        properties && delete properties._shim;
+
+        if (typeof object != 'function') {
+          fix = document.createElement('fix');
+          document.appendChild(fix);
+
+          // Copy over prototype properties
+          for (name in prototype) {
+            try {
+              if (name in baseElement) continue;
+              fix[name] = prototype[name];
+            } catch (e) {
+              console.warn("Object.create: Invalid shimmed property: " + name + ", with error " + e);
+            }
+          }
+
+          // Ensure most normalized for loops to work property, by
+          // skiping the dom element properties on own property
+          // checking.
+          //
+          // TODO ensure other own property methods checking
+          fix.hasOwnProperty = fixedOwnProperty
+
+          Object.defineProperties(fix, properties);
+        } else {
+          throw new TypeError('Functions with complex descriptors not implemented yet');
+        }
+        return fix;
+      } else {
+        return objectCreate(prototype, properties)
+      }
+    }
+  };
+
+
+  /* TODO Use define Property, and only define if
+     non-enumerable properties are allowed
+
+     also define __defineGetter__ and __defineSetter__
+  if (!Object.defineProperty.requiresDomElement) {
+    if (!Object.prototype.__lookupGetter__) {
+      Object.__lookupGetter__ = function () {
+      console && console.log('__lookupGetter__ not implemented yet');
+        return null;
+    }
+  }
+
+  if (!Object.__lookupSetter__) {
+    Object.prototype.__lookupSetter__ = function () {
+      console && console.log('__lookupSetter__ not implemented yet');
+      return null;
+      }
+      }
+    }
+  */
+
+})();
+
+
+});
+
+require.register("indefinido~observable@es6-modules/vendor/shims/array.indexOf.js", function (exports, module) {
 if (!Array.prototype.indexOf) { 
     Array.prototype.indexOf = function(obj, start) {
          for (var i = (start || 0), j = this.length; i < j; i++) {
@@ -14925,7 +12550,8 @@ if (!Array.prototype.indexOf) {
 }
 
 });
-require.register("indefinido-observable/vendor/shims/object.create.js", function(exports, require, module){
+
+require.register("indefinido~observable@es6-modules/vendor/shims/object.create.js", function (exports, module) {
 // ES5 15.2.3.5
 // http://es5.github.com/#x15.2.3.5
 if (!Object.create) {
@@ -15005,9093 +12631,56 @@ if (!Object.create) {
 }
 
 });
-require.register("chaijs-assertion-error/index.js", function(exports, require, module){
-/*!
- * assertion-error
- * Copyright(c) 2013 Jake Luer <jake@qualiancy.com>
- * MIT Licensed
- */
 
-/*!
- * Return a function that will copy properties from
- * one object to another excluding any originally
- * listed. Returned function will create a new `{}`.
- *
- * @param {String} excluded properties ...
- * @return {Function}
- */
-
-function exclude () {
-  var excludes = [].slice.call(arguments);
-
-  function excludeProps (res, obj) {
-    Object.keys(obj).forEach(function (key) {
-      if (!~excludes.indexOf(key)) res[key] = obj[key];
-    });
-  }
-
-  return function extendExclude () {
-    var args = [].slice.call(arguments)
-      , i = 0
-      , res = {};
-
-    for (; i < args.length; i++) {
-      excludeProps(res, args[i]);
-    }
-
-    return res;
-  };
-};
-
-/*!
- * Primary Exports
- */
-
-module.exports = AssertionError;
-
-/**
- * ### AssertionError
- *
- * An extension of the JavaScript `Error` constructor for
- * assertion and validation scenarios.
- *
- * @param {String} message
- * @param {Object} properties to include (optional)
- * @param {callee} start stack function (optional)
- */
-
-function AssertionError (message, _props, ssf) {
-  var extend = exclude('name', 'message', 'stack', 'constructor', 'toJSON')
-    , props = extend(_props || {});
-
-  // default values
-  this.message = message || 'Unspecified AssertionError';
-  this.showDiff = false;
-
-  // copy from properties
-  for (var key in props) {
-    this[key] = props[key];
-  }
-
-  // capture stack trace
-  ssf = ssf || arguments.callee;
-  if (ssf && Error.captureStackTrace) {
-    Error.captureStackTrace(this, ssf);
-  }
-}
-
-/*!
- * Inherit from Error.prototype
- */
-
-AssertionError.prototype = Object.create(Error.prototype);
-
-/*!
- * Statically set name
- */
-
-AssertionError.prototype.name = 'AssertionError';
-
-/*!
- * Ensure correct constructor
- */
-
-AssertionError.prototype.constructor = AssertionError;
-
-/**
- * Allow errors to be converted to JSON for static transfer.
- *
- * @param {Boolean} include stack (default: `true`)
- * @return {Object} object that can be `JSON.stringify`
- */
-
-AssertionError.prototype.toJSON = function (stack) {
-  var extend = exclude('constructor', 'toJSON', 'stack')
-    , props = extend({ name: this.name }, this);
-
-  // include stack if exists and not turned off
-  if (false !== stack && this.stack) {
-    props.stack = this.stack;
-  }
-
-  return props;
-};
+require.register("indemma", function (exports, module) {
+module.exports = require("indemma/lib/record.js");
 
 });
-require.register("chaijs-chai/index.js", function(exports, require, module){
-module.exports = require('./lib/chai');
 
-});
-require.register("chaijs-chai/lib/chai.js", function(exports, require, module){
-/*!
- * chai
- * Copyright(c) 2011-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
+require.register("indemma/lib/extensions/rivets.js", function (exports, module) {
+var root;
 
-var used = []
-  , exports = module.exports = {};
+root = typeof exports !== "undefined" && exports !== null ? exports : this;
 
-/*!
- * Chai version
- */
+model.rivets = function() {
+  var model_extensions;
 
-exports.version = '1.7.2';
+  model_extensions = {
+    record: {
+      tie: function(element) {
+        var lasso;
 
-/*!
- * Assertion Error
- */
-
-exports.AssertionError = require('assertion-error');
-
-/*!
- * Utils for plugins (not exported)
- */
-
-var util = require('./chai/utils');
-
-/**
- * # .use(function)
- *
- * Provides a way to extend the internals of Chai
- *
- * @param {Function}
- * @returns {this} for chaining
- * @api public
- */
-
-exports.use = function (fn) {
-  if (!~used.indexOf(fn)) {
-    fn(this, util);
-    used.push(fn);
-  }
-
-  return this;
-};
-
-/*!
- * Primary `Assertion` prototype
- */
-
-var assertion = require('./chai/assertion');
-exports.use(assertion);
-
-/*!
- * Core Assertions
- */
-
-var core = require('./chai/core/assertions');
-exports.use(core);
-
-/*!
- * Expect interface
- */
-
-var expect = require('./chai/interface/expect');
-exports.use(expect);
-
-/*!
- * Should interface
- */
-
-var should = require('./chai/interface/should');
-exports.use(should);
-
-/*!
- * Assert interface
- */
-
-var assert = require('./chai/interface/assert');
-exports.use(assert);
-
-});
-require.register("chaijs-chai/lib/chai/assertion.js", function(exports, require, module){
-/*!
- * chai
- * http://chaijs.com
- * Copyright(c) 2011-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-module.exports = function (_chai, util) {
-  /*!
-   * Module dependencies.
-   */
-
-  var AssertionError = _chai.AssertionError
-    , flag = util.flag;
-
-  /*!
-   * Module export.
-   */
-
-  _chai.Assertion = Assertion;
-
-  /*!
-   * Assertion Constructor
-   *
-   * Creates object for chaining.
-   *
-   * @api private
-   */
-
-  function Assertion (obj, msg, stack) {
-    flag(this, 'ssfi', stack || arguments.callee);
-    flag(this, 'object', obj);
-    flag(this, 'message', msg);
-  }
-
-  /*!
-    * ### Assertion.includeStack
-    *
-    * User configurable property, influences whether stack trace
-    * is included in Assertion error message. Default of false
-    * suppresses stack trace in the error message
-    *
-    *     Assertion.includeStack = true;  // enable stack on error
-    *
-    * @api public
-    */
-
-  Assertion.includeStack = false;
-
-  /*!
-   * ### Assertion.showDiff
-   *
-   * User configurable property, influences whether or not
-   * the `showDiff` flag should be included in the thrown
-   * AssertionErrors. `false` will always be `false`; `true`
-   * will be true when the assertion has requested a diff
-   * be shown.
-   *
-   * @api public
-   */
-
-  Assertion.showDiff = true;
-
-  Assertion.addProperty = function (name, fn) {
-    util.addProperty(this.prototype, name, fn);
-  };
-
-  Assertion.addMethod = function (name, fn) {
-    util.addMethod(this.prototype, name, fn);
-  };
-
-  Assertion.addChainableMethod = function (name, fn, chainingBehavior) {
-    util.addChainableMethod(this.prototype, name, fn, chainingBehavior);
-  };
-
-  Assertion.overwriteProperty = function (name, fn) {
-    util.overwriteProperty(this.prototype, name, fn);
-  };
-
-  Assertion.overwriteMethod = function (name, fn) {
-    util.overwriteMethod(this.prototype, name, fn);
-  };
-
-  /*!
-   * ### .assert(expression, message, negateMessage, expected, actual)
-   *
-   * Executes an expression and check expectations. Throws AssertionError for reporting if test doesn't pass.
-   *
-   * @name assert
-   * @param {Philosophical} expression to be tested
-   * @param {String} message to display if fails
-   * @param {String} negatedMessage to display if negated expression fails
-   * @param {Mixed} expected value (remember to check for negation)
-   * @param {Mixed} actual (optional) will default to `this.obj`
-   * @api private
-   */
-
-  Assertion.prototype.assert = function (expr, msg, negateMsg, expected, _actual, showDiff) {
-    var ok = util.test(this, arguments);
-    if (true !== showDiff) showDiff = false;
-    if (true !== Assertion.showDiff) showDiff = false;
-
-    if (!ok) {
-      var msg = util.getMessage(this, arguments)
-        , actual = util.getActual(this, arguments);
-      throw new AssertionError(msg, {
-          actual: actual
-        , expected: expected
-        , showDiff: showDiff
-      }, (Assertion.includeStack) ? this.assert : flag(this, 'ssfi'));
-    }
-  };
-
-  /*!
-   * ### ._obj
-   *
-   * Quick reference to stored `actual` value for plugin developers.
-   *
-   * @api private
-   */
-
-  Object.defineProperty(Assertion.prototype, '_obj',
-    { get: function () {
-        return flag(this, 'object');
+        lasso = {};
+        lasso[this.resource] = this;
+        return rivets.bind(element, lasso);
       }
-    , set: function (val) {
-        flag(this, 'object', val);
-      }
-  });
-};
-
-});
-require.register("chaijs-chai/lib/chai/core/assertions.js", function(exports, require, module){
-/*!
- * chai
- * http://chaijs.com
- * Copyright(c) 2011-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-module.exports = function (chai, _) {
-  var Assertion = chai.Assertion
-    , toString = Object.prototype.toString
-    , flag = _.flag;
-
-  /**
-   * ### Language Chains
-   *
-   * The following are provide as chainable getters to
-   * improve the readability of your assertions. They
-   * do not provide an testing capability unless they
-   * have been overwritten by a plugin.
-   *
-   * **Chains**
-   *
-   * - to
-   * - be
-   * - been
-   * - is
-   * - that
-   * - and
-   * - have
-   * - with
-   * - at
-   * - of
-   * - same
-   *
-   * @name language chains
-   * @api public
-   */
-
-  [ 'to', 'be', 'been'
-  , 'is', 'and', 'have'
-  , 'with', 'that', 'at'
-  , 'of', 'same' ].forEach(function (chain) {
-    Assertion.addProperty(chain, function () {
-      return this;
-    });
-  });
-
-  /**
-   * ### .not
-   *
-   * Negates any of assertions following in the chain.
-   *
-   *     expect(foo).to.not.equal('bar');
-   *     expect(goodFn).to.not.throw(Error);
-   *     expect({ foo: 'baz' }).to.have.property('foo')
-   *       .and.not.equal('bar');
-   *
-   * @name not
-   * @api public
-   */
-
-  Assertion.addProperty('not', function () {
-    flag(this, 'negate', true);
-  });
-
-  /**
-   * ### .deep
-   *
-   * Sets the `deep` flag, later used by the `equal` and
-   * `property` assertions.
-   *
-   *     expect(foo).to.deep.equal({ bar: 'baz' });
-   *     expect({ foo: { bar: { baz: 'quux' } } })
-   *       .to.have.deep.property('foo.bar.baz', 'quux');
-   *
-   * @name deep
-   * @api public
-   */
-
-  Assertion.addProperty('deep', function () {
-    flag(this, 'deep', true);
-  });
-
-  /**
-   * ### .a(type)
-   *
-   * The `a` and `an` assertions are aliases that can be
-   * used either as language chains or to assert a value's
-   * type.
-   *
-   *     // typeof
-   *     expect('test').to.be.a('string');
-   *     expect({ foo: 'bar' }).to.be.an('object');
-   *     expect(null).to.be.a('null');
-   *     expect(undefined).to.be.an('undefined');
-   *
-   *     // language chain
-   *     expect(foo).to.be.an.instanceof(Foo);
-   *
-   * @name a
-   * @alias an
-   * @param {String} type
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  function an (type, msg) {
-    if (msg) flag(this, 'message', msg);
-    type = type.toLowerCase();
-    var obj = flag(this, 'object')
-      , article = ~[ 'a', 'e', 'i', 'o', 'u' ].indexOf(type.charAt(0)) ? 'an ' : 'a ';
-
-    this.assert(
-        type === _.type(obj)
-      , 'expected #{this} to be ' + article + type
-      , 'expected #{this} not to be ' + article + type
-    );
-  }
-
-  Assertion.addChainableMethod('an', an);
-  Assertion.addChainableMethod('a', an);
-
-  /**
-   * ### .include(value)
-   *
-   * The `include` and `contain` assertions can be used as either property
-   * based language chains or as methods to assert the inclusion of an object
-   * in an array or a substring in a string. When used as language chains,
-   * they toggle the `contain` flag for the `keys` assertion.
-   *
-   *     expect([1,2,3]).to.include(2);
-   *     expect('foobar').to.contain('foo');
-   *     expect({ foo: 'bar', hello: 'universe' }).to.include.keys('foo');
-   *
-   * @name include
-   * @alias contain
-   * @param {Object|String|Number} obj
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  function includeChainingBehavior () {
-    flag(this, 'contains', true);
-  }
-
-  function include (val, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object')
-    this.assert(
-        ~obj.indexOf(val)
-      , 'expected #{this} to include ' + _.inspect(val)
-      , 'expected #{this} to not include ' + _.inspect(val));
-  }
-
-  Assertion.addChainableMethod('include', include, includeChainingBehavior);
-  Assertion.addChainableMethod('contain', include, includeChainingBehavior);
-
-  /**
-   * ### .ok
-   *
-   * Asserts that the target is truthy.
-   *
-   *     expect('everthing').to.be.ok;
-   *     expect(1).to.be.ok;
-   *     expect(false).to.not.be.ok;
-   *     expect(undefined).to.not.be.ok;
-   *     expect(null).to.not.be.ok;
-   *
-   * @name ok
-   * @api public
-   */
-
-  Assertion.addProperty('ok', function () {
-    this.assert(
-        flag(this, 'object')
-      , 'expected #{this} to be truthy'
-      , 'expected #{this} to be falsy');
-  });
-
-  /**
-   * ### .true
-   *
-   * Asserts that the target is `true`.
-   *
-   *     expect(true).to.be.true;
-   *     expect(1).to.not.be.true;
-   *
-   * @name true
-   * @api public
-   */
-
-  Assertion.addProperty('true', function () {
-    this.assert(
-        true === flag(this, 'object')
-      , 'expected #{this} to be true'
-      , 'expected #{this} to be false'
-      , this.negate ? false : true
-    );
-  });
-
-  /**
-   * ### .false
-   *
-   * Asserts that the target is `false`.
-   *
-   *     expect(false).to.be.false;
-   *     expect(0).to.not.be.false;
-   *
-   * @name false
-   * @api public
-   */
-
-  Assertion.addProperty('false', function () {
-    this.assert(
-        false === flag(this, 'object')
-      , 'expected #{this} to be false'
-      , 'expected #{this} to be true'
-      , this.negate ? true : false
-    );
-  });
-
-  /**
-   * ### .null
-   *
-   * Asserts that the target is `null`.
-   *
-   *     expect(null).to.be.null;
-   *     expect(undefined).not.to.be.null;
-   *
-   * @name null
-   * @api public
-   */
-
-  Assertion.addProperty('null', function () {
-    this.assert(
-        null === flag(this, 'object')
-      , 'expected #{this} to be null'
-      , 'expected #{this} not to be null'
-    );
-  });
-
-  /**
-   * ### .undefined
-   *
-   * Asserts that the target is `undefined`.
-   *
-   *     expect(undefined).to.be.undefined;
-   *     expect(null).to.not.be.undefined;
-   *
-   * @name undefined
-   * @api public
-   */
-
-  Assertion.addProperty('undefined', function () {
-    this.assert(
-        undefined === flag(this, 'object')
-      , 'expected #{this} to be undefined'
-      , 'expected #{this} not to be undefined'
-    );
-  });
-
-  /**
-   * ### .exist
-   *
-   * Asserts that the target is neither `null` nor `undefined`.
-   *
-   *     var foo = 'hi'
-   *       , bar = null
-   *       , baz;
-   *
-   *     expect(foo).to.exist;
-   *     expect(bar).to.not.exist;
-   *     expect(baz).to.not.exist;
-   *
-   * @name exist
-   * @api public
-   */
-
-  Assertion.addProperty('exist', function () {
-    this.assert(
-        null != flag(this, 'object')
-      , 'expected #{this} to exist'
-      , 'expected #{this} to not exist'
-    );
-  });
-
-
-  /**
-   * ### .empty
-   *
-   * Asserts that the target's length is `0`. For arrays, it checks
-   * the `length` property. For objects, it gets the count of
-   * enumerable keys.
-   *
-   *     expect([]).to.be.empty;
-   *     expect('').to.be.empty;
-   *     expect({}).to.be.empty;
-   *
-   * @name empty
-   * @api public
-   */
-
-  Assertion.addProperty('empty', function () {
-    var obj = flag(this, 'object')
-      , expected = obj;
-
-    if (Array.isArray(obj) || 'string' === typeof object) {
-      expected = obj.length;
-    } else if (typeof obj === 'object') {
-      expected = Object.keys(obj).length;
-    }
-
-    this.assert(
-        !expected
-      , 'expected #{this} to be empty'
-      , 'expected #{this} not to be empty'
-    );
-  });
-
-  /**
-   * ### .arguments
-   *
-   * Asserts that the target is an arguments object.
-   *
-   *     function test () {
-   *       expect(arguments).to.be.arguments;
-   *     }
-   *
-   * @name arguments
-   * @alias Arguments
-   * @api public
-   */
-
-  function checkArguments () {
-    var obj = flag(this, 'object')
-      , type = Object.prototype.toString.call(obj);
-    this.assert(
-        '[object Arguments]' === type
-      , 'expected #{this} to be arguments but got ' + type
-      , 'expected #{this} to not be arguments'
-    );
-  }
-
-  Assertion.addProperty('arguments', checkArguments);
-  Assertion.addProperty('Arguments', checkArguments);
-
-  /**
-   * ### .equal(value)
-   *
-   * Asserts that the target is strictly equal (`===`) to `value`.
-   * Alternately, if the `deep` flag is set, asserts that
-   * the target is deeply equal to `value`.
-   *
-   *     expect('hello').to.equal('hello');
-   *     expect(42).to.equal(42);
-   *     expect(1).to.not.equal(true);
-   *     expect({ foo: 'bar' }).to.not.equal({ foo: 'bar' });
-   *     expect({ foo: 'bar' }).to.deep.equal({ foo: 'bar' });
-   *
-   * @name equal
-   * @alias equals
-   * @alias eq
-   * @alias deep.equal
-   * @param {Mixed} value
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  function assertEqual (val, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object');
-    if (flag(this, 'deep')) {
-      return this.eql(val);
-    } else {
-      this.assert(
-          val === obj
-        , 'expected #{this} to equal #{exp}'
-        , 'expected #{this} to not equal #{exp}'
-        , val
-        , this._obj
-        , true
-      );
-    }
-  }
-
-  Assertion.addMethod('equal', assertEqual);
-  Assertion.addMethod('equals', assertEqual);
-  Assertion.addMethod('eq', assertEqual);
-
-  /**
-   * ### .eql(value)
-   *
-   * Asserts that the target is deeply equal to `value`.
-   *
-   *     expect({ foo: 'bar' }).to.eql({ foo: 'bar' });
-   *     expect([ 1, 2, 3 ]).to.eql([ 1, 2, 3 ]);
-   *
-   * @name eql
-   * @alias eqls
-   * @param {Mixed} value
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  function assertEql(obj, msg) {
-    if (msg) flag(this, 'message', msg);
-    this.assert(
-        _.eql(obj, flag(this, 'object'))
-      , 'expected #{this} to deeply equal #{exp}'
-      , 'expected #{this} to not deeply equal #{exp}'
-      , obj
-      , this._obj
-      , true
-    );
-  }
-
-  Assertion.addMethod('eql', assertEql);
-  Assertion.addMethod('eqls', assertEql);
-
-  /**
-   * ### .above(value)
-   *
-   * Asserts that the target is greater than `value`.
-   *
-   *     expect(10).to.be.above(5);
-   *
-   * Can also be used in conjunction with `length` to
-   * assert a minimum length. The benefit being a
-   * more informative error message than if the length
-   * was supplied directly.
-   *
-   *     expect('foo').to.have.length.above(2);
-   *     expect([ 1, 2, 3 ]).to.have.length.above(2);
-   *
-   * @name above
-   * @alias gt
-   * @alias greaterThan
-   * @param {Number} value
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  function assertAbove (n, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object');
-    if (flag(this, 'doLength')) {
-      new Assertion(obj, msg).to.have.property('length');
-      var len = obj.length;
-      this.assert(
-          len > n
-        , 'expected #{this} to have a length above #{exp} but got #{act}'
-        , 'expected #{this} to not have a length above #{exp}'
-        , n
-        , len
-      );
-    } else {
-      this.assert(
-          obj > n
-        , 'expected #{this} to be above ' + n
-        , 'expected #{this} to be at most ' + n
-      );
-    }
-  }
-
-  Assertion.addMethod('above', assertAbove);
-  Assertion.addMethod('gt', assertAbove);
-  Assertion.addMethod('greaterThan', assertAbove);
-
-  /**
-   * ### .least(value)
-   *
-   * Asserts that the target is greater than or equal to `value`.
-   *
-   *     expect(10).to.be.at.least(10);
-   *
-   * Can also be used in conjunction with `length` to
-   * assert a minimum length. The benefit being a
-   * more informative error message than if the length
-   * was supplied directly.
-   *
-   *     expect('foo').to.have.length.of.at.least(2);
-   *     expect([ 1, 2, 3 ]).to.have.length.of.at.least(3);
-   *
-   * @name least
-   * @alias gte
-   * @param {Number} value
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  function assertLeast (n, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object');
-    if (flag(this, 'doLength')) {
-      new Assertion(obj, msg).to.have.property('length');
-      var len = obj.length;
-      this.assert(
-          len >= n
-        , 'expected #{this} to have a length at least #{exp} but got #{act}'
-        , 'expected #{this} to have a length below #{exp}'
-        , n
-        , len
-      );
-    } else {
-      this.assert(
-          obj >= n
-        , 'expected #{this} to be at least ' + n
-        , 'expected #{this} to be below ' + n
-      );
-    }
-  }
-
-  Assertion.addMethod('least', assertLeast);
-  Assertion.addMethod('gte', assertLeast);
-
-  /**
-   * ### .below(value)
-   *
-   * Asserts that the target is less than `value`.
-   *
-   *     expect(5).to.be.below(10);
-   *
-   * Can also be used in conjunction with `length` to
-   * assert a maximum length. The benefit being a
-   * more informative error message than if the length
-   * was supplied directly.
-   *
-   *     expect('foo').to.have.length.below(4);
-   *     expect([ 1, 2, 3 ]).to.have.length.below(4);
-   *
-   * @name below
-   * @alias lt
-   * @alias lessThan
-   * @param {Number} value
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  function assertBelow (n, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object');
-    if (flag(this, 'doLength')) {
-      new Assertion(obj, msg).to.have.property('length');
-      var len = obj.length;
-      this.assert(
-          len < n
-        , 'expected #{this} to have a length below #{exp} but got #{act}'
-        , 'expected #{this} to not have a length below #{exp}'
-        , n
-        , len
-      );
-    } else {
-      this.assert(
-          obj < n
-        , 'expected #{this} to be below ' + n
-        , 'expected #{this} to be at least ' + n
-      );
-    }
-  }
-
-  Assertion.addMethod('below', assertBelow);
-  Assertion.addMethod('lt', assertBelow);
-  Assertion.addMethod('lessThan', assertBelow);
-
-  /**
-   * ### .most(value)
-   *
-   * Asserts that the target is less than or equal to `value`.
-   *
-   *     expect(5).to.be.at.most(5);
-   *
-   * Can also be used in conjunction with `length` to
-   * assert a maximum length. The benefit being a
-   * more informative error message than if the length
-   * was supplied directly.
-   *
-   *     expect('foo').to.have.length.of.at.most(4);
-   *     expect([ 1, 2, 3 ]).to.have.length.of.at.most(3);
-   *
-   * @name most
-   * @alias lte
-   * @param {Number} value
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  function assertMost (n, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object');
-    if (flag(this, 'doLength')) {
-      new Assertion(obj, msg).to.have.property('length');
-      var len = obj.length;
-      this.assert(
-          len <= n
-        , 'expected #{this} to have a length at most #{exp} but got #{act}'
-        , 'expected #{this} to have a length above #{exp}'
-        , n
-        , len
-      );
-    } else {
-      this.assert(
-          obj <= n
-        , 'expected #{this} to be at most ' + n
-        , 'expected #{this} to be above ' + n
-      );
-    }
-  }
-
-  Assertion.addMethod('most', assertMost);
-  Assertion.addMethod('lte', assertMost);
-
-  /**
-   * ### .within(start, finish)
-   *
-   * Asserts that the target is within a range.
-   *
-   *     expect(7).to.be.within(5,10);
-   *
-   * Can also be used in conjunction with `length` to
-   * assert a length range. The benefit being a
-   * more informative error message than if the length
-   * was supplied directly.
-   *
-   *     expect('foo').to.have.length.within(2,4);
-   *     expect([ 1, 2, 3 ]).to.have.length.within(2,4);
-   *
-   * @name within
-   * @param {Number} start lowerbound inclusive
-   * @param {Number} finish upperbound inclusive
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  Assertion.addMethod('within', function (start, finish, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object')
-      , range = start + '..' + finish;
-    if (flag(this, 'doLength')) {
-      new Assertion(obj, msg).to.have.property('length');
-      var len = obj.length;
-      this.assert(
-          len >= start && len <= finish
-        , 'expected #{this} to have a length within ' + range
-        , 'expected #{this} to not have a length within ' + range
-      );
-    } else {
-      this.assert(
-          obj >= start && obj <= finish
-        , 'expected #{this} to be within ' + range
-        , 'expected #{this} to not be within ' + range
-      );
-    }
-  });
-
-  /**
-   * ### .instanceof(constructor)
-   *
-   * Asserts that the target is an instance of `constructor`.
-   *
-   *     var Tea = function (name) { this.name = name; }
-   *       , Chai = new Tea('chai');
-   *
-   *     expect(Chai).to.be.an.instanceof(Tea);
-   *     expect([ 1, 2, 3 ]).to.be.instanceof(Array);
-   *
-   * @name instanceof
-   * @param {Constructor} constructor
-   * @param {String} message _optional_
-   * @alias instanceOf
-   * @api public
-   */
-
-  function assertInstanceOf (constructor, msg) {
-    if (msg) flag(this, 'message', msg);
-    var name = _.getName(constructor);
-    this.assert(
-        flag(this, 'object') instanceof constructor
-      , 'expected #{this} to be an instance of ' + name
-      , 'expected #{this} to not be an instance of ' + name
-    );
-  };
-
-  Assertion.addMethod('instanceof', assertInstanceOf);
-  Assertion.addMethod('instanceOf', assertInstanceOf);
-
-  /**
-   * ### .property(name, [value])
-   *
-   * Asserts that the target has a property `name`, optionally asserting that
-   * the value of that property is strictly equal to  `value`.
-   * If the `deep` flag is set, you can use dot- and bracket-notation for deep
-   * references into objects and arrays.
-   *
-   *     // simple referencing
-   *     var obj = { foo: 'bar' };
-   *     expect(obj).to.have.property('foo');
-   *     expect(obj).to.have.property('foo', 'bar');
-   *
-   *     // deep referencing
-   *     var deepObj = {
-   *         green: { tea: 'matcha' }
-   *       , teas: [ 'chai', 'matcha', { tea: 'konacha' } ]
-   *     };
-
-   *     expect(deepObj).to.have.deep.property('green.tea', 'matcha');
-   *     expect(deepObj).to.have.deep.property('teas[1]', 'matcha');
-   *     expect(deepObj).to.have.deep.property('teas[2].tea', 'konacha');
-   *
-   * You can also use an array as the starting point of a `deep.property`
-   * assertion, or traverse nested arrays.
-   *
-   *     var arr = [
-   *         [ 'chai', 'matcha', 'konacha' ]
-   *       , [ { tea: 'chai' }
-   *         , { tea: 'matcha' }
-   *         , { tea: 'konacha' } ]
-   *     ];
-   *
-   *     expect(arr).to.have.deep.property('[0][1]', 'matcha');
-   *     expect(arr).to.have.deep.property('[1][2].tea', 'konacha');
-   *
-   * Furthermore, `property` changes the subject of the assertion
-   * to be the value of that property from the original object. This
-   * permits for further chainable assertions on that property.
-   *
-   *     expect(obj).to.have.property('foo')
-   *       .that.is.a('string');
-   *     expect(deepObj).to.have.property('green')
-   *       .that.is.an('object')
-   *       .that.deep.equals({ tea: 'matcha' });
-   *     expect(deepObj).to.have.property('teas')
-   *       .that.is.an('array')
-   *       .with.deep.property('[2]')
-   *         .that.deep.equals({ tea: 'konacha' });
-   *
-   * @name property
-   * @alias deep.property
-   * @param {String} name
-   * @param {Mixed} value (optional)
-   * @param {String} message _optional_
-   * @returns value of property for chaining
-   * @api public
-   */
-
-  Assertion.addMethod('property', function (name, val, msg) {
-    if (msg) flag(this, 'message', msg);
-
-    var descriptor = flag(this, 'deep') ? 'deep property ' : 'property '
-      , negate = flag(this, 'negate')
-      , obj = flag(this, 'object')
-      , value = flag(this, 'deep')
-        ? _.getPathValue(name, obj)
-        : obj[name];
-
-    if (negate && undefined !== val) {
-      if (undefined === value) {
-        msg = (msg != null) ? msg + ': ' : '';
-        throw new Error(msg + _.inspect(obj) + ' has no ' + descriptor + _.inspect(name));
-      }
-    } else {
-      this.assert(
-          undefined !== value
-        , 'expected #{this} to have a ' + descriptor + _.inspect(name)
-        , 'expected #{this} to not have ' + descriptor + _.inspect(name));
-    }
-
-    if (undefined !== val) {
-      this.assert(
-          val === value
-        , 'expected #{this} to have a ' + descriptor + _.inspect(name) + ' of #{exp}, but got #{act}'
-        , 'expected #{this} to not have a ' + descriptor + _.inspect(name) + ' of #{act}'
-        , val
-        , value
-      );
-    }
-
-    flag(this, 'object', value);
-  });
-
-
-  /**
-   * ### .ownProperty(name)
-   *
-   * Asserts that the target has an own property `name`.
-   *
-   *     expect('test').to.have.ownProperty('length');
-   *
-   * @name ownProperty
-   * @alias haveOwnProperty
-   * @param {String} name
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  function assertOwnProperty (name, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object');
-    this.assert(
-        obj.hasOwnProperty(name)
-      , 'expected #{this} to have own property ' + _.inspect(name)
-      , 'expected #{this} to not have own property ' + _.inspect(name)
-    );
-  }
-
-  Assertion.addMethod('ownProperty', assertOwnProperty);
-  Assertion.addMethod('haveOwnProperty', assertOwnProperty);
-
-  /**
-   * ### .length(value)
-   *
-   * Asserts that the target's `length` property has
-   * the expected value.
-   *
-   *     expect([ 1, 2, 3]).to.have.length(3);
-   *     expect('foobar').to.have.length(6);
-   *
-   * Can also be used as a chain precursor to a value
-   * comparison for the length property.
-   *
-   *     expect('foo').to.have.length.above(2);
-   *     expect([ 1, 2, 3 ]).to.have.length.above(2);
-   *     expect('foo').to.have.length.below(4);
-   *     expect([ 1, 2, 3 ]).to.have.length.below(4);
-   *     expect('foo').to.have.length.within(2,4);
-   *     expect([ 1, 2, 3 ]).to.have.length.within(2,4);
-   *
-   * @name length
-   * @alias lengthOf
-   * @param {Number} length
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  function assertLengthChain () {
-    flag(this, 'doLength', true);
-  }
-
-  function assertLength (n, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object');
-    new Assertion(obj, msg).to.have.property('length');
-    var len = obj.length;
-
-    this.assert(
-        len == n
-      , 'expected #{this} to have a length of #{exp} but got #{act}'
-      , 'expected #{this} to not have a length of #{act}'
-      , n
-      , len
-    );
-  }
-
-  Assertion.addChainableMethod('length', assertLength, assertLengthChain);
-  Assertion.addMethod('lengthOf', assertLength, assertLengthChain);
-
-  /**
-   * ### .match(regexp)
-   *
-   * Asserts that the target matches a regular expression.
-   *
-   *     expect('foobar').to.match(/^foo/);
-   *
-   * @name match
-   * @param {RegExp} RegularExpression
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  Assertion.addMethod('match', function (re, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object');
-    this.assert(
-        re.exec(obj)
-      , 'expected #{this} to match ' + re
-      , 'expected #{this} not to match ' + re
-    );
-  });
-
-  /**
-   * ### .string(string)
-   *
-   * Asserts that the string target contains another string.
-   *
-   *     expect('foobar').to.have.string('bar');
-   *
-   * @name string
-   * @param {String} string
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  Assertion.addMethod('string', function (str, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object');
-    new Assertion(obj, msg).is.a('string');
-
-    this.assert(
-        ~obj.indexOf(str)
-      , 'expected #{this} to contain ' + _.inspect(str)
-      , 'expected #{this} to not contain ' + _.inspect(str)
-    );
-  });
-
-
-  /**
-   * ### .keys(key1, [key2], [...])
-   *
-   * Asserts that the target has exactly the given keys, or
-   * asserts the inclusion of some keys when using the
-   * `include` or `contain` modifiers.
-   *
-   *     expect({ foo: 1, bar: 2 }).to.have.keys(['foo', 'bar']);
-   *     expect({ foo: 1, bar: 2, baz: 3 }).to.contain.keys('foo', 'bar');
-   *
-   * @name keys
-   * @alias key
-   * @param {String...|Array} keys
-   * @api public
-   */
-
-  function assertKeys (keys) {
-    var obj = flag(this, 'object')
-      , str
-      , ok = true;
-
-    keys = keys instanceof Array
-      ? keys
-      : Array.prototype.slice.call(arguments);
-
-    if (!keys.length) throw new Error('keys required');
-
-    var actual = Object.keys(obj)
-      , len = keys.length;
-
-    // Inclusion
-    ok = keys.every(function(key){
-      return ~actual.indexOf(key);
-    });
-
-    // Strict
-    if (!flag(this, 'negate') && !flag(this, 'contains')) {
-      ok = ok && keys.length == actual.length;
-    }
-
-    // Key string
-    if (len > 1) {
-      keys = keys.map(function(key){
-        return _.inspect(key);
-      });
-      var last = keys.pop();
-      str = keys.join(', ') + ', and ' + last;
-    } else {
-      str = _.inspect(keys[0]);
-    }
-
-    // Form
-    str = (len > 1 ? 'keys ' : 'key ') + str;
-
-    // Have / include
-    str = (flag(this, 'contains') ? 'contain ' : 'have ') + str;
-
-    // Assertion
-    this.assert(
-        ok
-      , 'expected #{this} to ' + str
-      , 'expected #{this} to not ' + str
-    );
-  }
-
-  Assertion.addMethod('keys', assertKeys);
-  Assertion.addMethod('key', assertKeys);
-
-  /**
-   * ### .throw(constructor)
-   *
-   * Asserts that the function target will throw a specific error, or specific type of error
-   * (as determined using `instanceof`), optionally with a RegExp or string inclusion test
-   * for the error's message.
-   *
-   *     var err = new ReferenceError('This is a bad function.');
-   *     var fn = function () { throw err; }
-   *     expect(fn).to.throw(ReferenceError);
-   *     expect(fn).to.throw(Error);
-   *     expect(fn).to.throw(/bad function/);
-   *     expect(fn).to.not.throw('good function');
-   *     expect(fn).to.throw(ReferenceError, /bad function/);
-   *     expect(fn).to.throw(err);
-   *     expect(fn).to.not.throw(new RangeError('Out of range.'));
-   *
-   * Please note that when a throw expectation is negated, it will check each
-   * parameter independently, starting with error constructor type. The appropriate way
-   * to check for the existence of a type of error but for a message that does not match
-   * is to use `and`.
-   *
-   *     expect(fn).to.throw(ReferenceError)
-   *        .and.not.throw(/good function/);
-   *
-   * @name throw
-   * @alias throws
-   * @alias Throw
-   * @param {ErrorConstructor} constructor
-   * @param {String|RegExp} expected error message
-   * @param {String} message _optional_
-   * @see https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Error#Error_types
-   * @api public
-   */
-
-  function assertThrows (constructor, errMsg, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object');
-    new Assertion(obj, msg).is.a('function');
-
-    var thrown = false
-      , desiredError = null
-      , name = null
-      , thrownError = null;
-
-    if (arguments.length === 0) {
-      errMsg = null;
-      constructor = null;
-    } else if (constructor && (constructor instanceof RegExp || 'string' === typeof constructor)) {
-      errMsg = constructor;
-      constructor = null;
-    } else if (constructor && constructor instanceof Error) {
-      desiredError = constructor;
-      constructor = null;
-      errMsg = null;
-    } else if (typeof constructor === 'function') {
-      name = (new constructor()).name;
-    } else {
-      constructor = null;
-    }
-
-    try {
-      obj();
-    } catch (err) {
-      // first, check desired error
-      if (desiredError) {
-        this.assert(
-            err === desiredError
-          , 'expected #{this} to throw #{exp} but #{act} was thrown'
-          , 'expected #{this} to not throw #{exp}'
-          , desiredError
-          , err
-        );
-
-        return this;
-      }
-      // next, check constructor
-      if (constructor) {
-        this.assert(
-            err instanceof constructor
-          , 'expected #{this} to throw #{exp} but #{act} was thrown'
-          , 'expected #{this} to not throw #{exp} but #{act} was thrown'
-          , name
-          , err
-        );
-
-        if (!errMsg) return this;
-      }
-      // next, check message
-      var message = 'object' === _.type(err) && "message" in err
-        ? err.message
-        : '' + err;
-
-      if ((message != null) && errMsg && errMsg instanceof RegExp) {
-        this.assert(
-            errMsg.exec(message)
-          , 'expected #{this} to throw error matching #{exp} but got #{act}'
-          , 'expected #{this} to throw error not matching #{exp}'
-          , errMsg
-          , message
-        );
-
-        return this;
-      } else if ((message != null) && errMsg && 'string' === typeof errMsg) {
-        this.assert(
-            ~message.indexOf(errMsg)
-          , 'expected #{this} to throw error including #{exp} but got #{act}'
-          , 'expected #{this} to throw error not including #{act}'
-          , errMsg
-          , message
-        );
-
-        return this;
-      } else {
-        thrown = true;
-        thrownError = err;
-      }
-    }
-
-    var actuallyGot = ''
-      , expectedThrown = name !== null
-        ? name
-        : desiredError
-          ? '#{exp}' //_.inspect(desiredError)
-          : 'an error';
-
-    if (thrown) {
-      actuallyGot = ' but #{act} was thrown'
-    }
-
-    this.assert(
-        thrown === true
-      , 'expected #{this} to throw ' + expectedThrown + actuallyGot
-      , 'expected #{this} to not throw ' + expectedThrown + actuallyGot
-      , desiredError
-      , thrownError
-    );
-  };
-
-  Assertion.addMethod('throw', assertThrows);
-  Assertion.addMethod('throws', assertThrows);
-  Assertion.addMethod('Throw', assertThrows);
-
-  /**
-   * ### .respondTo(method)
-   *
-   * Asserts that the object or class target will respond to a method.
-   *
-   *     Klass.prototype.bar = function(){};
-   *     expect(Klass).to.respondTo('bar');
-   *     expect(obj).to.respondTo('bar');
-   *
-   * To check if a constructor will respond to a static function,
-   * set the `itself` flag.
-   *
-   *     Klass.baz = function(){};
-   *     expect(Klass).itself.to.respondTo('baz');
-   *
-   * @name respondTo
-   * @param {String} method
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  Assertion.addMethod('respondTo', function (method, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object')
-      , itself = flag(this, 'itself')
-      , context = ('function' === _.type(obj) && !itself)
-        ? obj.prototype[method]
-        : obj[method];
-
-    this.assert(
-        'function' === typeof context
-      , 'expected #{this} to respond to ' + _.inspect(method)
-      , 'expected #{this} to not respond to ' + _.inspect(method)
-    );
-  });
-
-  /**
-   * ### .itself
-   *
-   * Sets the `itself` flag, later used by the `respondTo` assertion.
-   *
-   *     function Foo() {}
-   *     Foo.bar = function() {}
-   *     Foo.prototype.baz = function() {}
-   *
-   *     expect(Foo).itself.to.respondTo('bar');
-   *     expect(Foo).itself.not.to.respondTo('baz');
-   *
-   * @name itself
-   * @api public
-   */
-
-  Assertion.addProperty('itself', function () {
-    flag(this, 'itself', true);
-  });
-
-  /**
-   * ### .satisfy(method)
-   *
-   * Asserts that the target passes a given truth test.
-   *
-   *     expect(1).to.satisfy(function(num) { return num > 0; });
-   *
-   * @name satisfy
-   * @param {Function} matcher
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  Assertion.addMethod('satisfy', function (matcher, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object');
-    this.assert(
-        matcher(obj)
-      , 'expected #{this} to satisfy ' + _.objDisplay(matcher)
-      , 'expected #{this} to not satisfy' + _.objDisplay(matcher)
-      , this.negate ? false : true
-      , matcher(obj)
-    );
-  });
-
-  /**
-   * ### .closeTo(expected, delta)
-   *
-   * Asserts that the target is equal `expected`, to within a +/- `delta` range.
-   *
-   *     expect(1.5).to.be.closeTo(1, 0.5);
-   *
-   * @name closeTo
-   * @param {Number} expected
-   * @param {Number} delta
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  Assertion.addMethod('closeTo', function (expected, delta, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object');
-    this.assert(
-        Math.abs(obj - expected) <= delta
-      , 'expected #{this} to be close to ' + expected + ' +/- ' + delta
-      , 'expected #{this} not to be close to ' + expected + ' +/- ' + delta
-    );
-  });
-
-  function isSubsetOf(subset, superset) {
-    return subset.every(function(elem) {
-      return superset.indexOf(elem) !== -1;
-    })
-  }
-
-  /**
-   * ### .members(set)
-   *
-   * Asserts that the target is a superset of `set`,
-   * or that the target and `set` have the same members.
-   *
-   *     expect([1, 2, 3]).to.include.members([3, 2]);
-   *     expect([1, 2, 3]).to.not.include.members([3, 2, 8]);
-   *
-   *     expect([4, 2]).to.have.members([2, 4]);
-   *     expect([5, 2]).to.not.have.members([5, 2, 1]);
-   *
-   * @name members
-   * @param {Array} set
-   * @param {String} message _optional_
-   * @api public
-   */
-
-  Assertion.addMethod('members', function (subset, msg) {
-    if (msg) flag(this, 'message', msg);
-    var obj = flag(this, 'object');
-
-    new Assertion(obj).to.be.an('array');
-    new Assertion(subset).to.be.an('array');
-
-    if (flag(this, 'contains')) {
-      return this.assert(
-          isSubsetOf(subset, obj)
-        , 'expected #{this} to be a superset of #{act}'
-        , 'expected #{this} to not be a superset of #{act}'
-        , obj
-        , subset
-      );
-    }
-
-    this.assert(
-        isSubsetOf(obj, subset) && isSubsetOf(subset, obj)
-        , 'expected #{this} to have the same members as #{act}'
-        , 'expected #{this} to not have the same members as #{act}'
-        , obj
-        , subset
-    );
-  });
-};
-
-});
-require.register("chaijs-chai/lib/chai/interface/assert.js", function(exports, require, module){
-/*!
- * chai
- * Copyright(c) 2011-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-
-module.exports = function (chai, util) {
-
-  /*!
-   * Chai dependencies.
-   */
-
-  var Assertion = chai.Assertion
-    , flag = util.flag;
-
-  /*!
-   * Module export.
-   */
-
-  /**
-   * ### assert(expression, message)
-   *
-   * Write your own test expressions.
-   *
-   *     assert('foo' !== 'bar', 'foo is not bar');
-   *     assert(Array.isArray([]), 'empty arrays are arrays');
-   *
-   * @param {Mixed} expression to test for truthiness
-   * @param {String} message to display on error
-   * @name assert
-   * @api public
-   */
-
-  var assert = chai.assert = function (express, errmsg) {
-    var test = new Assertion(null);
-    test.assert(
-        express
-      , errmsg
-      , '[ negation message unavailable ]'
-    );
-  };
-
-  /**
-   * ### .fail(actual, expected, [message], [operator])
-   *
-   * Throw a failure. Node.js `assert` module-compatible.
-   *
-   * @name fail
-   * @param {Mixed} actual
-   * @param {Mixed} expected
-   * @param {String} message
-   * @param {String} operator
-   * @api public
-   */
-
-  assert.fail = function (actual, expected, message, operator) {
-    throw new chai.AssertionError({
-        actual: actual
-      , expected: expected
-      , message: message
-      , operator: operator
-      , stackStartFunction: assert.fail
-    });
-  };
-
-  /**
-   * ### .ok(object, [message])
-   *
-   * Asserts that `object` is truthy.
-   *
-   *     assert.ok('everything', 'everything is ok');
-   *     assert.ok(false, 'this will fail');
-   *
-   * @name ok
-   * @param {Mixed} object to test
-   * @param {String} message
-   * @api public
-   */
-
-  assert.ok = function (val, msg) {
-    new Assertion(val, msg).is.ok;
-  };
-
-  /**
-   * ### .notOk(object, [message])
-   *
-   * Asserts that `object` is falsy.
-   *
-   *     assert.notOk('everything', 'this will fail');
-   *     assert.notOk(false, 'this will pass');
-   *
-   * @name notOk
-   * @param {Mixed} object to test
-   * @param {String} message
-   * @api public
-   */
-
-  assert.notOk = function (val, msg) {
-    new Assertion(val, msg).is.not.ok;
-  };
-
-  /**
-   * ### .equal(actual, expected, [message])
-   *
-   * Asserts non-strict equality (`==`) of `actual` and `expected`.
-   *
-   *     assert.equal(3, '3', '== coerces values to strings');
-   *
-   * @name equal
-   * @param {Mixed} actual
-   * @param {Mixed} expected
-   * @param {String} message
-   * @api public
-   */
-
-  assert.equal = function (act, exp, msg) {
-    var test = new Assertion(act, msg);
-
-    test.assert(
-        exp == flag(test, 'object')
-      , 'expected #{this} to equal #{exp}'
-      , 'expected #{this} to not equal #{act}'
-      , exp
-      , act
-    );
-  };
-
-  /**
-   * ### .notEqual(actual, expected, [message])
-   *
-   * Asserts non-strict inequality (`!=`) of `actual` and `expected`.
-   *
-   *     assert.notEqual(3, 4, 'these numbers are not equal');
-   *
-   * @name notEqual
-   * @param {Mixed} actual
-   * @param {Mixed} expected
-   * @param {String} message
-   * @api public
-   */
-
-  assert.notEqual = function (act, exp, msg) {
-    var test = new Assertion(act, msg);
-
-    test.assert(
-        exp != flag(test, 'object')
-      , 'expected #{this} to not equal #{exp}'
-      , 'expected #{this} to equal #{act}'
-      , exp
-      , act
-    );
-  };
-
-  /**
-   * ### .strictEqual(actual, expected, [message])
-   *
-   * Asserts strict equality (`===`) of `actual` and `expected`.
-   *
-   *     assert.strictEqual(true, true, 'these booleans are strictly equal');
-   *
-   * @name strictEqual
-   * @param {Mixed} actual
-   * @param {Mixed} expected
-   * @param {String} message
-   * @api public
-   */
-
-  assert.strictEqual = function (act, exp, msg) {
-    new Assertion(act, msg).to.equal(exp);
-  };
-
-  /**
-   * ### .notStrictEqual(actual, expected, [message])
-   *
-   * Asserts strict inequality (`!==`) of `actual` and `expected`.
-   *
-   *     assert.notStrictEqual(3, '3', 'no coercion for strict equality');
-   *
-   * @name notStrictEqual
-   * @param {Mixed} actual
-   * @param {Mixed} expected
-   * @param {String} message
-   * @api public
-   */
-
-  assert.notStrictEqual = function (act, exp, msg) {
-    new Assertion(act, msg).to.not.equal(exp);
-  };
-
-  /**
-   * ### .deepEqual(actual, expected, [message])
-   *
-   * Asserts that `actual` is deeply equal to `expected`.
-   *
-   *     assert.deepEqual({ tea: 'green' }, { tea: 'green' });
-   *
-   * @name deepEqual
-   * @param {Mixed} actual
-   * @param {Mixed} expected
-   * @param {String} message
-   * @api public
-   */
-
-  assert.deepEqual = function (act, exp, msg) {
-    new Assertion(act, msg).to.eql(exp);
-  };
-
-  /**
-   * ### .notDeepEqual(actual, expected, [message])
-   *
-   * Assert that `actual` is not deeply equal to `expected`.
-   *
-   *     assert.notDeepEqual({ tea: 'green' }, { tea: 'jasmine' });
-   *
-   * @name notDeepEqual
-   * @param {Mixed} actual
-   * @param {Mixed} expected
-   * @param {String} message
-   * @api public
-   */
-
-  assert.notDeepEqual = function (act, exp, msg) {
-    new Assertion(act, msg).to.not.eql(exp);
-  };
-
-  /**
-   * ### .isTrue(value, [message])
-   *
-   * Asserts that `value` is true.
-   *
-   *     var teaServed = true;
-   *     assert.isTrue(teaServed, 'the tea has been served');
-   *
-   * @name isTrue
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isTrue = function (val, msg) {
-    new Assertion(val, msg).is['true'];
-  };
-
-  /**
-   * ### .isFalse(value, [message])
-   *
-   * Asserts that `value` is false.
-   *
-   *     var teaServed = false;
-   *     assert.isFalse(teaServed, 'no tea yet? hmm...');
-   *
-   * @name isFalse
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isFalse = function (val, msg) {
-    new Assertion(val, msg).is['false'];
-  };
-
-  /**
-   * ### .isNull(value, [message])
-   *
-   * Asserts that `value` is null.
-   *
-   *     assert.isNull(err, 'there was no error');
-   *
-   * @name isNull
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isNull = function (val, msg) {
-    new Assertion(val, msg).to.equal(null);
-  };
-
-  /**
-   * ### .isNotNull(value, [message])
-   *
-   * Asserts that `value` is not null.
-   *
-   *     var tea = 'tasty chai';
-   *     assert.isNotNull(tea, 'great, time for tea!');
-   *
-   * @name isNotNull
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isNotNull = function (val, msg) {
-    new Assertion(val, msg).to.not.equal(null);
-  };
-
-  /**
-   * ### .isUndefined(value, [message])
-   *
-   * Asserts that `value` is `undefined`.
-   *
-   *     var tea;
-   *     assert.isUndefined(tea, 'no tea defined');
-   *
-   * @name isUndefined
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isUndefined = function (val, msg) {
-    new Assertion(val, msg).to.equal(undefined);
-  };
-
-  /**
-   * ### .isDefined(value, [message])
-   *
-   * Asserts that `value` is not `undefined`.
-   *
-   *     var tea = 'cup of chai';
-   *     assert.isDefined(tea, 'tea has been defined');
-   *
-   * @name isDefined
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isDefined = function (val, msg) {
-    new Assertion(val, msg).to.not.equal(undefined);
-  };
-
-  /**
-   * ### .isFunction(value, [message])
-   *
-   * Asserts that `value` is a function.
-   *
-   *     function serveTea() { return 'cup of tea'; };
-   *     assert.isFunction(serveTea, 'great, we can have tea now');
-   *
-   * @name isFunction
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isFunction = function (val, msg) {
-    new Assertion(val, msg).to.be.a('function');
-  };
-
-  /**
-   * ### .isNotFunction(value, [message])
-   *
-   * Asserts that `value` is _not_ a function.
-   *
-   *     var serveTea = [ 'heat', 'pour', 'sip' ];
-   *     assert.isNotFunction(serveTea, 'great, we have listed the steps');
-   *
-   * @name isNotFunction
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isNotFunction = function (val, msg) {
-    new Assertion(val, msg).to.not.be.a('function');
-  };
-
-  /**
-   * ### .isObject(value, [message])
-   *
-   * Asserts that `value` is an object (as revealed by
-   * `Object.prototype.toString`).
-   *
-   *     var selection = { name: 'Chai', serve: 'with spices' };
-   *     assert.isObject(selection, 'tea selection is an object');
-   *
-   * @name isObject
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isObject = function (val, msg) {
-    new Assertion(val, msg).to.be.a('object');
-  };
-
-  /**
-   * ### .isNotObject(value, [message])
-   *
-   * Asserts that `value` is _not_ an object.
-   *
-   *     var selection = 'chai'
-   *     assert.isObject(selection, 'tea selection is not an object');
-   *     assert.isObject(null, 'null is not an object');
-   *
-   * @name isNotObject
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isNotObject = function (val, msg) {
-    new Assertion(val, msg).to.not.be.a('object');
-  };
-
-  /**
-   * ### .isArray(value, [message])
-   *
-   * Asserts that `value` is an array.
-   *
-   *     var menu = [ 'green', 'chai', 'oolong' ];
-   *     assert.isArray(menu, 'what kind of tea do we want?');
-   *
-   * @name isArray
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isArray = function (val, msg) {
-    new Assertion(val, msg).to.be.an('array');
-  };
-
-  /**
-   * ### .isNotArray(value, [message])
-   *
-   * Asserts that `value` is _not_ an array.
-   *
-   *     var menu = 'green|chai|oolong';
-   *     assert.isNotArray(menu, 'what kind of tea do we want?');
-   *
-   * @name isNotArray
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isNotArray = function (val, msg) {
-    new Assertion(val, msg).to.not.be.an('array');
-  };
-
-  /**
-   * ### .isString(value, [message])
-   *
-   * Asserts that `value` is a string.
-   *
-   *     var teaOrder = 'chai';
-   *     assert.isString(teaOrder, 'order placed');
-   *
-   * @name isString
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isString = function (val, msg) {
-    new Assertion(val, msg).to.be.a('string');
-  };
-
-  /**
-   * ### .isNotString(value, [message])
-   *
-   * Asserts that `value` is _not_ a string.
-   *
-   *     var teaOrder = 4;
-   *     assert.isNotString(teaOrder, 'order placed');
-   *
-   * @name isNotString
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isNotString = function (val, msg) {
-    new Assertion(val, msg).to.not.be.a('string');
-  };
-
-  /**
-   * ### .isNumber(value, [message])
-   *
-   * Asserts that `value` is a number.
-   *
-   *     var cups = 2;
-   *     assert.isNumber(cups, 'how many cups');
-   *
-   * @name isNumber
-   * @param {Number} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isNumber = function (val, msg) {
-    new Assertion(val, msg).to.be.a('number');
-  };
-
-  /**
-   * ### .isNotNumber(value, [message])
-   *
-   * Asserts that `value` is _not_ a number.
-   *
-   *     var cups = '2 cups please';
-   *     assert.isNotNumber(cups, 'how many cups');
-   *
-   * @name isNotNumber
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isNotNumber = function (val, msg) {
-    new Assertion(val, msg).to.not.be.a('number');
-  };
-
-  /**
-   * ### .isBoolean(value, [message])
-   *
-   * Asserts that `value` is a boolean.
-   *
-   *     var teaReady = true
-   *       , teaServed = false;
-   *
-   *     assert.isBoolean(teaReady, 'is the tea ready');
-   *     assert.isBoolean(teaServed, 'has tea been served');
-   *
-   * @name isBoolean
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isBoolean = function (val, msg) {
-    new Assertion(val, msg).to.be.a('boolean');
-  };
-
-  /**
-   * ### .isNotBoolean(value, [message])
-   *
-   * Asserts that `value` is _not_ a boolean.
-   *
-   *     var teaReady = 'yep'
-   *       , teaServed = 'nope';
-   *
-   *     assert.isNotBoolean(teaReady, 'is the tea ready');
-   *     assert.isNotBoolean(teaServed, 'has tea been served');
-   *
-   * @name isNotBoolean
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.isNotBoolean = function (val, msg) {
-    new Assertion(val, msg).to.not.be.a('boolean');
-  };
-
-  /**
-   * ### .typeOf(value, name, [message])
-   *
-   * Asserts that `value`'s type is `name`, as determined by
-   * `Object.prototype.toString`.
-   *
-   *     assert.typeOf({ tea: 'chai' }, 'object', 'we have an object');
-   *     assert.typeOf(['chai', 'jasmine'], 'array', 'we have an array');
-   *     assert.typeOf('tea', 'string', 'we have a string');
-   *     assert.typeOf(/tea/, 'regexp', 'we have a regular expression');
-   *     assert.typeOf(null, 'null', 'we have a null');
-   *     assert.typeOf(undefined, 'undefined', 'we have an undefined');
-   *
-   * @name typeOf
-   * @param {Mixed} value
-   * @param {String} name
-   * @param {String} message
-   * @api public
-   */
-
-  assert.typeOf = function (val, type, msg) {
-    new Assertion(val, msg).to.be.a(type);
-  };
-
-  /**
-   * ### .notTypeOf(value, name, [message])
-   *
-   * Asserts that `value`'s type is _not_ `name`, as determined by
-   * `Object.prototype.toString`.
-   *
-   *     assert.notTypeOf('tea', 'number', 'strings are not numbers');
-   *
-   * @name notTypeOf
-   * @param {Mixed} value
-   * @param {String} typeof name
-   * @param {String} message
-   * @api public
-   */
-
-  assert.notTypeOf = function (val, type, msg) {
-    new Assertion(val, msg).to.not.be.a(type);
-  };
-
-  /**
-   * ### .instanceOf(object, constructor, [message])
-   *
-   * Asserts that `value` is an instance of `constructor`.
-   *
-   *     var Tea = function (name) { this.name = name; }
-   *       , chai = new Tea('chai');
-   *
-   *     assert.instanceOf(chai, Tea, 'chai is an instance of tea');
-   *
-   * @name instanceOf
-   * @param {Object} object
-   * @param {Constructor} constructor
-   * @param {String} message
-   * @api public
-   */
-
-  assert.instanceOf = function (val, type, msg) {
-    new Assertion(val, msg).to.be.instanceOf(type);
-  };
-
-  /**
-   * ### .notInstanceOf(object, constructor, [message])
-   *
-   * Asserts `value` is not an instance of `constructor`.
-   *
-   *     var Tea = function (name) { this.name = name; }
-   *       , chai = new String('chai');
-   *
-   *     assert.notInstanceOf(chai, Tea, 'chai is not an instance of tea');
-   *
-   * @name notInstanceOf
-   * @param {Object} object
-   * @param {Constructor} constructor
-   * @param {String} message
-   * @api public
-   */
-
-  assert.notInstanceOf = function (val, type, msg) {
-    new Assertion(val, msg).to.not.be.instanceOf(type);
-  };
-
-  /**
-   * ### .include(haystack, needle, [message])
-   *
-   * Asserts that `haystack` includes `needle`. Works
-   * for strings and arrays.
-   *
-   *     assert.include('foobar', 'bar', 'foobar contains string "bar"');
-   *     assert.include([ 1, 2, 3 ], 3, 'array contains value');
-   *
-   * @name include
-   * @param {Array|String} haystack
-   * @param {Mixed} needle
-   * @param {String} message
-   * @api public
-   */
-
-  assert.include = function (exp, inc, msg) {
-    var obj = new Assertion(exp, msg);
-
-    if (Array.isArray(exp)) {
-      obj.to.include(inc);
-    } else if ('string' === typeof exp) {
-      obj.to.contain.string(inc);
-    } else {
-      throw new chai.AssertionError(
-          'expected an array or string'
-        , null
-        , assert.include
-      );
-    }
-  };
-
-  /**
-   * ### .notInclude(haystack, needle, [message])
-   *
-   * Asserts that `haystack` does not include `needle`. Works
-   * for strings and arrays.
-   *i
-   *     assert.notInclude('foobar', 'baz', 'string not include substring');
-   *     assert.notInclude([ 1, 2, 3 ], 4, 'array not include contain value');
-   *
-   * @name notInclude
-   * @param {Array|String} haystack
-   * @param {Mixed} needle
-   * @param {String} message
-   * @api public
-   */
-
-  assert.notInclude = function (exp, inc, msg) {
-    var obj = new Assertion(exp, msg);
-
-    if (Array.isArray(exp)) {
-      obj.to.not.include(inc);
-    } else if ('string' === typeof exp) {
-      obj.to.not.contain.string(inc);
-    } else {
-      throw new chai.AssertionError(
-          'expected an array or string'
-        , null
-        , assert.notInclude
-      );
-    }
-  };
-
-  /**
-   * ### .match(value, regexp, [message])
-   *
-   * Asserts that `value` matches the regular expression `regexp`.
-   *
-   *     assert.match('foobar', /^foo/, 'regexp matches');
-   *
-   * @name match
-   * @param {Mixed} value
-   * @param {RegExp} regexp
-   * @param {String} message
-   * @api public
-   */
-
-  assert.match = function (exp, re, msg) {
-    new Assertion(exp, msg).to.match(re);
-  };
-
-  /**
-   * ### .notMatch(value, regexp, [message])
-   *
-   * Asserts that `value` does not match the regular expression `regexp`.
-   *
-   *     assert.notMatch('foobar', /^foo/, 'regexp does not match');
-   *
-   * @name notMatch
-   * @param {Mixed} value
-   * @param {RegExp} regexp
-   * @param {String} message
-   * @api public
-   */
-
-  assert.notMatch = function (exp, re, msg) {
-    new Assertion(exp, msg).to.not.match(re);
-  };
-
-  /**
-   * ### .property(object, property, [message])
-   *
-   * Asserts that `object` has a property named by `property`.
-   *
-   *     assert.property({ tea: { green: 'matcha' }}, 'tea');
-   *
-   * @name property
-   * @param {Object} object
-   * @param {String} property
-   * @param {String} message
-   * @api public
-   */
-
-  assert.property = function (obj, prop, msg) {
-    new Assertion(obj, msg).to.have.property(prop);
-  };
-
-  /**
-   * ### .notProperty(object, property, [message])
-   *
-   * Asserts that `object` does _not_ have a property named by `property`.
-   *
-   *     assert.notProperty({ tea: { green: 'matcha' }}, 'coffee');
-   *
-   * @name notProperty
-   * @param {Object} object
-   * @param {String} property
-   * @param {String} message
-   * @api public
-   */
-
-  assert.notProperty = function (obj, prop, msg) {
-    new Assertion(obj, msg).to.not.have.property(prop);
-  };
-
-  /**
-   * ### .deepProperty(object, property, [message])
-   *
-   * Asserts that `object` has a property named by `property`, which can be a
-   * string using dot- and bracket-notation for deep reference.
-   *
-   *     assert.deepProperty({ tea: { green: 'matcha' }}, 'tea.green');
-   *
-   * @name deepProperty
-   * @param {Object} object
-   * @param {String} property
-   * @param {String} message
-   * @api public
-   */
-
-  assert.deepProperty = function (obj, prop, msg) {
-    new Assertion(obj, msg).to.have.deep.property(prop);
-  };
-
-  /**
-   * ### .notDeepProperty(object, property, [message])
-   *
-   * Asserts that `object` does _not_ have a property named by `property`, which
-   * can be a string using dot- and bracket-notation for deep reference.
-   *
-   *     assert.notDeepProperty({ tea: { green: 'matcha' }}, 'tea.oolong');
-   *
-   * @name notDeepProperty
-   * @param {Object} object
-   * @param {String} property
-   * @param {String} message
-   * @api public
-   */
-
-  assert.notDeepProperty = function (obj, prop, msg) {
-    new Assertion(obj, msg).to.not.have.deep.property(prop);
-  };
-
-  /**
-   * ### .propertyVal(object, property, value, [message])
-   *
-   * Asserts that `object` has a property named by `property` with value given
-   * by `value`.
-   *
-   *     assert.propertyVal({ tea: 'is good' }, 'tea', 'is good');
-   *
-   * @name propertyVal
-   * @param {Object} object
-   * @param {String} property
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.propertyVal = function (obj, prop, val, msg) {
-    new Assertion(obj, msg).to.have.property(prop, val);
-  };
-
-  /**
-   * ### .propertyNotVal(object, property, value, [message])
-   *
-   * Asserts that `object` has a property named by `property`, but with a value
-   * different from that given by `value`.
-   *
-   *     assert.propertyNotVal({ tea: 'is good' }, 'tea', 'is bad');
-   *
-   * @name propertyNotVal
-   * @param {Object} object
-   * @param {String} property
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.propertyNotVal = function (obj, prop, val, msg) {
-    new Assertion(obj, msg).to.not.have.property(prop, val);
-  };
-
-  /**
-   * ### .deepPropertyVal(object, property, value, [message])
-   *
-   * Asserts that `object` has a property named by `property` with value given
-   * by `value`. `property` can use dot- and bracket-notation for deep
-   * reference.
-   *
-   *     assert.deepPropertyVal({ tea: { green: 'matcha' }}, 'tea.green', 'matcha');
-   *
-   * @name deepPropertyVal
-   * @param {Object} object
-   * @param {String} property
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.deepPropertyVal = function (obj, prop, val, msg) {
-    new Assertion(obj, msg).to.have.deep.property(prop, val);
-  };
-
-  /**
-   * ### .deepPropertyNotVal(object, property, value, [message])
-   *
-   * Asserts that `object` has a property named by `property`, but with a value
-   * different from that given by `value`. `property` can use dot- and
-   * bracket-notation for deep reference.
-   *
-   *     assert.deepPropertyNotVal({ tea: { green: 'matcha' }}, 'tea.green', 'konacha');
-   *
-   * @name deepPropertyNotVal
-   * @param {Object} object
-   * @param {String} property
-   * @param {Mixed} value
-   * @param {String} message
-   * @api public
-   */
-
-  assert.deepPropertyNotVal = function (obj, prop, val, msg) {
-    new Assertion(obj, msg).to.not.have.deep.property(prop, val);
-  };
-
-  /**
-   * ### .lengthOf(object, length, [message])
-   *
-   * Asserts that `object` has a `length` property with the expected value.
-   *
-   *     assert.lengthOf([1,2,3], 3, 'array has length of 3');
-   *     assert.lengthOf('foobar', 5, 'string has length of 6');
-   *
-   * @name lengthOf
-   * @param {Mixed} object
-   * @param {Number} length
-   * @param {String} message
-   * @api public
-   */
-
-  assert.lengthOf = function (exp, len, msg) {
-    new Assertion(exp, msg).to.have.length(len);
-  };
-
-  /**
-   * ### .throws(function, [constructor/string/regexp], [string/regexp], [message])
-   *
-   * Asserts that `function` will throw an error that is an instance of
-   * `constructor`, or alternately that it will throw an error with message
-   * matching `regexp`.
-   *
-   *     assert.throw(fn, 'function throws a reference error');
-   *     assert.throw(fn, /function throws a reference error/);
-   *     assert.throw(fn, ReferenceError);
-   *     assert.throw(fn, ReferenceError, 'function throws a reference error');
-   *     assert.throw(fn, ReferenceError, /function throws a reference error/);
-   *
-   * @name throws
-   * @alias throw
-   * @alias Throw
-   * @param {Function} function
-   * @param {ErrorConstructor} constructor
-   * @param {RegExp} regexp
-   * @param {String} message
-   * @see https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Error#Error_types
-   * @api public
-   */
-
-  assert.Throw = function (fn, errt, errs, msg) {
-    if ('string' === typeof errt || errt instanceof RegExp) {
-      errs = errt;
-      errt = null;
-    }
-
-    new Assertion(fn, msg).to.Throw(errt, errs);
-  };
-
-  /**
-   * ### .doesNotThrow(function, [constructor/regexp], [message])
-   *
-   * Asserts that `function` will _not_ throw an error that is an instance of
-   * `constructor`, or alternately that it will not throw an error with message
-   * matching `regexp`.
-   *
-   *     assert.doesNotThrow(fn, Error, 'function does not throw');
-   *
-   * @name doesNotThrow
-   * @param {Function} function
-   * @param {ErrorConstructor} constructor
-   * @param {RegExp} regexp
-   * @param {String} message
-   * @see https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Error#Error_types
-   * @api public
-   */
-
-  assert.doesNotThrow = function (fn, type, msg) {
-    if ('string' === typeof type) {
-      msg = type;
-      type = null;
-    }
-
-    new Assertion(fn, msg).to.not.Throw(type);
-  };
-
-  /**
-   * ### .operator(val1, operator, val2, [message])
-   *
-   * Compares two values using `operator`.
-   *
-   *     assert.operator(1, '<', 2, 'everything is ok');
-   *     assert.operator(1, '>', 2, 'this will fail');
-   *
-   * @name operator
-   * @param {Mixed} val1
-   * @param {String} operator
-   * @param {Mixed} val2
-   * @param {String} message
-   * @api public
-   */
-
-  assert.operator = function (val, operator, val2, msg) {
-    if (!~['==', '===', '>', '>=', '<', '<=', '!=', '!=='].indexOf(operator)) {
-      throw new Error('Invalid operator "' + operator + '"');
-    }
-    var test = new Assertion(eval(val + operator + val2), msg);
-    test.assert(
-        true === flag(test, 'object')
-      , 'expected ' + util.inspect(val) + ' to be ' + operator + ' ' + util.inspect(val2)
-      , 'expected ' + util.inspect(val) + ' to not be ' + operator + ' ' + util.inspect(val2) );
-  };
-
-  /**
-   * ### .closeTo(actual, expected, delta, [message])
-   *
-   * Asserts that the target is equal `expected`, to within a +/- `delta` range.
-   *
-   *     assert.closeTo(1.5, 1, 0.5, 'numbers are close');
-   *
-   * @name closeTo
-   * @param {Number} actual
-   * @param {Number} expected
-   * @param {Number} delta
-   * @param {String} message
-   * @api public
-   */
-
-  assert.closeTo = function (act, exp, delta, msg) {
-    new Assertion(act, msg).to.be.closeTo(exp, delta);
-  };
-
-  /**
-   * ### .sameMembers(set1, set2, [message])
-   *
-   * Asserts that `set1` and `set2` have the same members.
-   * Order is not taken into account.
-   *
-   *     assert.sameMembers([ 1, 2, 3 ], [ 2, 1, 3 ], 'same members');
-   *
-   * @name sameMembers
-   * @param {Array} superset
-   * @param {Array} subset
-   * @param {String} message
-   * @api public
-   */
-
-  assert.sameMembers = function (set1, set2, msg) {
-    new Assertion(set1, msg).to.have.same.members(set2);
-  }
-
-  /**
-   * ### .includeMembers(superset, subset, [message])
-   *
-   * Asserts that `subset` is included in `superset`.
-   * Order is not taken into account.
-   *
-   *     assert.includeMembers([ 1, 2, 3 ], [ 2, 1 ], 'include members');
-   *
-   * @name includeMembers
-   * @param {Array} superset
-   * @param {Array} subset
-   * @param {String} message
-   * @api public
-   */
-
-  assert.includeMembers = function (superset, subset, msg) {
-    new Assertion(superset, msg).to.include.members(subset);
-  }
-
-  /*!
-   * Undocumented / untested
-   */
-
-  assert.ifError = function (val, msg) {
-    new Assertion(val, msg).to.not.be.ok;
-  };
-
-  /*!
-   * Aliases.
-   */
-
-  (function alias(name, as){
-    assert[as] = assert[name];
-    return alias;
-  })
-  ('Throw', 'throw')
-  ('Throw', 'throws');
-};
-
-});
-require.register("chaijs-chai/lib/chai/interface/expect.js", function(exports, require, module){
-/*!
- * chai
- * Copyright(c) 2011-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-module.exports = function (chai, util) {
-  chai.expect = function (val, message) {
-    return new chai.Assertion(val, message);
-  };
-};
-
-
-});
-require.register("chaijs-chai/lib/chai/interface/should.js", function(exports, require, module){
-/*!
- * chai
- * Copyright(c) 2011-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-module.exports = function (chai, util) {
-  var Assertion = chai.Assertion;
-
-  function loadShould () {
-    // modify Object.prototype to have `should`
-    Object.defineProperty(Object.prototype, 'should',
-      {
-        set: function (value) {
-          // See https://github.com/chaijs/chai/issues/86: this makes
-          // `whatever.should = someValue` actually set `someValue`, which is
-          // especially useful for `global.should = require('chai').should()`.
-          //
-          // Note that we have to use [[DefineProperty]] instead of [[Put]]
-          // since otherwise we would trigger this very setter!
-          Object.defineProperty(this, 'should', {
-            value: value,
-            enumerable: true,
-            configurable: true,
-            writable: true
-          });
-        }
-      , get: function(){
-          if (this instanceof String || this instanceof Number) {
-            return new Assertion(this.constructor(this));
-          } else if (this instanceof Boolean) {
-            return new Assertion(this == true);
-          }
-          return new Assertion(this);
-        }
-      , configurable: true
-    });
-
-    var should = {};
-
-    should.equal = function (val1, val2, msg) {
-      new Assertion(val1, msg).to.equal(val2);
-    };
-
-    should.Throw = function (fn, errt, errs, msg) {
-      new Assertion(fn, msg).to.Throw(errt, errs);
-    };
-
-    should.exist = function (val, msg) {
-      new Assertion(val, msg).to.exist;
-    }
-
-    // negation
-    should.not = {}
-
-    should.not.equal = function (val1, val2, msg) {
-      new Assertion(val1, msg).to.not.equal(val2);
-    };
-
-    should.not.Throw = function (fn, errt, errs, msg) {
-      new Assertion(fn, msg).to.not.Throw(errt, errs);
-    };
-
-    should.not.exist = function (val, msg) {
-      new Assertion(val, msg).to.not.exist;
-    }
-
-    should['throw'] = should['Throw'];
-    should.not['throw'] = should.not['Throw'];
-
-    return should;
-  };
-
-  chai.should = loadShould;
-  chai.Should = loadShould;
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/addChainableMethod.js", function(exports, require, module){
-/*!
- * Chai - addChainingMethod utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/*!
- * Module dependencies
- */
-
-var transferFlags = require('./transferFlags');
-
-/*!
- * Module variables
- */
-
-// Check whether `__proto__` is supported
-var hasProtoSupport = '__proto__' in Object;
-
-// Without `__proto__` support, this module will need to add properties to a function.
-// However, some Function.prototype methods cannot be overwritten,
-// and there seems no easy cross-platform way to detect them (@see chaijs/chai/issues/69).
-var excludeNames = /^(?:length|name|arguments|caller)$/;
-
-// Cache `Function` properties
-var call  = Function.prototype.call,
-    apply = Function.prototype.apply;
-
-/**
- * ### addChainableMethod (ctx, name, method, chainingBehavior)
- *
- * Adds a method to an object, such that the method can also be chained.
- *
- *     utils.addChainableMethod(chai.Assertion.prototype, 'foo', function (str) {
- *       var obj = utils.flag(this, 'object');
- *       new chai.Assertion(obj).to.be.equal(str);
- *     });
- *
- * Can also be accessed directly from `chai.Assertion`.
- *
- *     chai.Assertion.addChainableMethod('foo', fn, chainingBehavior);
- *
- * The result can then be used as both a method assertion, executing both `method` and
- * `chainingBehavior`, or as a language chain, which only executes `chainingBehavior`.
- *
- *     expect(fooStr).to.be.foo('bar');
- *     expect(fooStr).to.be.foo.equal('foo');
- *
- * @param {Object} ctx object to which the method is added
- * @param {String} name of method to add
- * @param {Function} method function to be used for `name`, when called
- * @param {Function} chainingBehavior function to be called every time the property is accessed
- * @name addChainableMethod
- * @api public
- */
-
-module.exports = function (ctx, name, method, chainingBehavior) {
-  if (typeof chainingBehavior !== 'function')
-    chainingBehavior = function () { };
-
-  Object.defineProperty(ctx, name,
-    { get: function () {
-        chainingBehavior.call(this);
-
-        var assert = function () {
-          var result = method.apply(this, arguments);
-          return result === undefined ? this : result;
-        };
-
-        // Use `__proto__` if available
-        if (hasProtoSupport) {
-          // Inherit all properties from the object by replacing the `Function` prototype
-          var prototype = assert.__proto__ = Object.create(this);
-          // Restore the `call` and `apply` methods from `Function`
-          prototype.call = call;
-          prototype.apply = apply;
-        }
-        // Otherwise, redefine all properties (slow!)
-        else {
-          var asserterNames = Object.getOwnPropertyNames(ctx);
-          asserterNames.forEach(function (asserterName) {
-            if (!excludeNames.test(asserterName)) {
-              var pd = Object.getOwnPropertyDescriptor(ctx, asserterName);
-              Object.defineProperty(assert, asserterName, pd);
-            }
-          });
-        }
-
-        transferFlags(this, assert);
-        return assert;
-      }
-    , configurable: true
-  });
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/addMethod.js", function(exports, require, module){
-/*!
- * Chai - addMethod utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/**
- * ### .addMethod (ctx, name, method)
- *
- * Adds a method to the prototype of an object.
- *
- *     utils.addMethod(chai.Assertion.prototype, 'foo', function (str) {
- *       var obj = utils.flag(this, 'object');
- *       new chai.Assertion(obj).to.be.equal(str);
- *     });
- *
- * Can also be accessed directly from `chai.Assertion`.
- *
- *     chai.Assertion.addMethod('foo', fn);
- *
- * Then can be used as any other assertion.
- *
- *     expect(fooStr).to.be.foo('bar');
- *
- * @param {Object} ctx object to which the method is added
- * @param {String} name of method to add
- * @param {Function} method function to be used for name
- * @name addMethod
- * @api public
- */
-
-module.exports = function (ctx, name, method) {
-  ctx[name] = function () {
-    var result = method.apply(this, arguments);
-    return result === undefined ? this : result;
-  };
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/addProperty.js", function(exports, require, module){
-/*!
- * Chai - addProperty utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/**
- * ### addProperty (ctx, name, getter)
- *
- * Adds a property to the prototype of an object.
- *
- *     utils.addProperty(chai.Assertion.prototype, 'foo', function () {
- *       var obj = utils.flag(this, 'object');
- *       new chai.Assertion(obj).to.be.instanceof(Foo);
- *     });
- *
- * Can also be accessed directly from `chai.Assertion`.
- *
- *     chai.Assertion.addProperty('foo', fn);
- *
- * Then can be used as any other assertion.
- *
- *     expect(myFoo).to.be.foo;
- *
- * @param {Object} ctx object to which the property is added
- * @param {String} name of property to add
- * @param {Function} getter function to be used for name
- * @name addProperty
- * @api public
- */
-
-module.exports = function (ctx, name, getter) {
-  Object.defineProperty(ctx, name,
-    { get: function () {
-        var result = getter.call(this);
-        return result === undefined ? this : result;
-      }
-    , configurable: true
-  });
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/eql.js", function(exports, require, module){
-// This is (almost) directly from Node.js assert
-// https://github.com/joyent/node/blob/f8c335d0caf47f16d31413f89aa28eda3878e3aa/lib/assert.js
-
-module.exports = _deepEqual;
-
-var getEnumerableProperties = require('./getEnumerableProperties');
-
-// for the browser
-var Buffer;
-try {
-  Buffer = require('buffer').Buffer;
-} catch (ex) {
-  Buffer = {
-    isBuffer: function () { return false; }
-  };
-}
-
-function _deepEqual(actual, expected, memos) {
-
-  // 7.1. All identical values are equivalent, as determined by ===.
-  if (actual === expected) {
-    return true;
-
-  } else if (Buffer.isBuffer(actual) && Buffer.isBuffer(expected)) {
-    if (actual.length != expected.length) return false;
-
-    for (var i = 0; i < actual.length; i++) {
-      if (actual[i] !== expected[i]) return false;
-    }
-
-    return true;
-
-  // 7.2. If the expected value is a Date object, the actual value is
-  // equivalent if it is also a Date object that refers to the same time.
-  } else if (expected instanceof Date) {
-    if (!(actual instanceof Date)) return false;
-    return actual.getTime() === expected.getTime();
-
-  // 7.3. Other pairs that do not both pass typeof value == 'object',
-  // equivalence is determined by ==.
-  } else if (typeof actual != 'object' && typeof expected != 'object') {
-    return actual === expected;
-
-  } else if (expected instanceof RegExp) {
-    if (!(actual instanceof RegExp)) return false;
-    return actual.toString() === expected.toString();
-
-  // 7.4. For all other Object pairs, including Array objects, equivalence is
-  // determined by having the same number of owned properties (as verified
-  // with Object.prototype.hasOwnProperty.call), the same set of keys
-  // (although not necessarily the same order), equivalent values for every
-  // corresponding key, and an identical 'prototype' property. Note: this
-  // accounts for both named and indexed properties on Arrays.
-  } else {
-    return objEquiv(actual, expected, memos);
-  }
-}
-
-function isUndefinedOrNull(value) {
-  return value === null || value === undefined;
-}
-
-function isArguments(object) {
-  return Object.prototype.toString.call(object) == '[object Arguments]';
-}
-
-function objEquiv(a, b, memos) {
-  if (isUndefinedOrNull(a) || isUndefinedOrNull(b))
-    return false;
-
-  // an identical 'prototype' property.
-  if (a.prototype !== b.prototype) return false;
-
-  // check if we have already compared a and b
-  var i;
-  if (memos) {
-    for(i = 0; i < memos.length; i++) {
-      if ((memos[i][0] === a && memos[i][1] === b) ||
-          (memos[i][0] === b && memos[i][1] === a))
-        return true;
-    }
-  } else {
-    memos = [];
-  }
-
-  //~~~I've managed to break Object.keys through screwy arguments passing.
-  //   Converting to array solves the problem.
-  if (isArguments(a)) {
-    if (!isArguments(b)) {
-      return false;
-    }
-    a = pSlice.call(a);
-    b = pSlice.call(b);
-    return _deepEqual(a, b, memos);
-  }
-  try {
-    var ka = getEnumerableProperties(a),
-        kb = getEnumerableProperties(b),
-        key;
-  } catch (e) {//happens when one is a string literal and the other isn't
-    return false;
-  }
-
-  // having the same number of owned properties (keys incorporates
-  // hasOwnProperty)
-  if (ka.length != kb.length)
-    return false;
-
-  //the same set of keys (although not necessarily the same order),
-  ka.sort();
-  kb.sort();
-  //~~~cheap key test
-  for (i = ka.length - 1; i >= 0; i--) {
-    if (ka[i] != kb[i])
-      return false;
-  }
-
-  // remember objects we have compared to guard against circular references
-  memos.push([ a, b ]);
-
-  //equivalent values for every corresponding key, and
-  //~~~possibly expensive deep test
-  for (i = ka.length - 1; i >= 0; i--) {
-    key = ka[i];
-    if (!_deepEqual(a[key], b[key], memos)) return false;
-  }
-
-  return true;
-}
-
-});
-require.register("chaijs-chai/lib/chai/utils/flag.js", function(exports, require, module){
-/*!
- * Chai - flag utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/**
- * ### flag(object ,key, [value])
- *
- * Get or set a flag value on an object. If a
- * value is provided it will be set, else it will
- * return the currently set value or `undefined` if
- * the value is not set.
- *
- *     utils.flag(this, 'foo', 'bar'); // setter
- *     utils.flag(this, 'foo'); // getter, returns `bar`
- *
- * @param {Object} object (constructed Assertion
- * @param {String} key
- * @param {Mixed} value (optional)
- * @name flag
- * @api private
- */
-
-module.exports = function (obj, key, value) {
-  var flags = obj.__flags || (obj.__flags = Object.create(null));
-  if (arguments.length === 3) {
-    flags[key] = value;
-  } else {
-    return flags[key];
-  }
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/getActual.js", function(exports, require, module){
-/*!
- * Chai - getActual utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/**
- * # getActual(object, [actual])
- *
- * Returns the `actual` value for an Assertion
- *
- * @param {Object} object (constructed Assertion)
- * @param {Arguments} chai.Assertion.prototype.assert arguments
- */
-
-module.exports = function (obj, args) {
-  var actual = args[4];
-  return 'undefined' !== typeof actual ? actual : obj._obj;
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/getEnumerableProperties.js", function(exports, require, module){
-/*!
- * Chai - getEnumerableProperties utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/**
- * ### .getEnumerableProperties(object)
- *
- * This allows the retrieval of enumerable property names of an object,
- * inherited or not.
- *
- * @param {Object} object
- * @returns {Array}
- * @name getEnumerableProperties
- * @api public
- */
-
-module.exports = function getEnumerableProperties(object) {
-  var result = [];
-  for (var name in object) {
-    result.push(name);
-  }
-  return result;
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/getMessage.js", function(exports, require, module){
-/*!
- * Chai - message composition utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/*!
- * Module dependancies
- */
-
-var flag = require('./flag')
-  , getActual = require('./getActual')
-  , inspect = require('./inspect')
-  , objDisplay = require('./objDisplay');
-
-/**
- * ### .getMessage(object, message, negateMessage)
- *
- * Construct the error message based on flags
- * and template tags. Template tags will return
- * a stringified inspection of the object referenced.
- *
- * Message template tags:
- * - `#{this}` current asserted object
- * - `#{act}` actual value
- * - `#{exp}` expected value
- *
- * @param {Object} object (constructed Assertion)
- * @param {Arguments} chai.Assertion.prototype.assert arguments
- * @name getMessage
- * @api public
- */
-
-module.exports = function (obj, args) {
-  var negate = flag(obj, 'negate')
-    , val = flag(obj, 'object')
-    , expected = args[3]
-    , actual = getActual(obj, args)
-    , msg = negate ? args[2] : args[1]
-    , flagMsg = flag(obj, 'message');
-
-  msg = msg || '';
-  msg = msg
-    .replace(/#{this}/g, objDisplay(val))
-    .replace(/#{act}/g, objDisplay(actual))
-    .replace(/#{exp}/g, objDisplay(expected));
-
-  return flagMsg ? flagMsg + ': ' + msg : msg;
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/getName.js", function(exports, require, module){
-/*!
- * Chai - getName utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/**
- * # getName(func)
- *
- * Gets the name of a function, in a cross-browser way.
- *
- * @param {Function} a function (usually a constructor)
- */
-
-module.exports = function (func) {
-  if (func.name) return func.name;
-
-  var match = /^\s?function ([^(]*)\(/.exec(func);
-  return match && match[1] ? match[1] : "";
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/getPathValue.js", function(exports, require, module){
-/*!
- * Chai - getPathValue utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * @see https://github.com/logicalparadox/filtr
- * MIT Licensed
- */
-
-/**
- * ### .getPathValue(path, object)
- *
- * This allows the retrieval of values in an
- * object given a string path.
- *
- *     var obj = {
- *         prop1: {
- *             arr: ['a', 'b', 'c']
- *           , str: 'Hello'
- *         }
- *       , prop2: {
- *             arr: [ { nested: 'Universe' } ]
- *           , str: 'Hello again!'
- *         }
- *     }
- *
- * The following would be the results.
- *
- *     getPathValue('prop1.str', obj); // Hello
- *     getPathValue('prop1.att[2]', obj); // b
- *     getPathValue('prop2.arr[0].nested', obj); // Universe
- *
- * @param {String} path
- * @param {Object} object
- * @returns {Object} value or `undefined`
- * @name getPathValue
- * @api public
- */
-
-var getPathValue = module.exports = function (path, obj) {
-  var parsed = parsePath(path);
-  return _getPathValue(parsed, obj);
-};
-
-/*!
- * ## parsePath(path)
- *
- * Helper function used to parse string object
- * paths. Use in conjunction with `_getPathValue`.
- *
- *      var parsed = parsePath('myobject.property.subprop');
- *
- * ### Paths:
- *
- * * Can be as near infinitely deep and nested
- * * Arrays are also valid using the formal `myobject.document[3].property`.
- *
- * @param {String} path
- * @returns {Object} parsed
- * @api private
- */
-
-function parsePath (path) {
-  var str = path.replace(/\[/g, '.[')
-    , parts = str.match(/(\\\.|[^.]+?)+/g);
-  return parts.map(function (value) {
-    var re = /\[(\d+)\]$/
-      , mArr = re.exec(value)
-    if (mArr) return { i: parseFloat(mArr[1]) };
-    else return { p: value };
-  });
-};
-
-/*!
- * ## _getPathValue(parsed, obj)
- *
- * Helper companion function for `.parsePath` that returns
- * the value located at the parsed address.
- *
- *      var value = getPathValue(parsed, obj);
- *
- * @param {Object} parsed definition from `parsePath`.
- * @param {Object} object to search against
- * @returns {Object|Undefined} value
- * @api private
- */
-
-function _getPathValue (parsed, obj) {
-  var tmp = obj
-    , res;
-  for (var i = 0, l = parsed.length; i < l; i++) {
-    var part = parsed[i];
-    if (tmp) {
-      if ('undefined' !== typeof part.p)
-        tmp = tmp[part.p];
-      else if ('undefined' !== typeof part.i)
-        tmp = tmp[part.i];
-      if (i == (l - 1)) res = tmp;
-    } else {
-      res = undefined;
-    }
-  }
-  return res;
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/getProperties.js", function(exports, require, module){
-/*!
- * Chai - getProperties utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/**
- * ### .getProperties(object)
- *
- * This allows the retrieval of property names of an object, enumerable or not,
- * inherited or not.
- *
- * @param {Object} object
- * @returns {Array}
- * @name getProperties
- * @api public
- */
-
-module.exports = function getProperties(object) {
-  var result = Object.getOwnPropertyNames(subject);
-
-  function addProperty(property) {
-    if (result.indexOf(property) === -1) {
-      result.push(property);
-    }
-  }
-
-  var proto = Object.getPrototypeOf(subject);
-  while (proto !== null) {
-    Object.getOwnPropertyNames(proto).forEach(addProperty);
-    proto = Object.getPrototypeOf(proto);
-  }
-
-  return result;
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/index.js", function(exports, require, module){
-/*!
- * chai
- * Copyright(c) 2011 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/*!
- * Main exports
- */
-
-var exports = module.exports = {};
-
-/*!
- * test utility
- */
-
-exports.test = require('./test');
-
-/*!
- * type utility
- */
-
-exports.type = require('./type');
-
-/*!
- * message utility
- */
-
-exports.getMessage = require('./getMessage');
-
-/*!
- * actual utility
- */
-
-exports.getActual = require('./getActual');
-
-/*!
- * Inspect util
- */
-
-exports.inspect = require('./inspect');
-
-/*!
- * Object Display util
- */
-
-exports.objDisplay = require('./objDisplay');
-
-/*!
- * Flag utility
- */
-
-exports.flag = require('./flag');
-
-/*!
- * Flag transferring utility
- */
-
-exports.transferFlags = require('./transferFlags');
-
-/*!
- * Deep equal utility
- */
-
-exports.eql = require('./eql');
-
-/*!
- * Deep path value
- */
-
-exports.getPathValue = require('./getPathValue');
-
-/*!
- * Function name
- */
-
-exports.getName = require('./getName');
-
-/*!
- * add Property
- */
-
-exports.addProperty = require('./addProperty');
-
-/*!
- * add Method
- */
-
-exports.addMethod = require('./addMethod');
-
-/*!
- * overwrite Property
- */
-
-exports.overwriteProperty = require('./overwriteProperty');
-
-/*!
- * overwrite Method
- */
-
-exports.overwriteMethod = require('./overwriteMethod');
-
-/*!
- * Add a chainable method
- */
-
-exports.addChainableMethod = require('./addChainableMethod');
-
-
-});
-require.register("chaijs-chai/lib/chai/utils/inspect.js", function(exports, require, module){
-// This is (almost) directly from Node.js utils
-// https://github.com/joyent/node/blob/f8c335d0caf47f16d31413f89aa28eda3878e3aa/lib/util.js
-
-var getName = require('./getName');
-var getProperties = require('./getProperties');
-var getEnumerableProperties = require('./getEnumerableProperties');
-
-module.exports = inspect;
-
-/**
- * Echos the value of a value. Trys to print the value out
- * in the best way possible given the different types.
- *
- * @param {Object} obj The object to print out.
- * @param {Boolean} showHidden Flag that shows hidden (not enumerable)
- *    properties of objects.
- * @param {Number} depth Depth in which to descend in object. Default is 2.
- * @param {Boolean} colors Flag to turn on ANSI escape codes to color the
- *    output. Default is false (no coloring).
- */
-function inspect(obj, showHidden, depth, colors) {
-  var ctx = {
-    showHidden: showHidden,
-    seen: [],
-    stylize: function (str) { return str; }
-  };
-  return formatValue(ctx, obj, (typeof depth === 'undefined' ? 2 : depth));
-}
-
-// https://gist.github.com/1044128/
-var getOuterHTML = function(element) {
-  if ('outerHTML' in element) return element.outerHTML;
-  var ns = "http://www.w3.org/1999/xhtml";
-  var container = document.createElementNS(ns, '_');
-  var elemProto = (window.HTMLElement || window.Element).prototype;
-  var xmlSerializer = new XMLSerializer();
-  var html;
-  if (document.xmlVersion) {
-    return xmlSerializer.serializeToString(element);
-  } else {
-    container.appendChild(element.cloneNode(false));
-    html = container.innerHTML.replace('><', '>' + element.innerHTML + '<');
-    container.innerHTML = '';
-    return html;
-  }
-};
-
-// Returns true if object is a DOM element.
-var isDOMElement = function (object) {
-  if (typeof HTMLElement === 'object') {
-    return object instanceof HTMLElement;
-  } else {
-    return object &&
-      typeof object === 'object' &&
-      object.nodeType === 1 &&
-      typeof object.nodeName === 'string';
-  }
-};
-
-function formatValue(ctx, value, recurseTimes) {
-  // Provide a hook for user-specified inspect functions.
-  // Check that value is an object with an inspect function on it
-  if (value && typeof value.inspect === 'function' &&
-      // Filter out the util module, it's inspect function is special
-      value.inspect !== exports.inspect &&
-      // Also filter out any prototype objects using the circular check.
-      !(value.constructor && value.constructor.prototype === value)) {
-    var ret = value.inspect(recurseTimes);
-    if (typeof ret !== 'string') {
-      ret = formatValue(ctx, ret, recurseTimes);
-    }
-    return ret;
-  }
-
-  // Primitive types cannot have properties
-  var primitive = formatPrimitive(ctx, value);
-  if (primitive) {
-    return primitive;
-  }
-
-  // If it's DOM elem, get outer HTML.
-  if (isDOMElement(value)) {
-    return getOuterHTML(value);
-  }
-
-  // Look up the keys of the object.
-  var visibleKeys = getEnumerableProperties(value);
-  var keys = ctx.showHidden ? getProperties(value) : visibleKeys;
-
-  // Some type of object without properties can be shortcutted.
-  // In IE, errors have a single `stack` property, or if they are vanilla `Error`,
-  // a `stack` plus `description` property; ignore those for consistency.
-  if (keys.length === 0 || (isError(value) && (
-      (keys.length === 1 && keys[0] === 'stack') ||
-      (keys.length === 2 && keys[0] === 'description' && keys[1] === 'stack')
-     ))) {
-    if (typeof value === 'function') {
-      var name = getName(value);
-      var nameSuffix = name ? ': ' + name : '';
-      return ctx.stylize('[Function' + nameSuffix + ']', 'special');
-    }
-    if (isRegExp(value)) {
-      return ctx.stylize(RegExp.prototype.toString.call(value), 'regexp');
-    }
-    if (isDate(value)) {
-      return ctx.stylize(Date.prototype.toUTCString.call(value), 'date');
-    }
-    if (isError(value)) {
-      return formatError(value);
-    }
-  }
-
-  var base = '', array = false, braces = ['{', '}'];
-
-  // Make Array say that they are Array
-  if (isArray(value)) {
-    array = true;
-    braces = ['[', ']'];
-  }
-
-  // Make functions say that they are functions
-  if (typeof value === 'function') {
-    var name = getName(value);
-    var nameSuffix = name ? ': ' + name : '';
-    base = ' [Function' + nameSuffix + ']';
-  }
-
-  // Make RegExps say that they are RegExps
-  if (isRegExp(value)) {
-    base = ' ' + RegExp.prototype.toString.call(value);
-  }
-
-  // Make dates with properties first say the date
-  if (isDate(value)) {
-    base = ' ' + Date.prototype.toUTCString.call(value);
-  }
-
-  // Make error with message first say the error
-  if (isError(value)) {
-    return formatError(value);
-  }
-
-  if (keys.length === 0 && (!array || value.length == 0)) {
-    return braces[0] + base + braces[1];
-  }
-
-  if (recurseTimes < 0) {
-    if (isRegExp(value)) {
-      return ctx.stylize(RegExp.prototype.toString.call(value), 'regexp');
-    } else {
-      return ctx.stylize('[Object]', 'special');
-    }
-  }
-
-  ctx.seen.push(value);
-
-  var output;
-  if (array) {
-    output = formatArray(ctx, value, recurseTimes, visibleKeys, keys);
-  } else {
-    output = keys.map(function(key) {
-      return formatProperty(ctx, value, recurseTimes, visibleKeys, key, array);
-    });
-  }
-
-  ctx.seen.pop();
-
-  return reduceToSingleString(output, base, braces);
-}
-
-
-function formatPrimitive(ctx, value) {
-  switch (typeof value) {
-    case 'undefined':
-      return ctx.stylize('undefined', 'undefined');
-
-    case 'string':
-      var simple = '\'' + JSON.stringify(value).replace(/^"|"$/g, '')
-                                               .replace(/'/g, "\\'")
-                                               .replace(/\\"/g, '"') + '\'';
-      return ctx.stylize(simple, 'string');
-
-    case 'number':
-      return ctx.stylize('' + value, 'number');
-
-    case 'boolean':
-      return ctx.stylize('' + value, 'boolean');
-  }
-  // For some reason typeof null is "object", so special case here.
-  if (value === null) {
-    return ctx.stylize('null', 'null');
-  }
-}
-
-
-function formatError(value) {
-  return '[' + Error.prototype.toString.call(value) + ']';
-}
-
-
-function formatArray(ctx, value, recurseTimes, visibleKeys, keys) {
-  var output = [];
-  for (var i = 0, l = value.length; i < l; ++i) {
-    if (Object.prototype.hasOwnProperty.call(value, String(i))) {
-      output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
-          String(i), true));
-    } else {
-      output.push('');
-    }
-  }
-  keys.forEach(function(key) {
-    if (!key.match(/^\d+$/)) {
-      output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
-          key, true));
-    }
-  });
-  return output;
-}
-
-
-function formatProperty(ctx, value, recurseTimes, visibleKeys, key, array) {
-  var name, str;
-  if (value.__lookupGetter__) {
-    if (value.__lookupGetter__(key)) {
-      if (value.__lookupSetter__(key)) {
-        str = ctx.stylize('[Getter/Setter]', 'special');
-      } else {
-        str = ctx.stylize('[Getter]', 'special');
-      }
-    } else {
-      if (value.__lookupSetter__(key)) {
-        str = ctx.stylize('[Setter]', 'special');
-      }
-    }
-  }
-  if (visibleKeys.indexOf(key) < 0) {
-    name = '[' + key + ']';
-  }
-  if (!str) {
-    if (ctx.seen.indexOf(value[key]) < 0) {
-      if (recurseTimes === null) {
-        str = formatValue(ctx, value[key], null);
-      } else {
-        str = formatValue(ctx, value[key], recurseTimes - 1);
-      }
-      if (str.indexOf('\n') > -1) {
-        if (array) {
-          str = str.split('\n').map(function(line) {
-            return '  ' + line;
-          }).join('\n').substr(2);
-        } else {
-          str = '\n' + str.split('\n').map(function(line) {
-            return '   ' + line;
-          }).join('\n');
-        }
-      }
-    } else {
-      str = ctx.stylize('[Circular]', 'special');
-    }
-  }
-  if (typeof name === 'undefined') {
-    if (array && key.match(/^\d+$/)) {
-      return str;
-    }
-    name = JSON.stringify('' + key);
-    if (name.match(/^"([a-zA-Z_][a-zA-Z_0-9]*)"$/)) {
-      name = name.substr(1, name.length - 2);
-      name = ctx.stylize(name, 'name');
-    } else {
-      name = name.replace(/'/g, "\\'")
-                 .replace(/\\"/g, '"')
-                 .replace(/(^"|"$)/g, "'");
-      name = ctx.stylize(name, 'string');
-    }
-  }
-
-  return name + ': ' + str;
-}
-
-
-function reduceToSingleString(output, base, braces) {
-  var numLinesEst = 0;
-  var length = output.reduce(function(prev, cur) {
-    numLinesEst++;
-    if (cur.indexOf('\n') >= 0) numLinesEst++;
-    return prev + cur.length + 1;
-  }, 0);
-
-  if (length > 60) {
-    return braces[0] +
-           (base === '' ? '' : base + '\n ') +
-           ' ' +
-           output.join(',\n  ') +
-           ' ' +
-           braces[1];
-  }
-
-  return braces[0] + base + ' ' + output.join(', ') + ' ' + braces[1];
-}
-
-function isArray(ar) {
-  return Array.isArray(ar) ||
-         (typeof ar === 'object' && objectToString(ar) === '[object Array]');
-}
-
-function isRegExp(re) {
-  return typeof re === 'object' && objectToString(re) === '[object RegExp]';
-}
-
-function isDate(d) {
-  return typeof d === 'object' && objectToString(d) === '[object Date]';
-}
-
-function isError(e) {
-  return typeof e === 'object' && objectToString(e) === '[object Error]';
-}
-
-function objectToString(o) {
-  return Object.prototype.toString.call(o);
-}
-
-});
-require.register("chaijs-chai/lib/chai/utils/objDisplay.js", function(exports, require, module){
-/*!
- * Chai - flag utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/*!
- * Module dependancies
- */
-
-var inspect = require('./inspect');
-
-/**
- * ### .objDisplay (object)
- *
- * Determines if an object or an array matches
- * criteria to be inspected in-line for error
- * messages or should be truncated.
- *
- * @param {Mixed} javascript object to inspect
- * @name objDisplay
- * @api public
- */
-
-module.exports = function (obj) {
-  var str = inspect(obj)
-    , type = Object.prototype.toString.call(obj);
-
-  if (str.length >= 40) {
-    if (type === '[object Function]') {
-      return !obj.name || obj.name === ''
-        ? '[Function]'
-        : '[Function: ' + obj.name + ']';
-    } else if (type === '[object Array]') {
-      return '[ Array(' + obj.length + ') ]';
-    } else if (type === '[object Object]') {
-      var keys = Object.keys(obj)
-        , kstr = keys.length > 2
-          ? keys.splice(0, 2).join(', ') + ', ...'
-          : keys.join(', ');
-      return '{ Object (' + kstr + ') }';
-    } else {
-      return str;
-    }
-  } else {
-    return str;
-  }
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/overwriteMethod.js", function(exports, require, module){
-/*!
- * Chai - overwriteMethod utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/**
- * ### overwriteMethod (ctx, name, fn)
- *
- * Overwites an already existing method and provides
- * access to previous function. Must return function
- * to be used for name.
- *
- *     utils.overwriteMethod(chai.Assertion.prototype, 'equal', function (_super) {
- *       return function (str) {
- *         var obj = utils.flag(this, 'object');
- *         if (obj instanceof Foo) {
- *           new chai.Assertion(obj.value).to.equal(str);
- *         } else {
- *           _super.apply(this, arguments);
- *         }
- *       }
- *     });
- *
- * Can also be accessed directly from `chai.Assertion`.
- *
- *     chai.Assertion.overwriteMethod('foo', fn);
- *
- * Then can be used as any other assertion.
- *
- *     expect(myFoo).to.equal('bar');
- *
- * @param {Object} ctx object whose method is to be overwritten
- * @param {String} name of method to overwrite
- * @param {Function} method function that returns a function to be used for name
- * @name overwriteMethod
- * @api public
- */
-
-module.exports = function (ctx, name, method) {
-  var _method = ctx[name]
-    , _super = function () { return this; };
-
-  if (_method && 'function' === typeof _method)
-    _super = _method;
-
-  ctx[name] = function () {
-    var result = method(_super).apply(this, arguments);
-    return result === undefined ? this : result;
-  }
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/overwriteProperty.js", function(exports, require, module){
-/*!
- * Chai - overwriteProperty utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/**
- * ### overwriteProperty (ctx, name, fn)
- *
- * Overwites an already existing property getter and provides
- * access to previous value. Must return function to use as getter.
- *
- *     utils.overwriteProperty(chai.Assertion.prototype, 'ok', function (_super) {
- *       return function () {
- *         var obj = utils.flag(this, 'object');
- *         if (obj instanceof Foo) {
- *           new chai.Assertion(obj.name).to.equal('bar');
- *         } else {
- *           _super.call(this);
- *         }
- *       }
- *     });
- *
- *
- * Can also be accessed directly from `chai.Assertion`.
- *
- *     chai.Assertion.overwriteProperty('foo', fn);
- *
- * Then can be used as any other assertion.
- *
- *     expect(myFoo).to.be.ok;
- *
- * @param {Object} ctx object whose property is to be overwritten
- * @param {String} name of property to overwrite
- * @param {Function} getter function that returns a getter function to be used for name
- * @name overwriteProperty
- * @api public
- */
-
-module.exports = function (ctx, name, getter) {
-  var _get = Object.getOwnPropertyDescriptor(ctx, name)
-    , _super = function () {};
-
-  if (_get && 'function' === typeof _get.get)
-    _super = _get.get
-
-  Object.defineProperty(ctx, name,
-    { get: function () {
-        var result = getter(_super).call(this);
-        return result === undefined ? this : result;
-      }
-    , configurable: true
-  });
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/test.js", function(exports, require, module){
-/*!
- * Chai - test utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/*!
- * Module dependancies
- */
-
-var flag = require('./flag');
-
-/**
- * # test(object, expression)
- *
- * Test and object for expression.
- *
- * @param {Object} object (constructed Assertion)
- * @param {Arguments} chai.Assertion.prototype.assert arguments
- */
-
-module.exports = function (obj, args) {
-  var negate = flag(obj, 'negate')
-    , expr = args[0];
-  return negate ? !expr : expr;
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/transferFlags.js", function(exports, require, module){
-/*!
- * Chai - transferFlags utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/**
- * ### transferFlags(assertion, object, includeAll = true)
- *
- * Transfer all the flags for `assertion` to `object`. If
- * `includeAll` is set to `false`, then the base Chai
- * assertion flags (namely `object`, `ssfi`, and `message`)
- * will not be transferred.
- *
- *
- *     var newAssertion = new Assertion();
- *     utils.transferFlags(assertion, newAssertion);
- *
- *     var anotherAsseriton = new Assertion(myObj);
- *     utils.transferFlags(assertion, anotherAssertion, false);
- *
- * @param {Assertion} assertion the assertion to transfer the flags from
- * @param {Object} object the object to transfer the flags too; usually a new assertion
- * @param {Boolean} includeAll
- * @name getAllFlags
- * @api private
- */
-
-module.exports = function (assertion, object, includeAll) {
-  var flags = assertion.__flags || (assertion.__flags = Object.create(null));
-
-  if (!object.__flags) {
-    object.__flags = Object.create(null);
-  }
-
-  includeAll = arguments.length === 3 ? includeAll : true;
-
-  for (var flag in flags) {
-    if (includeAll ||
-        (flag !== 'object' && flag !== 'ssfi' && flag != 'message')) {
-      object.__flags[flag] = flags[flag];
-    }
-  }
-};
-
-});
-require.register("chaijs-chai/lib/chai/utils/type.js", function(exports, require, module){
-/*!
- * Chai - type utility
- * Copyright(c) 2012-2013 Jake Luer <jake@alogicalparadox.com>
- * MIT Licensed
- */
-
-/*!
- * Detectable javascript natives
- */
-
-var natives = {
-    '[object Arguments]': 'arguments'
-  , '[object Array]': 'array'
-  , '[object Date]': 'date'
-  , '[object Function]': 'function'
-  , '[object Number]': 'number'
-  , '[object RegExp]': 'regexp'
-  , '[object String]': 'string'
-};
-
-/**
- * ### type(object)
- *
- * Better implementation of `typeof` detection that can
- * be used cross-browser. Handles the inconsistencies of
- * Array, `null`, and `undefined` detection.
- *
- *     utils.type({}) // 'object'
- *     utils.type(null) // `null'
- *     utils.type(undefined) // `undefined`
- *     utils.type([]) // `array`
- *
- * @param {Mixed} object to detect type of
- * @name type
- * @api private
- */
-
-module.exports = function (obj) {
-  var str = Object.prototype.toString.call(obj);
-  if (natives[str]) return natives[str];
-  if (obj === null) return 'null';
-  if (obj === undefined) return 'undefined';
-  if (obj === Object(obj)) return 'object';
-  return typeof obj;
-};
-
-});
-require.register("indefinido-advisable/index.js", function(exports, require, module){
-module.exports = require('./lib/advisable');
-
-});
-require.register("indefinido-advisable/lib/advisable.js", function(exports, require, module){
-var $, advice, mixin;
-
-$ = require('jquery');
-
-advice = {
-  around: function(base, wrapped) {
-    return function() {
-      var args;
-
-      args = $.makeArray(arguments);
-      return wrapped.apply(this, [$.proxy(base, this)].concat(args));
-    };
-  },
-  before: function(base, before) {
-    return this.around(base, function() {
-      var args, orig;
-
-      args = $.makeArray(arguments);
-      orig = args.shift();
-      before.apply(this, args);
-      return orig.apply(this, args);
-    });
-  },
-  after: function(base, after) {
-    return this.around(base, function() {
-      var args, orig, res;
-
-      args = $.makeArray(arguments);
-      orig = args.shift();
-      res = orig.apply(this, args);
-      after.apply(this, args);
-      return res;
-    });
-  }
-};
-
-mixin = {
-  before: function(method, advicer) {
-    if (typeof this[method] === 'function') {
-      return this[method] = advice.before(this[method], advicer);
-    }
-    throw new TypeError("Can only advice functions, attribute " + method + " of " + this + " is of type " + (typeof this[method]));
-  },
-  after: function(method, advicer) {
-    if (typeof this[method] === 'function') {
-      return this[method] = advice.after(this[method], advicer);
-    }
-    throw new TypeError("Can only advice functions, attribute " + method + " of " + this + " is of type " + (typeof this[method]));
-  },
-  around: function(method, advicer) {
-    if (typeof this[method] === 'function') {
-      return this[method] = advice.around(this[method], advicer);
-    }
-    throw new TypeError("Can only advice functions, attribute " + method + " of " + this + " is of type " + (typeof this[method]));
-  }
-};
-
-exports.mixin = function(object) {
-  return $.extend(object, mixin);
-};
-
-});
-require.register("indemma/index.js", function(exports, require, module){
-module.exports = require('./lib/record');
-
-});
-require.register("indemma/vendor/stampit.js", function(exports, require, module){
-(function(e){if("function"==typeof bootstrap)bootstrap("stampit",e);else if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else if("undefined"!=typeof ses){if(!ses.ok())return;ses.makeStampit=e}else"undefined"!=typeof window?window.stampit=e():global.stampit=e()})(function(){var define,ses,bootstrap,module,exports;
-return (function(e,t,n){function i(n,s){if(!t[n]){if(!e[n]){var o=typeof require=="function"&&require;if(!s&&o)return o(n,!0);if(r)return r(n,!0);throw new Error("Cannot find module '"+n+"'")}var u=t[n]={exports:{}};e[n][0].call(u.exports,function(t){var r=e[n][1][t];return i(r?r:t)},u,u.exports)}return t[n].exports}var r=typeof require=="function"&&require;for(var s=0;s<n.length;s++)i(n[s]);return i})({1:[function(require,module,exports){
-
-
-    /**
-     * Array forEach
-     */
-    function forEach(arr, callback, thisObj) {
-        if (arr == null) {
-            return;
-        }
-        var i = -1,
-            len = arr.length;
-        while (++i < len) {
-            // we iterate over sparse items since there is no way to make it
-            // work properly on IE 7-8. see #64
-            if ( callback.call(thisObj, arr[i], i, arr) === false ) {
-                break;
-            }
-        }
-    }
-
-    module.exports = forEach;
-
-
-
-},{}],2:[function(require,module,exports){
-
-
-    function slice(arr, offset){
-        return Array.prototype.slice.call(arr, offset || 0);
-    }
-
-    /**
-     * Return a function that will execute in the given context, optionally adding any additional supplied parameters to the beginning of the arguments collection.
-     * @param {Function} fn  Function.
-     * @param {object} context   Execution context.
-     * @param {rest} args    Arguments (0...n arguments).
-     * @return {Function} Wrapped Function.
-     */
-    function bind(fn, context, args){
-        var argsArr = slice(arguments, 2); //curried args
-        return function(){
-            return fn.apply(context, argsArr.concat(slice(arguments)));
-        };
-    }
-
-    module.exports = bind;
-
-
-
-},{}],3:[function(require,module,exports){
-var shimIndexOf = function shimIndexOf() {
-
-    if (!Array.prototype.indexOf) {
-        Array.prototype.indexOf = function (searchElement /*, fromIndex */ ) {
-            "use strict";
-            if (this == null) {
-                throw new TypeError();
-            }
-            var t = Object(this);
-            var len = t.length >>> 0;
-            if (len === 0) {
-                return -1;
-            }
-            var n = 0;
-            if (arguments.length > 1) {
-                n = Number(arguments[1]);
-                if (n != n) { // shortcut for verifying if it's NaN
-                    n = 0;
-                } else if (n != 0 && n != Infinity && n != -Infinity) {
-                    n = (n > 0 || -1) * Math.floor(Math.abs(n));
-                }
-            }
-            if (n >= len) {
-                return -1;
-            }
-            var k = n >= 0 ? n : Math.max(len - Math.abs(n), 0);
-            for (; k < len; k++) {
-                if (k in t && t[k] === searchElement) {
-                    return k;
-                }
-            }
-            return -1;
-        }
-    }
-
-}
-
-module.exports = shimIndexOf;
-
-},{}],4:[function(require,module,exports){
-/**
- * Stampit
- **
- * Create objects from reusable, composable behaviors.
- **
- * Copyright (c) 2013 Eric Elliott
- * http://opensource.org/licenses/MIT
- **/
-
-'use strict';
-var forEach = require('mout/array/forEach');
-var bind = require('mout/function/bind');
-var mixIn = require('mout/object/mixIn');
-var stringify = require('json-stringify-safe');
-var indexOf = require('./indexof'); // shim indexOf for stringify
-
-var create = function (o) {
-  if (arguments.length > 1) {
-    throw new Error('Object.create implementation only accepts the first parameter.');
-  }
-  function F() {}
-  F.prototype = o;
-  return new F();
-};
-
-/**
- * Return a factory function that will produce new objects using the
- * prototypes that are passed in or composed.
- *
- * @param  {Object} [methods] A map of method names and bodies for delegation.
- * @param  {Object} [state]   A map of property names and values to clone for each new object.
- * @param  {Function} [enclose] A closure (function) used to create private data and privileged methods.
- * @return {Function} factory A factory to produce objects using the given prototypes.
- * @return {Function} factory.create Just like calling the factory function.
- * @return {Object} factory.fixed An object map containing the fixed prototypes.
- * @return {Function} factory.methods Add methods to the methods prototype. Chainable.
- * @return {Function} factory.state Add properties to the state prototype. Chainable.
- * @return {Function} factory.enclose Add or replace the closure prototype. Not chainable.
- */
-var stampit = function stampit(methods, state, enclose) {
-  var fixed = {
-      methods: methods || {},
-      state: state ?
-          JSON.parse(stringify(state)) :
-          {},
-      enclose: enclose
     },
-
-    factory = function factory(properties, enclose) {
-      var instance = mixIn(create(fixed.methods || {}),
-        fixed.state, properties),
-        alt;
-
-      if (typeof fixed.enclose === 'function') {
-        alt = fixed.enclose.call(instance);
-      }
-
-      if (typeof enclose === 'function') {
-        alt = enclose.call(alt || instance);
-      }
-
-      return alt || instance;
-    };
-
-  return mixIn(factory, {
-    create: factory,
-    fixed: fixed,
-    methods: function () {
-      var obj = fixed.methods || {},
-        args = [obj].concat([].slice.call(arguments));
-      fixed.methods = mixIn.apply(this, args);
-      return this;
-    },
-    state: function (state) {
-      var obj = fixed.state || {},
-        args = [obj].concat([].slice.call(arguments));
-      fixed.state = mixIn.apply(this, args);
-      return this;
-    },
-    enclose: function (enclose) {
-      fixed.enclose = enclose;
-      return this;
-    }
-  });
-};
-
-/**
- * Take two or more factories produced from stampit() and
- * combine them to produce a new factory. Combining overrides
- * properties with last-in priority.
- *
- * @param {...Function} factory A factory produced by stampit().
- * @return {Function} A new stampit factory composed from arguments.
- */
-var compose = function compose() {
-  var args = [].slice.call(arguments),
-    initFunctions = [],
-    obj = stampit(),
-    props = ['methods', 'state'];
-
-  forEach(args, function (source) {
-    if (source) {
-      forEach(props, function (prop) {
-        if (source.fixed[prop]) {
-          obj.fixed[prop] = mixIn(obj.fixed[prop],
-            source.fixed[prop]);
-        }
-      });
-
-      if (typeof source.fixed.enclose === 'function') {
-        initFunctions.push(source.fixed.enclose);
-      }
-    }
-  });
-
-  return stampit(obj.fixed.methods, obj.fixed.state, function () {
-    forEach(initFunctions, bind(function (fn) {
-      fn.call(this);
-    }, this));
-  });
-};
-
-indexOf();
-
-module.exports = mixIn(stampit, {
-  compose: compose,
-  /**
-   * Alias for mixIn
-   */
-  extend: mixIn,
-  /**
-   * Take a destination object followed by one or more source objects,
-   * and copy the source object properties to the destination object,
-   * with last in priority overrides.
-   * @param {Object} destination An object to copy properties to.
-   * @param {...Object} source An object to copy properties from.
-   * @returns {Object}
-   */
-  mixIn: mixIn
-});
-
-},{"mout/array/forEach":1,"mout/function/bind":2,"mout/object/mixIn":5,"./indexof":3,"json-stringify-safe":6}],6:[function(require,module,exports){
-module.exports = stringify;
-
-function getSerialize (fn, decycle) {
-  var seen = [];
-  decycle = decycle || function(key, value) {
-    return '[Circular]';
+    preloadData: true
   };
-  return function(key, value) {
-    var ret = value;
-    if (typeof value === 'object' && value) {
-      if (seen.indexOf(value) !== -1)
-        ret = decycle(key, value);
-      else
-        seen.push(value);
-    }
-    if (fn) ret = fn(key, ret);
-    return ret;
-  }
-}
-
-function stringify(obj, fn, spaces, decycle) {
-  return JSON.stringify(obj, getSerialize(fn, decycle), spaces);
-}
-
-stringify.getSerialize = getSerialize;
-
-},{}],5:[function(require,module,exports){
-var forOwn = require('./forOwn');
-
-    /**
-    * Combine properties from all the objects into first one.
-    * - This method affects target object in place, if you want to create a new Object pass an empty object as first param.
-    * @param {object} target    Target Object
-    * @param {...object} objects    Objects to be combined (0...n objects).
-    * @return {object} Target Object.
-    */
-    function mixIn(target, objects){
-        var i = 0,
-            n = arguments.length,
-            obj;
-        while(++i < n){
-            obj = arguments[i];
-            if (obj != null) {
-                forOwn(obj, copyProp, target);
-            }
-        }
-        return target;
-    }
-
-    function copyProp(val, key){
-        this[key] = val;
-    }
-
-    module.exports = mixIn;
-
-
-},{"./forOwn":7}],7:[function(require,module,exports){
-var hasOwn = require('./hasOwn');
-var forIn = require('./forIn');
-
-    /**
-     * Similar to Array/forEach but works over object properties and fixes Don't
-     * Enum bug on IE.
-     * based on: http://whattheheadsaid.com/2010/10/a-safer-object-keys-compatibility-implementation
-     */
-    function forOwn(obj, fn, thisObj){
-        forIn(obj, function(val, key){
-            if (hasOwn(obj, key)) {
-                return fn.call(thisObj, obj[key], key, obj);
-            }
-        });
-    }
-
-    module.exports = forOwn;
-
-
-
-},{"./hasOwn":8,"./forIn":9}],8:[function(require,module,exports){
-
-
-    /**
-     * Safer Object.hasOwnProperty
-     */
-     function hasOwn(obj, prop){
-         return Object.prototype.hasOwnProperty.call(obj, prop);
-     }
-
-     module.exports = hasOwn;
-
-
-
-},{}],9:[function(require,module,exports){
-
-
-    var _hasDontEnumBug,
-        _dontEnums;
-
-    function checkDontEnum(){
-        _dontEnums = [
-                'toString',
-                'toLocaleString',
-                'valueOf',
-                'hasOwnProperty',
-                'isPrototypeOf',
-                'propertyIsEnumerable',
-                'constructor'
-            ];
-
-        _hasDontEnumBug = true;
-
-        for (var key in {'toString': null}) {
-            _hasDontEnumBug = false;
-        }
-    }
-
-    /**
-     * Similar to Array/forEach but works over object properties and fixes Don't
-     * Enum bug on IE.
-     * based on: http://whattheheadsaid.com/2010/10/a-safer-object-keys-compatibility-implementation
-     */
-    function forIn(obj, fn, thisObj){
-        var key, i = 0;
-        // no need to check if argument is a real object that way we can use
-        // it for arrays, functions, date, etc.
-
-        //post-pone check till needed
-        if (_hasDontEnumBug == null) checkDontEnum();
-
-        for (key in obj) {
-            if (exec(fn, obj, key, thisObj) === false) {
-                break;
-            }
-        }
-
-        if (_hasDontEnumBug) {
-            while (key = _dontEnums[i++]) {
-                // since we aren't using hasOwn check we need to make sure the
-                // property was overwritten
-                if (obj[key] !== Object.prototype[key]) {
-                    if (exec(fn, obj, key, thisObj) === false) {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    function exec(fn, obj, key, thisObj){
-        return fn.call(thisObj, obj[key], key, obj);
-    }
-
-    module.exports = forIn;
-
-
-
-},{}]},{},[4])(4)
-});
-;
-
-});
-require.register("indemma/vendor/sinon.js", function(exports, require, module){
-/**
- * Sinon.JS 1.7.3, 2013/06/20
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @author Contributors: https://github.com/cjohansen/Sinon.JS/blob/master/AUTHORS
- *
- * (The BSD License)
- * 
- * Copyright (c) 2010-2013, Christian Johansen, christian@cjohansen.no
- * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- * 
- *     * Redistributions of source code must retain the above copyright notice,
- *       this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright notice,
- *       this list of conditions and the following disclaimer in the documentation
- *       and/or other materials provided with the distribution.
- *     * Neither the name of Christian Johansen nor the names of his contributors
- *       may be used to endorse or promote products derived from this software
- *       without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
-this.sinon = (function () {
-var buster = (function (setTimeout, B) {
-    var isNode = typeof require == "function" && typeof module == "object";
-    var div = typeof document != "undefined" && document.createElement("div");
-    var F = function () {};
-
-    var buster = {
-        bind: function bind(obj, methOrProp) {
-            var method = typeof methOrProp == "string" ? obj[methOrProp] : methOrProp;
-            var args = Array.prototype.slice.call(arguments, 2);
-            return function () {
-                var allArgs = args.concat(Array.prototype.slice.call(arguments));
-                return method.apply(obj, allArgs);
-            };
-        },
-
-        partial: function partial(fn) {
-            var args = [].slice.call(arguments, 1);
-            return function () {
-                return fn.apply(this, args.concat([].slice.call(arguments)));
-            };
-        },
-
-        create: function create(object) {
-            F.prototype = object;
-            return new F();
-        },
-
-        extend: function extend(target) {
-            if (!target) { return; }
-            for (var i = 1, l = arguments.length, prop; i < l; ++i) {
-                for (prop in arguments[i]) {
-                    target[prop] = arguments[i][prop];
-                }
-            }
-            return target;
-        },
-
-        nextTick: function nextTick(callback) {
-            if (typeof process != "undefined" && process.nextTick) {
-                return process.nextTick(callback);
-            }
-            setTimeout(callback, 0);
-        },
-
-        functionName: function functionName(func) {
-            if (!func) return "";
-            if (func.displayName) return func.displayName;
-            if (func.name) return func.name;
-            var matches = func.toString().match(/function\s+([^\(]+)/m);
-            return matches && matches[1] || "";
-        },
-
-        isNode: function isNode(obj) {
-            if (!div) return false;
-            try {
-                obj.appendChild(div);
-                obj.removeChild(div);
-            } catch (e) {
-                return false;
-            }
-            return true;
-        },
-
-        isElement: function isElement(obj) {
-            return obj && obj.nodeType === 1 && buster.isNode(obj);
-        },
-
-        isArray: function isArray(arr) {
-            return Object.prototype.toString.call(arr) == "[object Array]";
-        },
-
-        flatten: function flatten(arr) {
-            var result = [], arr = arr || [];
-            for (var i = 0, l = arr.length; i < l; ++i) {
-                result = result.concat(buster.isArray(arr[i]) ? flatten(arr[i]) : arr[i]);
-            }
-            return result;
-        },
-
-        each: function each(arr, callback) {
-            for (var i = 0, l = arr.length; i < l; ++i) {
-                callback(arr[i]);
-            }
-        },
-
-        map: function map(arr, callback) {
-            var results = [];
-            for (var i = 0, l = arr.length; i < l; ++i) {
-                results.push(callback(arr[i]));
-            }
-            return results;
-        },
-
-        parallel: function parallel(fns, callback) {
-            function cb(err, res) {
-                if (typeof callback == "function") {
-                    callback(err, res);
-                    callback = null;
-                }
-            }
-            if (fns.length == 0) { return cb(null, []); }
-            var remaining = fns.length, results = [];
-            function makeDone(num) {
-                return function done(err, result) {
-                    if (err) { return cb(err); }
-                    results[num] = result;
-                    if (--remaining == 0) { cb(null, results); }
-                };
-            }
-            for (var i = 0, l = fns.length; i < l; ++i) {
-                fns[i](makeDone(i));
-            }
-        },
-
-        series: function series(fns, callback) {
-            function cb(err, res) {
-                if (typeof callback == "function") {
-                    callback(err, res);
-                }
-            }
-            var remaining = fns.slice();
-            var results = [];
-            function callNext() {
-                if (remaining.length == 0) return cb(null, results);
-                var promise = remaining.shift()(next);
-                if (promise && typeof promise.then == "function") {
-                    promise.then(buster.partial(next, null), next);
-                }
-            }
-            function next(err, result) {
-                if (err) return cb(err);
-                results.push(result);
-                callNext();
-            }
-            callNext();
-        },
-
-        countdown: function countdown(num, done) {
-            return function () {
-                if (--num == 0) done();
-            };
-        }
-    };
-
-    if (typeof process === "object" &&
-        typeof require === "function" && typeof module === "object") {
-        var crypto = require("crypto");
-        var path = require("path");
-
-        buster.tmpFile = function (fileName) {
-            var hashed = crypto.createHash("sha1");
-            hashed.update(fileName);
-            var tmpfileName = hashed.digest("hex");
-
-            if (process.platform == "win32") {
-                return path.join(process.env["TEMP"], tmpfileName);
-            } else {
-                return path.join("/tmp", tmpfileName);
-            }
-        };
-    }
-
-    if (Array.prototype.some) {
-        buster.some = function (arr, fn, thisp) {
-            return arr.some(fn, thisp);
-        };
-    } else {
-        // https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Array/some
-        buster.some = function (arr, fun, thisp) {
-                        if (arr == null) { throw new TypeError(); }
-            arr = Object(arr);
-            var len = arr.length >>> 0;
-            if (typeof fun !== "function") { throw new TypeError(); }
-
-            for (var i = 0; i < len; i++) {
-                if (arr.hasOwnProperty(i) && fun.call(thisp, arr[i], i, arr)) {
-                    return true;
-                }
-            }
-
-            return false;
-        };
-    }
-
-    if (Array.prototype.filter) {
-        buster.filter = function (arr, fn, thisp) {
-            return arr.filter(fn, thisp);
-        };
-    } else {
-        // https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Array/filter
-        buster.filter = function (fn, thisp) {
-                        if (this == null) { throw new TypeError(); }
-
-            var t = Object(this);
-            var len = t.length >>> 0;
-            if (typeof fn != "function") { throw new TypeError(); }
-
-            var res = [];
-            for (var i = 0; i < len; i++) {
-                if (i in t) {
-                    var val = t[i]; // in case fun mutates this
-                    if (fn.call(thisp, val, i, t)) { res.push(val); }
-                }
-            }
-
-            return res;
-        };
-    }
-
-    if (isNode) {
-        module.exports = buster;
-        buster.eventEmitter = require("./buster-event-emitter");
-        Object.defineProperty(buster, "defineVersionGetter", {
-            get: function () {
-                return require("./define-version-getter");
-            }
-        });
-    }
-
-    return buster.extend(B || {}, buster);
-}(setTimeout, buster));
-if (typeof buster === "undefined") {
-    var buster = {};
-}
-
-if (typeof module === "object" && typeof require === "function") {
-    buster = require("buster-core");
-}
-
-buster.format = buster.format || {};
-buster.format.excludeConstructors = ["Object", /^.$/];
-buster.format.quoteStrings = true;
-
-buster.format.ascii = (function () {
-    
-    var hasOwn = Object.prototype.hasOwnProperty;
-
-    var specialObjects = [];
-    if (typeof global != "undefined") {
-        specialObjects.push({ obj: global, value: "[object global]" });
-    }
-    if (typeof document != "undefined") {
-        specialObjects.push({ obj: document, value: "[object HTMLDocument]" });
-    }
-    if (typeof window != "undefined") {
-        specialObjects.push({ obj: window, value: "[object Window]" });
-    }
-
-    function keys(object) {
-        var k = Object.keys && Object.keys(object) || [];
-
-        if (k.length == 0) {
-            for (var prop in object) {
-                if (hasOwn.call(object, prop)) {
-                    k.push(prop);
-                }
-            }
-        }
-
-        return k.sort();
-    }
-
-    function isCircular(object, objects) {
-        if (typeof object != "object") {
-            return false;
-        }
-
-        for (var i = 0, l = objects.length; i < l; ++i) {
-            if (objects[i] === object) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    function ascii(object, processed, indent) {
-        if (typeof object == "string") {
-            var quote = typeof this.quoteStrings != "boolean" || this.quoteStrings;
-            return processed || quote ? '"' + object + '"' : object;
-        }
-
-        if (typeof object == "function" && !(object instanceof RegExp)) {
-            return ascii.func(object);
-        }
-
-        processed = processed || [];
-
-        if (isCircular(object, processed)) {
-            return "[Circular]";
-        }
-
-        if (Object.prototype.toString.call(object) == "[object Array]") {
-            return ascii.array.call(this, object, processed);
-        }
-
-        if (!object) {
-            return "" + object;
-        }
-
-        if (buster.isElement(object)) {
-            return ascii.element(object);
-        }
-
-        if (typeof object.toString == "function" &&
-            object.toString !== Object.prototype.toString) {
-            return object.toString();
-        }
-
-        for (var i = 0, l = specialObjects.length; i < l; i++) {
-            if (object === specialObjects[i].obj) {
-                return specialObjects[i].value;
-            }
-        }
-
-        return ascii.object.call(this, object, processed, indent);
-    }
-
-    ascii.func = function (func) {
-        return "function " + buster.functionName(func) + "() {}";
-    };
-
-    ascii.array = function (array, processed) {
-        processed = processed || [];
-        processed.push(array);
-        var pieces = [];
-
-        for (var i = 0, l = array.length; i < l; ++i) {
-            pieces.push(ascii.call(this, array[i], processed));
-        }
-
-        return "[" + pieces.join(", ") + "]";
-    };
-
-    ascii.object = function (object, processed, indent) {
-        processed = processed || [];
-        processed.push(object);
-        indent = indent || 0;
-        var pieces = [], properties = keys(object), prop, str, obj;
-        var is = "";
-        var length = 3;
-
-        for (var i = 0, l = indent; i < l; ++i) {
-            is += " ";
-        }
-
-        for (i = 0, l = properties.length; i < l; ++i) {
-            prop = properties[i];
-            obj = object[prop];
-
-            if (isCircular(obj, processed)) {
-                str = "[Circular]";
-            } else {
-                str = ascii.call(this, obj, processed, indent + 2);
-            }
-
-            str = (/\s/.test(prop) ? '"' + prop + '"' : prop) + ": " + str;
-            length += str.length;
-            pieces.push(str);
-        }
-
-        var cons = ascii.constructorName.call(this, object);
-        var prefix = cons ? "[" + cons + "] " : ""
-
-        return (length + indent) > 80 ?
-            prefix + "{\n  " + is + pieces.join(",\n  " + is) + "\n" + is + "}" :
-            prefix + "{ " + pieces.join(", ") + " }";
-    };
-
-    ascii.element = function (element) {
-        var tagName = element.tagName.toLowerCase();
-        var attrs = element.attributes, attribute, pairs = [], attrName;
-
-        for (var i = 0, l = attrs.length; i < l; ++i) {
-            attribute = attrs.item(i);
-            attrName = attribute.nodeName.toLowerCase().replace("html:", "");
-
-            if (attrName == "contenteditable" && attribute.nodeValue == "inherit") {
-                continue;
-            }
-
-            if (!!attribute.nodeValue) {
-                pairs.push(attrName + "=\"" + attribute.nodeValue + "\"");
-            }
-        }
-
-        var formatted = "<" + tagName + (pairs.length > 0 ? " " : "");
-        var content = element.innerHTML;
-
-        if (content.length > 20) {
-            content = content.substr(0, 20) + "[...]";
-        }
-
-        var res = formatted + pairs.join(" ") + ">" + content + "</" + tagName + ">";
-
-        return res.replace(/ contentEditable="inherit"/, "");
-    };
-
-    ascii.constructorName = function (object) {
-        var name = buster.functionName(object && object.constructor);
-        var excludes = this.excludeConstructors || buster.format.excludeConstructors || [];
-
-        for (var i = 0, l = excludes.length; i < l; ++i) {
-            if (typeof excludes[i] == "string" && excludes[i] == name) {
-                return "";
-            } else if (excludes[i].test && excludes[i].test(name)) {
-                return "";
-            }
-        }
-
-        return name;
-    };
-
-    return ascii;
-}());
-
-if (typeof module != "undefined") {
-    module.exports = buster.format;
-}
-/*jslint eqeqeq: false, onevar: false, forin: true, nomen: false, regexp: false, plusplus: false*/
-/*global module, require, __dirname, document*/
-/**
- * Sinon core utilities. For internal use only.
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-var sinon = (function (buster) {
-    var div = typeof document != "undefined" && document.createElement("div");
-    var hasOwn = Object.prototype.hasOwnProperty;
-
-    function isDOMNode(obj) {
-        var success = false;
-
-        try {
-            obj.appendChild(div);
-            success = div.parentNode == obj;
-        } catch (e) {
-            return false;
-        } finally {
-            try {
-                obj.removeChild(div);
-            } catch (e) {
-                // Remove failed, not much we can do about that
-            }
-        }
-
-        return success;
-    }
-
-    function isElement(obj) {
-        return div && obj && obj.nodeType === 1 && isDOMNode(obj);
-    }
-
-    function isFunction(obj) {
-        return typeof obj === "function" || !!(obj && obj.constructor && obj.call && obj.apply);
-    }
-
-    function mirrorProperties(target, source) {
-        for (var prop in source) {
-            if (!hasOwn.call(target, prop)) {
-                target[prop] = source[prop];
-            }
-        }
-    }
-
-    function isRestorable (obj) {
-        return typeof obj === "function" && typeof obj.restore === "function" && obj.restore.sinon;
-    }
-
-    var sinon = {
-        wrapMethod: function wrapMethod(object, property, method) {
-            if (!object) {
-                throw new TypeError("Should wrap property of object");
-            }
-
-            if (typeof method != "function") {
-                throw new TypeError("Method wrapper should be function");
-            }
-
-            var wrappedMethod = object[property];
-
-            if (!isFunction(wrappedMethod)) {
-                throw new TypeError("Attempted to wrap " + (typeof wrappedMethod) + " property " +
-                                    property + " as function");
-            }
-
-            if (wrappedMethod.restore && wrappedMethod.restore.sinon) {
-                throw new TypeError("Attempted to wrap " + property + " which is already wrapped");
-            }
-
-            if (wrappedMethod.calledBefore) {
-                var verb = !!wrappedMethod.returns ? "stubbed" : "spied on";
-                throw new TypeError("Attempted to wrap " + property + " which is already " + verb);
-            }
-
-            // IE 8 does not support hasOwnProperty on the window object.
-            var owned = hasOwn.call(object, property);
-            object[property] = method;
-            method.displayName = property;
-
-            method.restore = function () {
-                // For prototype properties try to reset by delete first.
-                // If this fails (ex: localStorage on mobile safari) then force a reset
-                // via direct assignment.
-                if (!owned) {
-                    delete object[property];
-                }
-                if (object[property] === method) {
-                    object[property] = wrappedMethod;
-                }
-            };
-
-            method.restore.sinon = true;
-            mirrorProperties(method, wrappedMethod);
-
-            return method;
-        },
-
-        extend: function extend(target) {
-            for (var i = 1, l = arguments.length; i < l; i += 1) {
-                for (var prop in arguments[i]) {
-                    if (arguments[i].hasOwnProperty(prop)) {
-                        target[prop] = arguments[i][prop];
-                    }
-
-                    // DONT ENUM bug, only care about toString
-                    if (arguments[i].hasOwnProperty("toString") &&
-                        arguments[i].toString != target.toString) {
-                        target.toString = arguments[i].toString;
-                    }
-                }
-            }
-
-            return target;
-        },
-
-        create: function create(proto) {
-            var F = function () {};
-            F.prototype = proto;
-            return new F();
-        },
-
-        deepEqual: function deepEqual(a, b) {
-            if (sinon.match && sinon.match.isMatcher(a)) {
-                return a.test(b);
-            }
-            if (typeof a != "object" || typeof b != "object") {
-                return a === b;
-            }
-
-            if (isElement(a) || isElement(b)) {
-                return a === b;
-            }
-
-            if (a === b) {
-                return true;
-            }
-
-            if ((a === null && b !== null) || (a !== null && b === null)) {
-                return false;
-            }
-
-            var aString = Object.prototype.toString.call(a);
-            if (aString != Object.prototype.toString.call(b)) {
-                return false;
-            }
-
-            if (aString == "[object Array]") {
-                if (a.length !== b.length) {
-                    return false;
-                }
-
-                for (var i = 0, l = a.length; i < l; i += 1) {
-                    if (!deepEqual(a[i], b[i])) {
-                        return false;
-                    }
-                }
-
-                return true;
-            }
-
-            if (aString == "[object Date]") {
-                return a.valueOf() === b.valueOf();
-            }
-
-            var prop, aLength = 0, bLength = 0;
-
-            for (prop in a) {
-                aLength += 1;
-
-                if (!deepEqual(a[prop], b[prop])) {
-                    return false;
-                }
-            }
-
-            for (prop in b) {
-                bLength += 1;
-            }
-
-            return aLength == bLength;
-        },
-
-        functionName: function functionName(func) {
-            var name = func.displayName || func.name;
-
-            // Use function decomposition as a last resort to get function
-            // name. Does not rely on function decomposition to work - if it
-            // doesn't debugging will be slightly less informative
-            // (i.e. toString will say 'spy' rather than 'myFunc').
-            if (!name) {
-                var matches = func.toString().match(/function ([^\s\(]+)/);
-                name = matches && matches[1];
-            }
-
-            return name;
-        },
-
-        functionToString: function toString() {
-            if (this.getCall && this.callCount) {
-                var thisValue, prop, i = this.callCount;
-
-                while (i--) {
-                    thisValue = this.getCall(i).thisValue;
-
-                    for (prop in thisValue) {
-                        if (thisValue[prop] === this) {
-                            return prop;
-                        }
-                    }
-                }
-            }
-
-            return this.displayName || "sinon fake";
-        },
-
-        getConfig: function (custom) {
-            var config = {};
-            custom = custom || {};
-            var defaults = sinon.defaultConfig;
-
-            for (var prop in defaults) {
-                if (defaults.hasOwnProperty(prop)) {
-                    config[prop] = custom.hasOwnProperty(prop) ? custom[prop] : defaults[prop];
-                }
-            }
-
-            return config;
-        },
-
-        format: function (val) {
-            return "" + val;
-        },
-
-        defaultConfig: {
-            injectIntoThis: true,
-            injectInto: null,
-            properties: ["spy", "stub", "mock", "clock", "server", "requests"],
-            useFakeTimers: true,
-            useFakeServer: true
-        },
-
-        timesInWords: function timesInWords(count) {
-            return count == 1 && "once" ||
-                count == 2 && "twice" ||
-                count == 3 && "thrice" ||
-                (count || 0) + " times";
-        },
-
-        calledInOrder: function (spies) {
-            for (var i = 1, l = spies.length; i < l; i++) {
-                if (!spies[i - 1].calledBefore(spies[i]) || !spies[i].called) {
-                    return false;
-                }
-            }
-
-            return true;
-        },
-
-        orderByFirstCall: function (spies) {
-            return spies.sort(function (a, b) {
-                // uuid, won't ever be equal
-                var aCall = a.getCall(0);
-                var bCall = b.getCall(0);
-                var aId = aCall && aCall.callId || -1;
-                var bId = bCall && bCall.callId || -1;
-
-                return aId < bId ? -1 : 1;
-            });
-        },
-
-        log: function () {},
-
-        logError: function (label, err) {
-            var msg = label + " threw exception: "
-            sinon.log(msg + "[" + err.name + "] " + err.message);
-            if (err.stack) { sinon.log(err.stack); }
-
-            setTimeout(function () {
-                err.message = msg + err.message;
-                throw err;
-            }, 0);
-        },
-
-        typeOf: function (value) {
-            if (value === null) {
-                return "null";
-            }
-            else if (value === undefined) {
-                return "undefined";
-            }
-            var string = Object.prototype.toString.call(value);
-            return string.substring(8, string.length - 1).toLowerCase();
-        },
-
-        createStubInstance: function (constructor) {
-            if (typeof constructor !== "function") {
-                throw new TypeError("The constructor should be a function.");
-            }
-            return sinon.stub(sinon.create(constructor.prototype));
-        },
-
-        restore: function (object) {
-            if (object !== null && typeof object === "object") {
-                for (var prop in object) {
-                    if (isRestorable(object[prop])) {
-                        object[prop].restore();
-                    }
-                }
-            }
-            else if (isRestorable(object)) {
-                object.restore();
-            }
-        }
-    };
-
-    var isNode = typeof module == "object" && typeof require == "function";
-
-    if (isNode) {
-        try {
-            buster = { format: require("buster-format") };
-        } catch (e) {}
-        module.exports = sinon;
-        module.exports.spy = require("./sinon/spy");
-        module.exports.stub = require("./sinon/stub");
-        module.exports.mock = require("./sinon/mock");
-        module.exports.collection = require("./sinon/collection");
-        module.exports.assert = require("./sinon/assert");
-        module.exports.sandbox = require("./sinon/sandbox");
-        module.exports.test = require("./sinon/test");
-        module.exports.testCase = require("./sinon/test_case");
-        module.exports.assert = require("./sinon/assert");
-        module.exports.match = require("./sinon/match");
-    }
-
-    if (buster) {
-        var formatter = sinon.create(buster.format);
-        formatter.quoteStrings = false;
-        sinon.format = function () {
-            return formatter.ascii.apply(formatter, arguments);
-        };
-    } else if (isNode) {
-        try {
-            var util = require("util");
-            sinon.format = function (value) {
-                return typeof value == "object" && value.toString === Object.prototype.toString ? util.inspect(value) : value;
-            };
-        } catch (e) {
-            /* Node, but no util module - would be very old, but better safe than
-             sorry */
-        }
-    }
-
-    return sinon;
-}(typeof buster == "object" && buster));
-
-/* @depend ../sinon.js */
-/*jslint eqeqeq: false, onevar: false, plusplus: false*/
-/*global module, require, sinon*/
-/**
- * Match functions
- *
- * @author Maximilian Antoni (mail@maxantoni.de)
- * @license BSD
- *
- * Copyright (c) 2012 Maximilian Antoni
- */
-
-(function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-
-    if (!sinon && commonJSModule) {
-        sinon = require("../sinon");
-    }
-
-    if (!sinon) {
-        return;
-    }
-
-    function assertType(value, type, name) {
-        var actual = sinon.typeOf(value);
-        if (actual !== type) {
-            throw new TypeError("Expected type of " + name + " to be " +
-                type + ", but was " + actual);
-        }
-    }
-
-    var matcher = {
-        toString: function () {
-            return this.message;
-        }
-    };
-
-    function isMatcher(object) {
-        return matcher.isPrototypeOf(object);
-    }
-
-    function matchObject(expectation, actual) {
-        if (actual === null || actual === undefined) {
-            return false;
-        }
-        for (var key in expectation) {
-            if (expectation.hasOwnProperty(key)) {
-                var exp = expectation[key];
-                var act = actual[key];
-                if (match.isMatcher(exp)) {
-                    if (!exp.test(act)) {
-                        return false;
-                    }
-                } else if (sinon.typeOf(exp) === "object") {
-                    if (!matchObject(exp, act)) {
-                        return false;
-                    }
-                } else if (!sinon.deepEqual(exp, act)) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    matcher.or = function (m2) {
-        if (!isMatcher(m2)) {
-            throw new TypeError("Matcher expected");
-        }
-        var m1 = this;
-        var or = sinon.create(matcher);
-        or.test = function (actual) {
-            return m1.test(actual) || m2.test(actual);
-        };
-        or.message = m1.message + ".or(" + m2.message + ")";
-        return or;
-    };
-
-    matcher.and = function (m2) {
-        if (!isMatcher(m2)) {
-            throw new TypeError("Matcher expected");
-        }
-        var m1 = this;
-        var and = sinon.create(matcher);
-        and.test = function (actual) {
-            return m1.test(actual) && m2.test(actual);
-        };
-        and.message = m1.message + ".and(" + m2.message + ")";
-        return and;
-    };
-
-    var match = function (expectation, message) {
-        var m = sinon.create(matcher);
-        var type = sinon.typeOf(expectation);
-        switch (type) {
-        case "object":
-            if (typeof expectation.test === "function") {
-                m.test = function (actual) {
-                    return expectation.test(actual) === true;
-                };
-                m.message = "match(" + sinon.functionName(expectation.test) + ")";
-                return m;
-            }
-            var str = [];
-            for (var key in expectation) {
-                if (expectation.hasOwnProperty(key)) {
-                    str.push(key + ": " + expectation[key]);
-                }
-            }
-            m.test = function (actual) {
-                return matchObject(expectation, actual);
-            };
-            m.message = "match(" + str.join(", ") + ")";
-            break;
-        case "number":
-            m.test = function (actual) {
-                return expectation == actual;
-            };
-            break;
-        case "string":
-            m.test = function (actual) {
-                if (typeof actual !== "string") {
-                    return false;
-                }
-                return actual.indexOf(expectation) !== -1;
-            };
-            m.message = "match(\"" + expectation + "\")";
-            break;
-        case "regexp":
-            m.test = function (actual) {
-                if (typeof actual !== "string") {
-                    return false;
-                }
-                return expectation.test(actual);
-            };
-            break;
-        case "function":
-            m.test = expectation;
-            if (message) {
-                m.message = message;
-            } else {
-                m.message = "match(" + sinon.functionName(expectation) + ")";
-            }
-            break;
-        default:
-            m.test = function (actual) {
-              return sinon.deepEqual(expectation, actual);
-            };
-        }
-        if (!m.message) {
-            m.message = "match(" + expectation + ")";
-        }
-        return m;
-    };
-
-    match.isMatcher = isMatcher;
-
-    match.any = match(function () {
-        return true;
-    }, "any");
-
-    match.defined = match(function (actual) {
-        return actual !== null && actual !== undefined;
-    }, "defined");
-
-    match.truthy = match(function (actual) {
-        return !!actual;
-    }, "truthy");
-
-    match.falsy = match(function (actual) {
-        return !actual;
-    }, "falsy");
-
-    match.same = function (expectation) {
-        return match(function (actual) {
-            return expectation === actual;
-        }, "same(" + expectation + ")");
-    };
-
-    match.typeOf = function (type) {
-        assertType(type, "string", "type");
-        return match(function (actual) {
-            return sinon.typeOf(actual) === type;
-        }, "typeOf(\"" + type + "\")");
-    };
-
-    match.instanceOf = function (type) {
-        assertType(type, "function", "type");
-        return match(function (actual) {
-            return actual instanceof type;
-        }, "instanceOf(" + sinon.functionName(type) + ")");
-    };
-
-    function createPropertyMatcher(propertyTest, messagePrefix) {
-        return function (property, value) {
-            assertType(property, "string", "property");
-            var onlyProperty = arguments.length === 1;
-            var message = messagePrefix + "(\"" + property + "\"";
-            if (!onlyProperty) {
-                message += ", " + value;
-            }
-            message += ")";
-            return match(function (actual) {
-                if (actual === undefined || actual === null ||
-                        !propertyTest(actual, property)) {
-                    return false;
-                }
-                return onlyProperty || sinon.deepEqual(value, actual[property]);
-            }, message);
-        };
-    }
-
-    match.has = createPropertyMatcher(function (actual, property) {
-        if (typeof actual === "object") {
-            return property in actual;
-        }
-        return actual[property] !== undefined;
-    }, "has");
-
-    match.hasOwn = createPropertyMatcher(function (actual, property) {
-        return actual.hasOwnProperty(property);
-    }, "hasOwn");
-
-    match.bool = match.typeOf("boolean");
-    match.number = match.typeOf("number");
-    match.string = match.typeOf("string");
-    match.object = match.typeOf("object");
-    match.func = match.typeOf("function");
-    match.array = match.typeOf("array");
-    match.regexp = match.typeOf("regexp");
-    match.date = match.typeOf("date");
-
-    if (commonJSModule) {
-        module.exports = match;
-    } else {
-        sinon.match = match;
-    }
-}(typeof sinon == "object" && sinon || null));
-
-/**
-  * @depend ../sinon.js
-  * @depend match.js
-  */
-/*jslint eqeqeq: false, onevar: false, plusplus: false*/
-/*global module, require, sinon*/
-/**
-  * Spy calls
-  *
-  * @author Christian Johansen (christian@cjohansen.no)
-  * @author Maximilian Antoni (mail@maxantoni.de)
-  * @license BSD
-  *
-  * Copyright (c) 2010-2013 Christian Johansen
-  * Copyright (c) 2013 Maximilian Antoni
-  */
-
-var commonJSModule = typeof module == "object" && typeof require == "function";
-
-if (!this.sinon && commonJSModule) {
-    var sinon = require("../sinon");
-}
-
-(function (sinon) {
-    function throwYieldError(proxy, text, args) {
-        var msg = sinon.functionName(proxy) + text;
-        if (args.length) {
-            msg += " Received [" + slice.call(args).join(", ") + "]";
-        }
-        throw new Error(msg);
-    }
-
-    var slice = Array.prototype.slice;
-
-    var callProto = {
-        calledOn: function calledOn(thisValue) {
-            if (sinon.match && sinon.match.isMatcher(thisValue)) {
-                return thisValue.test(this.thisValue);
-            }
-            return this.thisValue === thisValue;
-        },
-
-        calledWith: function calledWith() {
-            for (var i = 0, l = arguments.length; i < l; i += 1) {
-                if (!sinon.deepEqual(arguments[i], this.args[i])) {
-                    return false;
-                }
-            }
-
-            return true;
-        },
-
-        calledWithMatch: function calledWithMatch() {
-            for (var i = 0, l = arguments.length; i < l; i += 1) {
-                var actual = this.args[i];
-                var expectation = arguments[i];
-                if (!sinon.match || !sinon.match(expectation).test(actual)) {
-                    return false;
-                }
-            }
-            return true;
-        },
-
-        calledWithExactly: function calledWithExactly() {
-            return arguments.length == this.args.length &&
-                this.calledWith.apply(this, arguments);
-        },
-
-        notCalledWith: function notCalledWith() {
-            return !this.calledWith.apply(this, arguments);
-        },
-
-        notCalledWithMatch: function notCalledWithMatch() {
-            return !this.calledWithMatch.apply(this, arguments);
-        },
-
-        returned: function returned(value) {
-            return sinon.deepEqual(value, this.returnValue);
-        },
-
-        threw: function threw(error) {
-            if (typeof error === "undefined" || !this.exception) {
-                return !!this.exception;
-            }
-
-            return this.exception === error || this.exception.name === error;
-        },
-
-        calledWithNew: function calledWithNew(thisValue) {
-            return this.thisValue instanceof this.proxy;
-        },
-
-        calledBefore: function (other) {
-            return this.callId < other.callId;
-        },
-
-        calledAfter: function (other) {
-            return this.callId > other.callId;
-        },
-
-        callArg: function (pos) {
-            this.args[pos]();
-        },
-
-        callArgOn: function (pos, thisValue) {
-            this.args[pos].apply(thisValue);
-        },
-
-        callArgWith: function (pos) {
-            this.callArgOnWith.apply(this, [pos, null].concat(slice.call(arguments, 1)));
-        },
-
-        callArgOnWith: function (pos, thisValue) {
-            var args = slice.call(arguments, 2);
-            this.args[pos].apply(thisValue, args);
-        },
-
-        "yield": function () {
-            this.yieldOn.apply(this, [null].concat(slice.call(arguments, 0)));
-        },
-
-        yieldOn: function (thisValue) {
-            var args = this.args;
-            for (var i = 0, l = args.length; i < l; ++i) {
-                if (typeof args[i] === "function") {
-                    args[i].apply(thisValue, slice.call(arguments, 1));
-                    return;
-                }
-            }
-            throwYieldError(this.proxy, " cannot yield since no callback was passed.", args);
-        },
-
-        yieldTo: function (prop) {
-            this.yieldToOn.apply(this, [prop, null].concat(slice.call(arguments, 1)));
-        },
-
-        yieldToOn: function (prop, thisValue) {
-            var args = this.args;
-            for (var i = 0, l = args.length; i < l; ++i) {
-                if (args[i] && typeof args[i][prop] === "function") {
-                    args[i][prop].apply(thisValue, slice.call(arguments, 2));
-                    return;
-                }
-            }
-            throwYieldError(this.proxy, " cannot yield to '" + prop +
-                "' since no callback was passed.", args);
-        },
-
-        toString: function () {
-            var callStr = this.proxy.toString() + "(";
-            var args = [];
-
-            for (var i = 0, l = this.args.length; i < l; ++i) {
-                args.push(sinon.format(this.args[i]));
-            }
-
-            callStr = callStr + args.join(", ") + ")";
-
-            if (typeof this.returnValue != "undefined") {
-                callStr += " => " + sinon.format(this.returnValue);
-            }
-
-            if (this.exception) {
-                callStr += " !" + this.exception.name;
-
-                if (this.exception.message) {
-                    callStr += "(" + this.exception.message + ")";
-                }
-            }
-
-            return callStr;
-        }
-    };
-
-    callProto.invokeCallback = callProto.yield;
-
-    function createSpyCall(spy, thisValue, args, returnValue, exception, id) {
-        if (typeof id !== "number") {
-            throw new TypeError("Call id is not a number");
-        }
-        var proxyCall = sinon.create(callProto);
-        proxyCall.proxy = spy;
-        proxyCall.thisValue = thisValue;
-        proxyCall.args = args;
-        proxyCall.returnValue = returnValue;
-        proxyCall.exception = exception;
-        proxyCall.callId = id;
-
-        return proxyCall;
-    };
-    createSpyCall.toString = callProto.toString; // used by mocks
-
-    sinon.spyCall = createSpyCall;
-}(typeof sinon == "object" && sinon || null));
-
-/**
-  * @depend ../sinon.js
-  */
-/*jslint eqeqeq: false, onevar: false, plusplus: false*/
-/*global module, require, sinon*/
-/**
-  * Spy functions
-  *
-  * @author Christian Johansen (christian@cjohansen.no)
-  * @license BSD
-  *
-  * Copyright (c) 2010-2013 Christian Johansen
-  */
-
-(function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-    var push = Array.prototype.push;
-    var slice = Array.prototype.slice;
-    var callId = 0;
-
-    function spy(object, property) {
-        if (!property && typeof object == "function") {
-            return spy.create(object);
-        }
-
-        if (!object && !property) {
-            return spy.create(function () { });
-        }
-
-        var method = object[property];
-        return sinon.wrapMethod(object, property, spy.create(method));
-    }
-
-    function matchingFake(fakes, args, strict) {
-        if (!fakes) {
-            return;
-        }
-
-        var alen = args.length;
-
-        for (var i = 0, l = fakes.length; i < l; i++) {
-            if (fakes[i].matches(args, strict)) {
-                return fakes[i];
-            }
-        }
-    }
-
-    function incrementCallCount() {
-        this.called = true;
-        this.callCount += 1;
-        this.notCalled = false;
-        this.calledOnce = this.callCount == 1;
-        this.calledTwice = this.callCount == 2;
-        this.calledThrice = this.callCount == 3;
-    }
-
-    function createCallProperties() {
-        this.firstCall = this.getCall(0);
-        this.secondCall = this.getCall(1);
-        this.thirdCall = this.getCall(2);
-        this.lastCall = this.getCall(this.callCount - 1);
-    }
-
-    var vars = "a,b,c,d,e,f,g,h,i,j,k,l";
-    function createProxy(func) {
-        // Retain the function length:
-        var p;
-        if (func.length) {
-            eval("p = (function proxy(" + vars.substring(0, func.length * 2 - 1) +
-                ") { return p.invoke(func, this, slice.call(arguments)); });");
-        }
-        else {
-            p = function proxy() {
-                return p.invoke(func, this, slice.call(arguments));
-            };
-        }
-        return p;
-    }
-
-    var uuid = 0;
-
-    // Public API
-    var spyApi = {
-        reset: function () {
-            this.called = false;
-            this.notCalled = true;
-            this.calledOnce = false;
-            this.calledTwice = false;
-            this.calledThrice = false;
-            this.callCount = 0;
-            this.firstCall = null;
-            this.secondCall = null;
-            this.thirdCall = null;
-            this.lastCall = null;
-            this.args = [];
-            this.returnValues = [];
-            this.thisValues = [];
-            this.exceptions = [];
-            this.callIds = [];
-            if (this.fakes) {
-                for (var i = 0; i < this.fakes.length; i++) {
-                    this.fakes[i].reset();
-                }
-            }
-        },
-
-        create: function create(func) {
-            var name;
-
-            if (typeof func != "function") {
-                func = function () { };
-            } else {
-                name = sinon.functionName(func);
-            }
-
-            var proxy = createProxy(func);
-
-            sinon.extend(proxy, spy);
-            delete proxy.create;
-            sinon.extend(proxy, func);
-
-            proxy.reset();
-            proxy.prototype = func.prototype;
-            proxy.displayName = name || "spy";
-            proxy.toString = sinon.functionToString;
-            proxy._create = sinon.spy.create;
-            proxy.id = "spy#" + uuid++;
-
-            return proxy;
-        },
-
-        invoke: function invoke(func, thisValue, args) {
-            var matching = matchingFake(this.fakes, args);
-            var exception, returnValue;
-
-            incrementCallCount.call(this);
-            push.call(this.thisValues, thisValue);
-            push.call(this.args, args);
-            push.call(this.callIds, callId++);
-
-            try {
-                if (matching) {
-                    returnValue = matching.invoke(func, thisValue, args);
-                } else {
-                    returnValue = (this.func || func).apply(thisValue, args);
-                }
-            } catch (e) {
-                push.call(this.returnValues, undefined);
-                exception = e;
-                throw e;
-            } finally {
-                push.call(this.exceptions, exception);
-            }
-
-            push.call(this.returnValues, returnValue);
-
-            createCallProperties.call(this);
-
-            return returnValue;
-        },
-
-        getCall: function getCall(i) {
-            if (i < 0 || i >= this.callCount) {
-                return null;
-            }
-
-            return sinon.spyCall(this, this.thisValues[i], this.args[i],
-                                    this.returnValues[i], this.exceptions[i],
-                                    this.callIds[i]);
-        },
-
-        calledBefore: function calledBefore(spyFn) {
-            if (!this.called) {
-                return false;
-            }
-
-            if (!spyFn.called) {
-                return true;
-            }
-
-            return this.callIds[0] < spyFn.callIds[spyFn.callIds.length - 1];
-        },
-
-        calledAfter: function calledAfter(spyFn) {
-            if (!this.called || !spyFn.called) {
-                return false;
-            }
-
-            return this.callIds[this.callCount - 1] > spyFn.callIds[spyFn.callCount - 1];
-        },
-
-        withArgs: function () {
-            var args = slice.call(arguments);
-
-            if (this.fakes) {
-                var match = matchingFake(this.fakes, args, true);
-
-                if (match) {
-                    return match;
-                }
-            } else {
-                this.fakes = [];
-            }
-
-            var original = this;
-            var fake = this._create();
-            fake.matchingAguments = args;
-            push.call(this.fakes, fake);
-
-            fake.withArgs = function () {
-                return original.withArgs.apply(original, arguments);
-            };
-
-            for (var i = 0; i < this.args.length; i++) {
-                if (fake.matches(this.args[i])) {
-                    incrementCallCount.call(fake);
-                    push.call(fake.thisValues, this.thisValues[i]);
-                    push.call(fake.args, this.args[i]);
-                    push.call(fake.returnValues, this.returnValues[i]);
-                    push.call(fake.exceptions, this.exceptions[i]);
-                    push.call(fake.callIds, this.callIds[i]);
-                }
-            }
-            createCallProperties.call(fake);
-
-            return fake;
-        },
-
-        matches: function (args, strict) {
-            var margs = this.matchingAguments;
-
-            if (margs.length <= args.length &&
-                sinon.deepEqual(margs, args.slice(0, margs.length))) {
-                return !strict || margs.length == args.length;
-            }
-        },
-
-        printf: function (format) {
-            var spy = this;
-            var args = slice.call(arguments, 1);
-            var formatter;
-
-            return (format || "").replace(/%(.)/g, function (match, specifyer) {
-                formatter = spyApi.formatters[specifyer];
-
-                if (typeof formatter == "function") {
-                    return formatter.call(null, spy, args);
-                } else if (!isNaN(parseInt(specifyer), 10)) {
-                    return sinon.format(args[specifyer - 1]);
-                }
-
-                return "%" + specifyer;
-            });
-        }
-    };
-
-    function delegateToCalls(method, matchAny, actual, notCalled) {
-        spyApi[method] = function () {
-            if (!this.called) {
-                if (notCalled) {
-                    return notCalled.apply(this, arguments);
-                }
-                return false;
-            }
-
-            var currentCall;
-            var matches = 0;
-
-            for (var i = 0, l = this.callCount; i < l; i += 1) {
-                currentCall = this.getCall(i);
-
-                if (currentCall[actual || method].apply(currentCall, arguments)) {
-                    matches += 1;
-
-                    if (matchAny) {
-                        return true;
-                    }
-                }
-            }
-
-            return matches === this.callCount;
-        };
-    }
-
-    delegateToCalls("calledOn", true);
-    delegateToCalls("alwaysCalledOn", false, "calledOn");
-    delegateToCalls("calledWith", true);
-    delegateToCalls("calledWithMatch", true);
-    delegateToCalls("alwaysCalledWith", false, "calledWith");
-    delegateToCalls("alwaysCalledWithMatch", false, "calledWithMatch");
-    delegateToCalls("calledWithExactly", true);
-    delegateToCalls("alwaysCalledWithExactly", false, "calledWithExactly");
-    delegateToCalls("neverCalledWith", false, "notCalledWith",
-        function () { return true; });
-    delegateToCalls("neverCalledWithMatch", false, "notCalledWithMatch",
-        function () { return true; });
-    delegateToCalls("threw", true);
-    delegateToCalls("alwaysThrew", false, "threw");
-    delegateToCalls("returned", true);
-    delegateToCalls("alwaysReturned", false, "returned");
-    delegateToCalls("calledWithNew", true);
-    delegateToCalls("alwaysCalledWithNew", false, "calledWithNew");
-    delegateToCalls("callArg", false, "callArgWith", function () {
-        throw new Error(this.toString() + " cannot call arg since it was not yet invoked.");
-    });
-    spyApi.callArgWith = spyApi.callArg;
-    delegateToCalls("callArgOn", false, "callArgOnWith", function () {
-        throw new Error(this.toString() + " cannot call arg since it was not yet invoked.");
-    });
-    spyApi.callArgOnWith = spyApi.callArgOn;
-    delegateToCalls("yield", false, "yield", function () {
-        throw new Error(this.toString() + " cannot yield since it was not yet invoked.");
-    });
-    // "invokeCallback" is an alias for "yield" since "yield" is invalid in strict mode.
-    spyApi.invokeCallback = spyApi.yield;
-    delegateToCalls("yieldOn", false, "yieldOn", function () {
-        throw new Error(this.toString() + " cannot yield since it was not yet invoked.");
-    });
-    delegateToCalls("yieldTo", false, "yieldTo", function (property) {
-        throw new Error(this.toString() + " cannot yield to '" + property +
-            "' since it was not yet invoked.");
-    });
-    delegateToCalls("yieldToOn", false, "yieldToOn", function (property) {
-        throw new Error(this.toString() + " cannot yield to '" + property +
-            "' since it was not yet invoked.");
-    });
-
-    spyApi.formatters = {
-        "c": function (spy) {
-            return sinon.timesInWords(spy.callCount);
-        },
-
-        "n": function (spy) {
-            return spy.toString();
-        },
-
-        "C": function (spy) {
-            var calls = [];
-
-            for (var i = 0, l = spy.callCount; i < l; ++i) {
-                var stringifiedCall = "    " + spy.getCall(i).toString();
-                if (/\n/.test(calls[i - 1])) {
-                    stringifiedCall = "\n" + stringifiedCall;
-                }
-                push.call(calls, stringifiedCall);
-            }
-
-            return calls.length > 0 ? "\n" + calls.join("\n") : "";
-        },
-
-        "t": function (spy) {
-            var objects = [];
-
-            for (var i = 0, l = spy.callCount; i < l; ++i) {
-                push.call(objects, sinon.format(spy.thisValues[i]));
-            }
-
-            return objects.join(", ");
-        },
-
-        "*": function (spy, args) {
-            var formatted = [];
-
-            for (var i = 0, l = args.length; i < l; ++i) {
-                push.call(formatted, sinon.format(args[i]));
-            }
-
-            return formatted.join(", ");
-        }
-    };
-
-    sinon.extend(spy, spyApi);
-
-    spy.spyCall = sinon.spyCall;
-
-    if (commonJSModule) {
-        module.exports = spy;
-    } else {
-        sinon.spy = spy;
-    }
-}(typeof sinon == "object" && sinon || null));
-
-/**
- * @depend ../sinon.js
- * @depend spy.js
- */
-/*jslint eqeqeq: false, onevar: false*/
-/*global module, require, sinon*/
-/**
- * Stub functions
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-(function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-
-    if (!sinon && commonJSModule) {
-        sinon = require("../sinon");
-    }
-
-    if (!sinon) {
-        return;
-    }
-
-    function stub(object, property, func) {
-        if (!!func && typeof func != "function") {
-            throw new TypeError("Custom stub should be function");
-        }
-
-        var wrapper;
-
-        if (func) {
-            wrapper = sinon.spy && sinon.spy.create ? sinon.spy.create(func) : func;
-        } else {
-            wrapper = stub.create();
-        }
-
-        if (!object && !property) {
-            return sinon.stub.create();
-        }
-
-        if (!property && !!object && typeof object == "object") {
-            for (var prop in object) {
-                if (typeof object[prop] === "function") {
-                    stub(object, prop);
-                }
-            }
-
-            return object;
-        }
-
-        return sinon.wrapMethod(object, property, wrapper);
-    }
-
-    function getChangingValue(stub, property) {
-        var index = stub.callCount - 1;
-        var values = stub[property];
-        var prop = index in values ? values[index] : values[values.length - 1];
-        stub[property + "Last"] = prop;
-
-        return prop;
-    }
-
-    function getCallback(stub, args) {
-        var callArgAt = getChangingValue(stub, "callArgAts");
-
-        if (callArgAt < 0) {
-            var callArgProp = getChangingValue(stub, "callArgProps");
-
-            for (var i = 0, l = args.length; i < l; ++i) {
-                if (!callArgProp && typeof args[i] == "function") {
-                    return args[i];
-                }
-
-                if (callArgProp && args[i] &&
-                    typeof args[i][callArgProp] == "function") {
-                    return args[i][callArgProp];
-                }
-            }
-
-            return null;
-        }
-
-        return args[callArgAt];
-    }
-
-    var join = Array.prototype.join;
-
-    function getCallbackError(stub, func, args) {
-        if (stub.callArgAtsLast < 0) {
-            var msg;
-
-            if (stub.callArgPropsLast) {
-                msg = sinon.functionName(stub) +
-                    " expected to yield to '" + stub.callArgPropsLast +
-                    "', but no object with such a property was passed."
-            } else {
-                msg = sinon.functionName(stub) +
-                            " expected to yield, but no callback was passed."
-            }
-
-            if (args.length > 0) {
-                msg += " Received [" + join.call(args, ", ") + "]";
-            }
-
-            return msg;
-        }
-
-        return "argument at index " + stub.callArgAtsLast + " is not a function: " + func;
-    }
-
-    var nextTick = (function () {
-        if (typeof process === "object" && typeof process.nextTick === "function") {
-            return process.nextTick;
-        } else if (typeof setImmediate === "function") {
-            return setImmediate;
-        } else {
-            return function (callback) {
-                setTimeout(callback, 0);
-            };
-        }
-    })();
-
-    function callCallback(stub, args) {
-        if (stub.callArgAts.length > 0) {
-            var func = getCallback(stub, args);
-
-            if (typeof func != "function") {
-                throw new TypeError(getCallbackError(stub, func, args));
-            }
-
-            var callbackArguments = getChangingValue(stub, "callbackArguments");
-            var callbackContext = getChangingValue(stub, "callbackContexts");
-
-            if (stub.callbackAsync) {
-                nextTick(function() {
-                    func.apply(callbackContext, callbackArguments);
-                });
-            } else {
-                func.apply(callbackContext, callbackArguments);
-            }
-        }
-    }
-
-    var uuid = 0;
-
-    sinon.extend(stub, (function () {
-        var slice = Array.prototype.slice, proto;
-
-        function throwsException(error, message) {
-            if (typeof error == "string") {
-                this.exception = new Error(message || "");
-                this.exception.name = error;
-            } else if (!error) {
-                this.exception = new Error("Error");
-            } else {
-                this.exception = error;
-            }
-
-            return this;
-        }
-
-        proto = {
-            create: function create() {
-                var functionStub = function () {
-
-                    callCallback(functionStub, arguments);
-
-                    if (functionStub.exception) {
-                        throw functionStub.exception;
-                    } else if (typeof functionStub.returnArgAt == 'number') {
-                        return arguments[functionStub.returnArgAt];
-                    } else if (functionStub.returnThis) {
-                        return this;
-                    }
-                    return functionStub.returnValue;
-                };
-
-                functionStub.id = "stub#" + uuid++;
-                var orig = functionStub;
-                functionStub = sinon.spy.create(functionStub);
-                functionStub.func = orig;
-
-                functionStub.callArgAts = [];
-                functionStub.callbackArguments = [];
-                functionStub.callbackContexts = [];
-                functionStub.callArgProps = [];
-
-                sinon.extend(functionStub, stub);
-                functionStub._create = sinon.stub.create;
-                functionStub.displayName = "stub";
-                functionStub.toString = sinon.functionToString;
-
-                return functionStub;
-            },
-
-            resetBehavior: function () {
-                var i;
-
-                this.callArgAts = [];
-                this.callbackArguments = [];
-                this.callbackContexts = [];
-                this.callArgProps = [];
-
-                delete this.returnValue;
-                delete this.returnArgAt;
-                this.returnThis = false;
-
-                if (this.fakes) {
-                    for (i = 0; i < this.fakes.length; i++) {
-                        this.fakes[i].resetBehavior();
-                    }
-                }
-            },
-
-            returns: function returns(value) {
-                this.returnValue = value;
-
-                return this;
-            },
-
-            returnsArg: function returnsArg(pos) {
-                if (typeof pos != "number") {
-                    throw new TypeError("argument index is not number");
-                }
-
-                this.returnArgAt = pos;
-
-                return this;
-            },
-
-            returnsThis: function returnsThis() {
-                this.returnThis = true;
-
-                return this;
-            },
-
-            "throws": throwsException,
-            throwsException: throwsException,
-
-            callsArg: function callsArg(pos) {
-                if (typeof pos != "number") {
-                    throw new TypeError("argument index is not number");
-                }
-
-                this.callArgAts.push(pos);
-                this.callbackArguments.push([]);
-                this.callbackContexts.push(undefined);
-                this.callArgProps.push(undefined);
-
-                return this;
-            },
-
-            callsArgOn: function callsArgOn(pos, context) {
-                if (typeof pos != "number") {
-                    throw new TypeError("argument index is not number");
-                }
-                if (typeof context != "object") {
-                    throw new TypeError("argument context is not an object");
-                }
-
-                this.callArgAts.push(pos);
-                this.callbackArguments.push([]);
-                this.callbackContexts.push(context);
-                this.callArgProps.push(undefined);
-
-                return this;
-            },
-
-            callsArgWith: function callsArgWith(pos) {
-                if (typeof pos != "number") {
-                    throw new TypeError("argument index is not number");
-                }
-
-                this.callArgAts.push(pos);
-                this.callbackArguments.push(slice.call(arguments, 1));
-                this.callbackContexts.push(undefined);
-                this.callArgProps.push(undefined);
-
-                return this;
-            },
-
-            callsArgOnWith: function callsArgWith(pos, context) {
-                if (typeof pos != "number") {
-                    throw new TypeError("argument index is not number");
-                }
-                if (typeof context != "object") {
-                    throw new TypeError("argument context is not an object");
-                }
-
-                this.callArgAts.push(pos);
-                this.callbackArguments.push(slice.call(arguments, 2));
-                this.callbackContexts.push(context);
-                this.callArgProps.push(undefined);
-
-                return this;
-            },
-
-            yields: function () {
-                this.callArgAts.push(-1);
-                this.callbackArguments.push(slice.call(arguments, 0));
-                this.callbackContexts.push(undefined);
-                this.callArgProps.push(undefined);
-
-                return this;
-            },
-
-            yieldsOn: function (context) {
-                if (typeof context != "object") {
-                    throw new TypeError("argument context is not an object");
-                }
-
-                this.callArgAts.push(-1);
-                this.callbackArguments.push(slice.call(arguments, 1));
-                this.callbackContexts.push(context);
-                this.callArgProps.push(undefined);
-
-                return this;
-            },
-
-            yieldsTo: function (prop) {
-                this.callArgAts.push(-1);
-                this.callbackArguments.push(slice.call(arguments, 1));
-                this.callbackContexts.push(undefined);
-                this.callArgProps.push(prop);
-
-                return this;
-            },
-
-            yieldsToOn: function (prop, context) {
-                if (typeof context != "object") {
-                    throw new TypeError("argument context is not an object");
-                }
-
-                this.callArgAts.push(-1);
-                this.callbackArguments.push(slice.call(arguments, 2));
-                this.callbackContexts.push(context);
-                this.callArgProps.push(prop);
-
-                return this;
-            }
-        };
-
-        // create asynchronous versions of callsArg* and yields* methods
-        for (var method in proto) {
-            // need to avoid creating anotherasync versions of the newly added async methods
-            if (proto.hasOwnProperty(method) &&
-                method.match(/^(callsArg|yields|thenYields$)/) &&
-                !method.match(/Async/)) {
-                proto[method + 'Async'] = (function (syncFnName) {
-                    return function () {
-                        this.callbackAsync = true;
-                        return this[syncFnName].apply(this, arguments);
-                    };
-                })(method);
-            }
-        }
-
-        return proto;
-
-    }()));
-
-    if (commonJSModule) {
-        module.exports = stub;
-    } else {
-        sinon.stub = stub;
-    }
-}(typeof sinon == "object" && sinon || null));
-
-/**
- * @depend ../sinon.js
- * @depend stub.js
- */
-/*jslint eqeqeq: false, onevar: false, nomen: false*/
-/*global module, require, sinon*/
-/**
- * Mock functions.
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-(function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-    var push = [].push;
-
-    if (!sinon && commonJSModule) {
-        sinon = require("../sinon");
-    }
-
-    if (!sinon) {
-        return;
-    }
-
-    function mock(object) {
-        if (!object) {
-            return sinon.expectation.create("Anonymous mock");
-        }
-
-        return mock.create(object);
-    }
-
-    sinon.mock = mock;
-
-    sinon.extend(mock, (function () {
-        function each(collection, callback) {
-            if (!collection) {
-                return;
-            }
-
-            for (var i = 0, l = collection.length; i < l; i += 1) {
-                callback(collection[i]);
-            }
-        }
-
-        return {
-            create: function create(object) {
-                if (!object) {
-                    throw new TypeError("object is null");
-                }
-
-                var mockObject = sinon.extend({}, mock);
-                mockObject.object = object;
-                delete mockObject.create;
-
-                return mockObject;
-            },
-
-            expects: function expects(method) {
-                if (!method) {
-                    throw new TypeError("method is falsy");
-                }
-
-                if (!this.expectations) {
-                    this.expectations = {};
-                    this.proxies = [];
-                }
-
-                if (!this.expectations[method]) {
-                    this.expectations[method] = [];
-                    var mockObject = this;
-
-                    sinon.wrapMethod(this.object, method, function () {
-                        return mockObject.invokeMethod(method, this, arguments);
-                    });
-
-                    push.call(this.proxies, method);
-                }
-
-                var expectation = sinon.expectation.create(method);
-                push.call(this.expectations[method], expectation);
-
-                return expectation;
-            },
-
-            restore: function restore() {
-                var object = this.object;
-
-                each(this.proxies, function (proxy) {
-                    if (typeof object[proxy].restore == "function") {
-                        object[proxy].restore();
-                    }
-                });
-            },
-
-            verify: function verify() {
-                var expectations = this.expectations || {};
-                var messages = [], met = [];
-
-                each(this.proxies, function (proxy) {
-                    each(expectations[proxy], function (expectation) {
-                        if (!expectation.met()) {
-                            push.call(messages, expectation.toString());
-                        } else {
-                            push.call(met, expectation.toString());
-                        }
-                    });
-                });
-
-                this.restore();
-
-                if (messages.length > 0) {
-                    sinon.expectation.fail(messages.concat(met).join("\n"));
-                } else {
-                    sinon.expectation.pass(messages.concat(met).join("\n"));
-                }
-
-                return true;
-            },
-
-            invokeMethod: function invokeMethod(method, thisValue, args) {
-                var expectations = this.expectations && this.expectations[method];
-                var length = expectations && expectations.length || 0, i;
-
-                for (i = 0; i < length; i += 1) {
-                    if (!expectations[i].met() &&
-                        expectations[i].allowsCall(thisValue, args)) {
-                        return expectations[i].apply(thisValue, args);
-                    }
-                }
-
-                var messages = [], available, exhausted = 0;
-
-                for (i = 0; i < length; i += 1) {
-                    if (expectations[i].allowsCall(thisValue, args)) {
-                        available = available || expectations[i];
-                    } else {
-                        exhausted += 1;
-                    }
-                    push.call(messages, "    " + expectations[i].toString());
-                }
-
-                if (exhausted === 0) {
-                    return available.apply(thisValue, args);
-                }
-
-                messages.unshift("Unexpected call: " + sinon.spyCall.toString.call({
-                    proxy: method,
-                    args: args
-                }));
-
-                sinon.expectation.fail(messages.join("\n"));
-            }
-        };
-    }()));
-
-    var times = sinon.timesInWords;
-
-    sinon.expectation = (function () {
-        var slice = Array.prototype.slice;
-        var _invoke = sinon.spy.invoke;
-
-        function callCountInWords(callCount) {
-            if (callCount == 0) {
-                return "never called";
-            } else {
-                return "called " + times(callCount);
-            }
-        }
-
-        function expectedCallCountInWords(expectation) {
-            var min = expectation.minCalls;
-            var max = expectation.maxCalls;
-
-            if (typeof min == "number" && typeof max == "number") {
-                var str = times(min);
-
-                if (min != max) {
-                    str = "at least " + str + " and at most " + times(max);
-                }
-
-                return str;
-            }
-
-            if (typeof min == "number") {
-                return "at least " + times(min);
-            }
-
-            return "at most " + times(max);
-        }
-
-        function receivedMinCalls(expectation) {
-            var hasMinLimit = typeof expectation.minCalls == "number";
-            return !hasMinLimit || expectation.callCount >= expectation.minCalls;
-        }
-
-        function receivedMaxCalls(expectation) {
-            if (typeof expectation.maxCalls != "number") {
-                return false;
-            }
-
-            return expectation.callCount == expectation.maxCalls;
-        }
-
-        return {
-            minCalls: 1,
-            maxCalls: 1,
-
-            create: function create(methodName) {
-                var expectation = sinon.extend(sinon.stub.create(), sinon.expectation);
-                delete expectation.create;
-                expectation.method = methodName;
-
-                return expectation;
-            },
-
-            invoke: function invoke(func, thisValue, args) {
-                this.verifyCallAllowed(thisValue, args);
-
-                return _invoke.apply(this, arguments);
-            },
-
-            atLeast: function atLeast(num) {
-                if (typeof num != "number") {
-                    throw new TypeError("'" + num + "' is not number");
-                }
-
-                if (!this.limitsSet) {
-                    this.maxCalls = null;
-                    this.limitsSet = true;
-                }
-
-                this.minCalls = num;
-
-                return this;
-            },
-
-            atMost: function atMost(num) {
-                if (typeof num != "number") {
-                    throw new TypeError("'" + num + "' is not number");
-                }
-
-                if (!this.limitsSet) {
-                    this.minCalls = null;
-                    this.limitsSet = true;
-                }
-
-                this.maxCalls = num;
-
-                return this;
-            },
-
-            never: function never() {
-                return this.exactly(0);
-            },
-
-            once: function once() {
-                return this.exactly(1);
-            },
-
-            twice: function twice() {
-                return this.exactly(2);
-            },
-
-            thrice: function thrice() {
-                return this.exactly(3);
-            },
-
-            exactly: function exactly(num) {
-                if (typeof num != "number") {
-                    throw new TypeError("'" + num + "' is not a number");
-                }
-
-                this.atLeast(num);
-                return this.atMost(num);
-            },
-
-            met: function met() {
-                return !this.failed && receivedMinCalls(this);
-            },
-
-            verifyCallAllowed: function verifyCallAllowed(thisValue, args) {
-                if (receivedMaxCalls(this)) {
-                    this.failed = true;
-                    sinon.expectation.fail(this.method + " already called " + times(this.maxCalls));
-                }
-
-                if ("expectedThis" in this && this.expectedThis !== thisValue) {
-                    sinon.expectation.fail(this.method + " called with " + thisValue + " as thisValue, expected " +
-                        this.expectedThis);
-                }
-
-                if (!("expectedArguments" in this)) {
-                    return;
-                }
-
-                if (!args) {
-                    sinon.expectation.fail(this.method + " received no arguments, expected " +
-                        sinon.format(this.expectedArguments));
-                }
-
-                if (args.length < this.expectedArguments.length) {
-                    sinon.expectation.fail(this.method + " received too few arguments (" + sinon.format(args) +
-                        "), expected " + sinon.format(this.expectedArguments));
-                }
-
-                if (this.expectsExactArgCount &&
-                    args.length != this.expectedArguments.length) {
-                    sinon.expectation.fail(this.method + " received too many arguments (" + sinon.format(args) +
-                        "), expected " + sinon.format(this.expectedArguments));
-                }
-
-                for (var i = 0, l = this.expectedArguments.length; i < l; i += 1) {
-                    if (!sinon.deepEqual(this.expectedArguments[i], args[i])) {
-                        sinon.expectation.fail(this.method + " received wrong arguments " + sinon.format(args) +
-                            ", expected " + sinon.format(this.expectedArguments));
-                    }
-                }
-            },
-
-            allowsCall: function allowsCall(thisValue, args) {
-                if (this.met() && receivedMaxCalls(this)) {
-                    return false;
-                }
-
-                if ("expectedThis" in this && this.expectedThis !== thisValue) {
-                    return false;
-                }
-
-                if (!("expectedArguments" in this)) {
-                    return true;
-                }
-
-                args = args || [];
-
-                if (args.length < this.expectedArguments.length) {
-                    return false;
-                }
-
-                if (this.expectsExactArgCount &&
-                    args.length != this.expectedArguments.length) {
-                    return false;
-                }
-
-                for (var i = 0, l = this.expectedArguments.length; i < l; i += 1) {
-                    if (!sinon.deepEqual(this.expectedArguments[i], args[i])) {
-                        return false;
-                    }
-                }
-
-                return true;
-            },
-
-            withArgs: function withArgs() {
-                this.expectedArguments = slice.call(arguments);
-                return this;
-            },
-
-            withExactArgs: function withExactArgs() {
-                this.withArgs.apply(this, arguments);
-                this.expectsExactArgCount = true;
-                return this;
-            },
-
-            on: function on(thisValue) {
-                this.expectedThis = thisValue;
-                return this;
-            },
-
-            toString: function () {
-                var args = (this.expectedArguments || []).slice();
-
-                if (!this.expectsExactArgCount) {
-                    push.call(args, "[...]");
-                }
-
-                var callStr = sinon.spyCall.toString.call({
-                    proxy: this.method || "anonymous mock expectation",
-                    args: args
-                });
-
-                var message = callStr.replace(", [...", "[, ...") + " " +
-                    expectedCallCountInWords(this);
-
-                if (this.met()) {
-                    return "Expectation met: " + message;
-                }
-
-                return "Expected " + message + " (" +
-                    callCountInWords(this.callCount) + ")";
-            },
-
-            verify: function verify() {
-                if (!this.met()) {
-                    sinon.expectation.fail(this.toString());
-                } else {
-                    sinon.expectation.pass(this.toString());
-                }
-
-                return true;
-            },
-
-            pass: function(message) {
-              sinon.assert.pass(message);
-            },
-            fail: function (message) {
-                var exception = new Error(message);
-                exception.name = "ExpectationError";
-
-                throw exception;
-            }
-        };
-    }());
-
-    if (commonJSModule) {
-        module.exports = mock;
-    } else {
-        sinon.mock = mock;
-    }
-}(typeof sinon == "object" && sinon || null));
-
-/**
- * @depend ../sinon.js
- * @depend stub.js
- * @depend mock.js
- */
-/*jslint eqeqeq: false, onevar: false, forin: true*/
-/*global module, require, sinon*/
-/**
- * Collections of stubs, spies and mocks.
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-(function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-    var push = [].push;
-    var hasOwnProperty = Object.prototype.hasOwnProperty;
-
-    if (!sinon && commonJSModule) {
-        sinon = require("../sinon");
-    }
-
-    if (!sinon) {
-        return;
-    }
-
-    function getFakes(fakeCollection) {
-        if (!fakeCollection.fakes) {
-            fakeCollection.fakes = [];
-        }
-
-        return fakeCollection.fakes;
-    }
-
-    function each(fakeCollection, method) {
-        var fakes = getFakes(fakeCollection);
-
-        for (var i = 0, l = fakes.length; i < l; i += 1) {
-            if (typeof fakes[i][method] == "function") {
-                fakes[i][method]();
-            }
-        }
-    }
-
-    function compact(fakeCollection) {
-        var fakes = getFakes(fakeCollection);
-        var i = 0;
-        while (i < fakes.length) {
-          fakes.splice(i, 1);
-        }
-    }
-
-    var collection = {
-        verify: function resolve() {
-            each(this, "verify");
-        },
-
-        restore: function restore() {
-            each(this, "restore");
-            compact(this);
-        },
-
-        verifyAndRestore: function verifyAndRestore() {
-            var exception;
-
-            try {
-                this.verify();
-            } catch (e) {
-                exception = e;
-            }
-
-            this.restore();
-
-            if (exception) {
-                throw exception;
-            }
-        },
-
-        add: function add(fake) {
-            push.call(getFakes(this), fake);
-            return fake;
-        },
-
-        spy: function spy() {
-            return this.add(sinon.spy.apply(sinon, arguments));
-        },
-
-        stub: function stub(object, property, value) {
-            if (property) {
-                var original = object[property];
-
-                if (typeof original != "function") {
-                    if (!hasOwnProperty.call(object, property)) {
-                        throw new TypeError("Cannot stub non-existent own property " + property);
-                    }
-
-                    object[property] = value;
-
-                    return this.add({
-                        restore: function () {
-                            object[property] = original;
-                        }
-                    });
-                }
-            }
-            if (!property && !!object && typeof object == "object") {
-                var stubbedObj = sinon.stub.apply(sinon, arguments);
-
-                for (var prop in stubbedObj) {
-                    if (typeof stubbedObj[prop] === "function") {
-                        this.add(stubbedObj[prop]);
-                    }
-                }
-
-                return stubbedObj;
-            }
-
-            return this.add(sinon.stub.apply(sinon, arguments));
-        },
-
-        mock: function mock() {
-            return this.add(sinon.mock.apply(sinon, arguments));
-        },
-
-        inject: function inject(obj) {
-            var col = this;
-
-            obj.spy = function () {
-                return col.spy.apply(col, arguments);
-            };
-
-            obj.stub = function () {
-                return col.stub.apply(col, arguments);
-            };
-
-            obj.mock = function () {
-                return col.mock.apply(col, arguments);
-            };
-
-            return obj;
-        }
-    };
-
-    if (commonJSModule) {
-        module.exports = collection;
-    } else {
-        sinon.collection = collection;
-    }
-}(typeof sinon == "object" && sinon || null));
-
-/*jslint eqeqeq: false, plusplus: false, evil: true, onevar: false, browser: true, forin: false*/
-/*global module, require, window*/
-/**
- * Fake timer API
- * setTimeout
- * setInterval
- * clearTimeout
- * clearInterval
- * tick
- * reset
- * Date
- *
- * Inspired by jsUnitMockTimeOut from JsUnit
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-if (typeof sinon == "undefined") {
-    var sinon = {};
-}
-
-(function (global) {
-    var id = 1;
-
-    function addTimer(args, recurring) {
-        if (args.length === 0) {
-            throw new Error("Function requires at least 1 parameter");
-        }
-
-        var toId = id++;
-        var delay = args[1] || 0;
-
-        if (!this.timeouts) {
-            this.timeouts = {};
-        }
-
-        this.timeouts[toId] = {
-            id: toId,
-            func: args[0],
-            callAt: this.now + delay,
-            invokeArgs: Array.prototype.slice.call(args, 2)
-        };
-
-        if (recurring === true) {
-            this.timeouts[toId].interval = delay;
-        }
-
-        return toId;
-    }
-
-    function parseTime(str) {
-        if (!str) {
-            return 0;
-        }
-
-        var strings = str.split(":");
-        var l = strings.length, i = l;
-        var ms = 0, parsed;
-
-        if (l > 3 || !/^(\d\d:){0,2}\d\d?$/.test(str)) {
-            throw new Error("tick only understands numbers and 'h:m:s'");
-        }
-
-        while (i--) {
-            parsed = parseInt(strings[i], 10);
-
-            if (parsed >= 60) {
-                throw new Error("Invalid time " + str);
-            }
-
-            ms += parsed * Math.pow(60, (l - i - 1));
-        }
-
-        return ms * 1000;
-    }
-
-    function createObject(object) {
-        var newObject;
-
-        if (Object.create) {
-            newObject = Object.create(object);
-        } else {
-            var F = function () {};
-            F.prototype = object;
-            newObject = new F();
-        }
-
-        newObject.Date.clock = newObject;
-        return newObject;
-    }
-
-    sinon.clock = {
-        now: 0,
-
-        create: function create(now) {
-            var clock = createObject(this);
-
-            if (typeof now == "number") {
-                clock.now = now;
-            }
-
-            if (!!now && typeof now == "object") {
-                throw new TypeError("now should be milliseconds since UNIX epoch");
-            }
-
-            return clock;
-        },
-
-        setTimeout: function setTimeout(callback, timeout) {
-            return addTimer.call(this, arguments, false);
-        },
-
-        clearTimeout: function clearTimeout(timerId) {
-            if (!this.timeouts) {
-                this.timeouts = [];
-            }
-
-            if (timerId in this.timeouts) {
-                delete this.timeouts[timerId];
-            }
-        },
-
-        setInterval: function setInterval(callback, timeout) {
-            return addTimer.call(this, arguments, true);
-        },
-
-        clearInterval: function clearInterval(timerId) {
-            this.clearTimeout(timerId);
-        },
-
-        tick: function tick(ms) {
-            ms = typeof ms == "number" ? ms : parseTime(ms);
-            var tickFrom = this.now, tickTo = this.now + ms, previous = this.now;
-            var timer = this.firstTimerInRange(tickFrom, tickTo);
-
-            var firstException;
-            while (timer && tickFrom <= tickTo) {
-                if (this.timeouts[timer.id]) {
-                    tickFrom = this.now = timer.callAt;
-                    try {
-                      this.callTimer(timer);
-                    } catch (e) {
-                      firstException = firstException || e;
-                    }
-                }
-
-                timer = this.firstTimerInRange(previous, tickTo);
-                previous = tickFrom;
-            }
-
-            this.now = tickTo;
-
-            if (firstException) {
-              throw firstException;
-            }
-
-            return this.now;
-        },
-
-        firstTimerInRange: function (from, to) {
-            var timer, smallest, originalTimer;
-
-            for (var id in this.timeouts) {
-                if (this.timeouts.hasOwnProperty(id)) {
-                    if (this.timeouts[id].callAt < from || this.timeouts[id].callAt > to) {
-                        continue;
-                    }
-
-                    if (!smallest || this.timeouts[id].callAt < smallest) {
-                        originalTimer = this.timeouts[id];
-                        smallest = this.timeouts[id].callAt;
-
-                        timer = {
-                            func: this.timeouts[id].func,
-                            callAt: this.timeouts[id].callAt,
-                            interval: this.timeouts[id].interval,
-                            id: this.timeouts[id].id,
-                            invokeArgs: this.timeouts[id].invokeArgs
-                        };
-                    }
-                }
-            }
-
-            return timer || null;
-        },
-
-        callTimer: function (timer) {
-            if (typeof timer.interval == "number") {
-                this.timeouts[timer.id].callAt += timer.interval;
-            } else {
-                delete this.timeouts[timer.id];
-            }
-
-            try {
-                if (typeof timer.func == "function") {
-                    timer.func.apply(null, timer.invokeArgs);
-                } else {
-                    eval(timer.func);
-                }
-            } catch (e) {
-              var exception = e;
-            }
-
-            if (!this.timeouts[timer.id]) {
-                if (exception) {
-                  throw exception;
-                }
-                return;
-            }
-
-            if (exception) {
-              throw exception;
-            }
-        },
-
-        reset: function reset() {
-            this.timeouts = {};
-        },
-
-        Date: (function () {
-            var NativeDate = Date;
-
-            function ClockDate(year, month, date, hour, minute, second, ms) {
-                // Defensive and verbose to avoid potential harm in passing
-                // explicit undefined when user does not pass argument
-                switch (arguments.length) {
-                case 0:
-                    return new NativeDate(ClockDate.clock.now);
-                case 1:
-                    return new NativeDate(year);
-                case 2:
-                    return new NativeDate(year, month);
-                case 3:
-                    return new NativeDate(year, month, date);
-                case 4:
-                    return new NativeDate(year, month, date, hour);
-                case 5:
-                    return new NativeDate(year, month, date, hour, minute);
-                case 6:
-                    return new NativeDate(year, month, date, hour, minute, second);
-                default:
-                    return new NativeDate(year, month, date, hour, minute, second, ms);
-                }
-            }
-
-            return mirrorDateProperties(ClockDate, NativeDate);
-        }())
-    };
-
-    function mirrorDateProperties(target, source) {
-        if (source.now) {
-            target.now = function now() {
-                return target.clock.now;
-            };
-        } else {
-            delete target.now;
-        }
-
-        if (source.toSource) {
-            target.toSource = function toSource() {
-                return source.toSource();
-            };
-        } else {
-            delete target.toSource;
-        }
-
-        target.toString = function toString() {
-            return source.toString();
-        };
-
-        target.prototype = source.prototype;
-        target.parse = source.parse;
-        target.UTC = source.UTC;
-        target.prototype.toUTCString = source.prototype.toUTCString;
-        return target;
-    }
-
-    var methods = ["Date", "setTimeout", "setInterval",
-                   "clearTimeout", "clearInterval"];
-
-    function restore() {
-        var method;
-
-        for (var i = 0, l = this.methods.length; i < l; i++) {
-            method = this.methods[i];
-            if (global[method].hadOwnProperty) {
-                global[method] = this["_" + method];
-            } else {
-                delete global[method];
-            }
-        }
-
-        // Prevent multiple executions which will completely remove these props
-        this.methods = [];
-    }
-
-    function stubGlobal(method, clock) {
-        clock[method].hadOwnProperty = Object.prototype.hasOwnProperty.call(global, method);
-        clock["_" + method] = global[method];
-
-        if (method == "Date") {
-            var date = mirrorDateProperties(clock[method], global[method]);
-            global[method] = date;
-        } else {
-            global[method] = function () {
-                return clock[method].apply(clock, arguments);
-            };
-
-            for (var prop in clock[method]) {
-                if (clock[method].hasOwnProperty(prop)) {
-                    global[method][prop] = clock[method][prop];
-                }
-            }
-        }
-
-        global[method].clock = clock;
-    }
-
-    sinon.useFakeTimers = function useFakeTimers(now) {
-        var clock = sinon.clock.create(now);
-        clock.restore = restore;
-        clock.methods = Array.prototype.slice.call(arguments,
-                                                   typeof now == "number" ? 1 : 0);
-
-        if (clock.methods.length === 0) {
-            clock.methods = methods;
-        }
-
-        for (var i = 0, l = clock.methods.length; i < l; i++) {
-            stubGlobal(clock.methods[i], clock);
-        }
-
-        return clock;
-    };
-}(typeof global != "undefined" && typeof global !== "function" ? global : this));
-
-sinon.timers = {
-    setTimeout: setTimeout,
-    clearTimeout: clearTimeout,
-    setInterval: setInterval,
-    clearInterval: clearInterval,
-    Date: Date
+  return model.mix(function(modelable) {
+    return $.extend(true, modelable, model_extensions);
+  });
 };
 
-if (typeof module == "object" && typeof require == "function") {
-    module.exports = sinon;
-}
-
-/*jslint eqeqeq: false, onevar: false*/
-/*global sinon, module, require, ActiveXObject, XMLHttpRequest, DOMParser*/
-/**
- * Minimal Event interface implementation
- *
- * Original implementation by Sven Fuchs: https://gist.github.com/995028
- * Modifications and tests by Christian Johansen.
- *
- * @author Sven Fuchs (svenfuchs@artweb-design.de)
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2011 Sven Fuchs, Christian Johansen
- */
-
-if (typeof sinon == "undefined") {
-    this.sinon = {};
-}
-
-(function () {
-    var push = [].push;
-
-    sinon.Event = function Event(type, bubbles, cancelable, target) {
-        this.initEvent(type, bubbles, cancelable, target);
-    };
-
-    sinon.Event.prototype = {
-        initEvent: function(type, bubbles, cancelable, target) {
-            this.type = type;
-            this.bubbles = bubbles;
-            this.cancelable = cancelable;
-            this.target = target;
-        },
-
-        stopPropagation: function () {},
-
-        preventDefault: function () {
-            this.defaultPrevented = true;
-        }
-    };
-
-    sinon.EventTarget = {
-        addEventListener: function addEventListener(event, listener, useCapture) {
-            this.eventListeners = this.eventListeners || {};
-            this.eventListeners[event] = this.eventListeners[event] || [];
-            push.call(this.eventListeners[event], listener);
-        },
-
-        removeEventListener: function removeEventListener(event, listener, useCapture) {
-            var listeners = this.eventListeners && this.eventListeners[event] || [];
-
-            for (var i = 0, l = listeners.length; i < l; ++i) {
-                if (listeners[i] == listener) {
-                    return listeners.splice(i, 1);
-                }
-            }
-        },
-
-        dispatchEvent: function dispatchEvent(event) {
-            var type = event.type;
-            var listeners = this.eventListeners && this.eventListeners[type] || [];
-
-            for (var i = 0; i < listeners.length; i++) {
-                if (typeof listeners[i] == "function") {
-                    listeners[i].call(this, event);
-                } else {
-                    listeners[i].handleEvent(event);
-                }
-            }
-
-            return !!event.defaultPrevented;
-        }
-    };
-}());
-
-/**
- * @depend ../../sinon.js
- * @depend event.js
- */
-/*jslint eqeqeq: false, onevar: false*/
-/*global sinon, module, require, ActiveXObject, XMLHttpRequest, DOMParser*/
-/**
- * Fake XMLHttpRequest object
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-if (typeof sinon == "undefined") {
-    this.sinon = {};
-}
-sinon.xhr = { XMLHttpRequest: this.XMLHttpRequest };
-
-// wrapper for global
-(function(global) {
-    var xhr = sinon.xhr;
-    xhr.GlobalXMLHttpRequest = global.XMLHttpRequest;
-    xhr.GlobalActiveXObject = global.ActiveXObject;
-    xhr.supportsActiveX = typeof xhr.GlobalActiveXObject != "undefined";
-    xhr.supportsXHR = typeof xhr.GlobalXMLHttpRequest != "undefined";
-    xhr.workingXHR = xhr.supportsXHR ? xhr.GlobalXMLHttpRequest : xhr.supportsActiveX
-                                     ? function() { return new xhr.GlobalActiveXObject("MSXML2.XMLHTTP.3.0") } : false;
-
-    /*jsl:ignore*/
-    var unsafeHeaders = {
-        "Accept-Charset": true,
-        "Accept-Encoding": true,
-        "Connection": true,
-        "Content-Length": true,
-        "Cookie": true,
-        "Cookie2": true,
-        "Content-Transfer-Encoding": true,
-        "Date": true,
-        "Expect": true,
-        "Host": true,
-        "Keep-Alive": true,
-        "Referer": true,
-        "TE": true,
-        "Trailer": true,
-        "Transfer-Encoding": true,
-        "Upgrade": true,
-        "User-Agent": true,
-        "Via": true
-    };
-    /*jsl:end*/
-
-    function FakeXMLHttpRequest() {
-        this.readyState = FakeXMLHttpRequest.UNSENT;
-        this.requestHeaders = {};
-        this.requestBody = null;
-        this.status = 0;
-        this.statusText = "";
-
-        var xhr = this;
-        var events = ["loadstart", "load", "abort", "loadend"];
-
-        function addEventListener(eventName) {
-            xhr.addEventListener(eventName, function (event) {
-                var listener = xhr["on" + eventName];
-
-                if (listener && typeof listener == "function") {
-                    listener(event);
-                }
-            });
-        }
-
-        for (var i = events.length - 1; i >= 0; i--) {
-            addEventListener(events[i]);
-        }
-
-        if (typeof FakeXMLHttpRequest.onCreate == "function") {
-            FakeXMLHttpRequest.onCreate(this);
-        }
-    }
-
-    function verifyState(xhr) {
-        if (xhr.readyState !== FakeXMLHttpRequest.OPENED) {
-            throw new Error("INVALID_STATE_ERR");
-        }
-
-        if (xhr.sendFlag) {
-            throw new Error("INVALID_STATE_ERR");
-        }
-    }
-
-    // filtering to enable a white-list version of Sinon FakeXhr,
-    // where whitelisted requests are passed through to real XHR
-    function each(collection, callback) {
-        if (!collection) return;
-        for (var i = 0, l = collection.length; i < l; i += 1) {
-            callback(collection[i]);
-        }
-    }
-    function some(collection, callback) {
-        for (var index = 0; index < collection.length; index++) {
-            if(callback(collection[index]) === true) return true;
-        };
-        return false;
-    }
-    // largest arity in XHR is 5 - XHR#open
-    var apply = function(obj,method,args) {
-        switch(args.length) {
-        case 0: return obj[method]();
-        case 1: return obj[method](args[0]);
-        case 2: return obj[method](args[0],args[1]);
-        case 3: return obj[method](args[0],args[1],args[2]);
-        case 4: return obj[method](args[0],args[1],args[2],args[3]);
-        case 5: return obj[method](args[0],args[1],args[2],args[3],args[4]);
-        };
-    };
-
-    FakeXMLHttpRequest.filters = [];
-    FakeXMLHttpRequest.addFilter = function(fn) {
-        this.filters.push(fn)
-    };
-    var IE6Re = /MSIE 6/;
-    FakeXMLHttpRequest.defake = function(fakeXhr,xhrArgs) {
-        var xhr = new sinon.xhr.workingXHR();
-        each(["open","setRequestHeader","send","abort","getResponseHeader",
-              "getAllResponseHeaders","addEventListener","overrideMimeType","removeEventListener"],
-             function(method) {
-                 fakeXhr[method] = function() {
-                   return apply(xhr,method,arguments);
-                 };
-             });
-
-        var copyAttrs = function(args) {
-            each(args, function(attr) {
-              try {
-                fakeXhr[attr] = xhr[attr]
-              } catch(e) {
-                if(!IE6Re.test(navigator.userAgent)) throw e;
-              }
-            });
-        };
-
-        var stateChange = function() {
-            fakeXhr.readyState = xhr.readyState;
-            if(xhr.readyState >= FakeXMLHttpRequest.HEADERS_RECEIVED) {
-                copyAttrs(["status","statusText"]);
-            }
-            if(xhr.readyState >= FakeXMLHttpRequest.LOADING) {
-                copyAttrs(["responseText"]);
-            }
-            if(xhr.readyState === FakeXMLHttpRequest.DONE) {
-                copyAttrs(["responseXML"]);
-            }
-            if(fakeXhr.onreadystatechange) fakeXhr.onreadystatechange.call(fakeXhr);
-        };
-        if(xhr.addEventListener) {
-          for(var event in fakeXhr.eventListeners) {
-              if(fakeXhr.eventListeners.hasOwnProperty(event)) {
-                  each(fakeXhr.eventListeners[event],function(handler) {
-                      xhr.addEventListener(event, handler);
-                  });
-              }
-          }
-          xhr.addEventListener("readystatechange",stateChange);
-        } else {
-          xhr.onreadystatechange = stateChange;
-        }
-        apply(xhr,"open",xhrArgs);
-    };
-    FakeXMLHttpRequest.useFilters = false;
-
-    function verifyRequestSent(xhr) {
-        if (xhr.readyState == FakeXMLHttpRequest.DONE) {
-            throw new Error("Request done");
-        }
-    }
-
-    function verifyHeadersReceived(xhr) {
-        if (xhr.async && xhr.readyState != FakeXMLHttpRequest.HEADERS_RECEIVED) {
-            throw new Error("No headers received");
-        }
-    }
-
-    function verifyResponseBodyType(body) {
-        if (typeof body != "string") {
-            var error = new Error("Attempted to respond to fake XMLHttpRequest with " +
-                                 body + ", which is not a string.");
-            error.name = "InvalidBodyException";
-            throw error;
-        }
-    }
-
-    sinon.extend(FakeXMLHttpRequest.prototype, sinon.EventTarget, {
-        async: true,
-
-        open: function open(method, url, async, username, password) {
-            this.method = method;
-            this.url = url;
-            this.async = typeof async == "boolean" ? async : true;
-            this.username = username;
-            this.password = password;
-            this.responseText = null;
-            this.responseXML = null;
-            this.requestHeaders = {};
-            this.sendFlag = false;
-            if(sinon.FakeXMLHttpRequest.useFilters === true) {
-                var xhrArgs = arguments;
-                var defake = some(FakeXMLHttpRequest.filters,function(filter) {
-                    return filter.apply(this,xhrArgs)
-                });
-                if (defake) {
-                  return sinon.FakeXMLHttpRequest.defake(this,arguments);
-                }
-            }
-            this.readyStateChange(FakeXMLHttpRequest.OPENED);
-        },
-
-        readyStateChange: function readyStateChange(state) {
-            this.readyState = state;
-
-            if (typeof this.onreadystatechange == "function") {
-                try {
-                    this.onreadystatechange();
-                } catch (e) {
-                    sinon.logError("Fake XHR onreadystatechange handler", e);
-                }
-            }
-
-            this.dispatchEvent(new sinon.Event("readystatechange"));
-
-            switch (this.readyState) {
-                case FakeXMLHttpRequest.DONE:
-                    this.dispatchEvent(new sinon.Event("load", false, false, this));
-                    this.dispatchEvent(new sinon.Event("loadend", false, false, this));
-                    break;
-            }
-        },
-
-        setRequestHeader: function setRequestHeader(header, value) {
-            verifyState(this);
-
-            if (unsafeHeaders[header] || /^(Sec-|Proxy-)/.test(header)) {
-                throw new Error("Refused to set unsafe header \"" + header + "\"");
-            }
-
-            if (this.requestHeaders[header]) {
-                this.requestHeaders[header] += "," + value;
-            } else {
-                this.requestHeaders[header] = value;
-            }
-        },
-
-        // Helps testing
-        setResponseHeaders: function setResponseHeaders(headers) {
-            this.responseHeaders = {};
-
-            for (var header in headers) {
-                if (headers.hasOwnProperty(header)) {
-                    this.responseHeaders[header] = headers[header];
-                }
-            }
-
-            if (this.async) {
-                this.readyStateChange(FakeXMLHttpRequest.HEADERS_RECEIVED);
-            } else {
-                this.readyState = FakeXMLHttpRequest.HEADERS_RECEIVED;
-            }
-        },
-
-        // Currently treats ALL data as a DOMString (i.e. no Document)
-        send: function send(data) {
-            verifyState(this);
-
-            if (!/^(get|head)$/i.test(this.method)) {
-                if (this.requestHeaders["Content-Type"]) {
-                    var value = this.requestHeaders["Content-Type"].split(";");
-                    this.requestHeaders["Content-Type"] = value[0] + ";charset=utf-8";
-                } else {
-                    this.requestHeaders["Content-Type"] = "text/plain;charset=utf-8";
-                }
-
-                this.requestBody = data;
-            }
-
-            this.errorFlag = false;
-            this.sendFlag = this.async;
-            this.readyStateChange(FakeXMLHttpRequest.OPENED);
-
-            if (typeof this.onSend == "function") {
-                this.onSend(this);
-            }
-
-            this.dispatchEvent(new sinon.Event("loadstart", false, false, this));
-        },
-
-        abort: function abort() {
-            this.aborted = true;
-            this.responseText = null;
-            this.errorFlag = true;
-            this.requestHeaders = {};
-
-            if (this.readyState > sinon.FakeXMLHttpRequest.UNSENT && this.sendFlag) {
-                this.readyStateChange(sinon.FakeXMLHttpRequest.DONE);
-                this.sendFlag = false;
-            }
-
-            this.readyState = sinon.FakeXMLHttpRequest.UNSENT;
-
-            this.dispatchEvent(new sinon.Event("abort", false, false, this));
-            if (typeof this.onerror === "function") {
-                this.onerror();
-            }
-        },
-
-        getResponseHeader: function getResponseHeader(header) {
-            if (this.readyState < FakeXMLHttpRequest.HEADERS_RECEIVED) {
-                return null;
-            }
-
-            if (/^Set-Cookie2?$/i.test(header)) {
-                return null;
-            }
-
-            header = header.toLowerCase();
-
-            for (var h in this.responseHeaders) {
-                if (h.toLowerCase() == header) {
-                    return this.responseHeaders[h];
-                }
-            }
-
-            return null;
-        },
-
-        getAllResponseHeaders: function getAllResponseHeaders() {
-            if (this.readyState < FakeXMLHttpRequest.HEADERS_RECEIVED) {
-                return "";
-            }
-
-            var headers = "";
-
-            for (var header in this.responseHeaders) {
-                if (this.responseHeaders.hasOwnProperty(header) &&
-                    !/^Set-Cookie2?$/i.test(header)) {
-                    headers += header + ": " + this.responseHeaders[header] + "\r\n";
-                }
-            }
-
-            return headers;
-        },
-
-        setResponseBody: function setResponseBody(body) {
-            verifyRequestSent(this);
-            verifyHeadersReceived(this);
-            verifyResponseBodyType(body);
-
-            var chunkSize = this.chunkSize || 10;
-            var index = 0;
-            this.responseText = "";
-
-            do {
-                if (this.async) {
-                    this.readyStateChange(FakeXMLHttpRequest.LOADING);
-                }
-
-                this.responseText += body.substring(index, index + chunkSize);
-                index += chunkSize;
-            } while (index < body.length);
-
-            var type = this.getResponseHeader("Content-Type");
-
-            if (this.responseText &&
-                (!type || /(text\/xml)|(application\/xml)|(\+xml)/.test(type))) {
-                try {
-                    this.responseXML = FakeXMLHttpRequest.parseXML(this.responseText);
-                } catch (e) {
-                    // Unable to parse XML - no biggie
-                }
-            }
-
-            if (this.async) {
-                this.readyStateChange(FakeXMLHttpRequest.DONE);
-            } else {
-                this.readyState = FakeXMLHttpRequest.DONE;
-            }
-        },
-
-        respond: function respond(status, headers, body) {
-            this.setResponseHeaders(headers || {});
-            this.status = typeof status == "number" ? status : 200;
-            this.statusText = FakeXMLHttpRequest.statusCodes[this.status];
-            this.setResponseBody(body || "");
-            if (typeof this.onload === "function"){
-                this.onload();
-            }
-
-        }
-    });
-
-    sinon.extend(FakeXMLHttpRequest, {
-        UNSENT: 0,
-        OPENED: 1,
-        HEADERS_RECEIVED: 2,
-        LOADING: 3,
-        DONE: 4
-    });
-
-    // Borrowed from JSpec
-    FakeXMLHttpRequest.parseXML = function parseXML(text) {
-        var xmlDoc;
-
-        if (typeof DOMParser != "undefined") {
-            var parser = new DOMParser();
-            xmlDoc = parser.parseFromString(text, "text/xml");
-        } else {
-            xmlDoc = new ActiveXObject("Microsoft.XMLDOM");
-            xmlDoc.async = "false";
-            xmlDoc.loadXML(text);
-        }
-
-        return xmlDoc;
-    };
-
-    FakeXMLHttpRequest.statusCodes = {
-        100: "Continue",
-        101: "Switching Protocols",
-        200: "OK",
-        201: "Created",
-        202: "Accepted",
-        203: "Non-Authoritative Information",
-        204: "No Content",
-        205: "Reset Content",
-        206: "Partial Content",
-        300: "Multiple Choice",
-        301: "Moved Permanently",
-        302: "Found",
-        303: "See Other",
-        304: "Not Modified",
-        305: "Use Proxy",
-        307: "Temporary Redirect",
-        400: "Bad Request",
-        401: "Unauthorized",
-        402: "Payment Required",
-        403: "Forbidden",
-        404: "Not Found",
-        405: "Method Not Allowed",
-        406: "Not Acceptable",
-        407: "Proxy Authentication Required",
-        408: "Request Timeout",
-        409: "Conflict",
-        410: "Gone",
-        411: "Length Required",
-        412: "Precondition Failed",
-        413: "Request Entity Too Large",
-        414: "Request-URI Too Long",
-        415: "Unsupported Media Type",
-        416: "Requested Range Not Satisfiable",
-        417: "Expectation Failed",
-        422: "Unprocessable Entity",
-        500: "Internal Server Error",
-        501: "Not Implemented",
-        502: "Bad Gateway",
-        503: "Service Unavailable",
-        504: "Gateway Timeout",
-        505: "HTTP Version Not Supported"
-    };
-
-    sinon.useFakeXMLHttpRequest = function () {
-        sinon.FakeXMLHttpRequest.restore = function restore(keepOnCreate) {
-            if (xhr.supportsXHR) {
-                global.XMLHttpRequest = xhr.GlobalXMLHttpRequest;
-            }
-
-            if (xhr.supportsActiveX) {
-                global.ActiveXObject = xhr.GlobalActiveXObject;
-            }
-
-            delete sinon.FakeXMLHttpRequest.restore;
-
-            if (keepOnCreate !== true) {
-                delete sinon.FakeXMLHttpRequest.onCreate;
-            }
-        };
-        if (xhr.supportsXHR) {
-            global.XMLHttpRequest = sinon.FakeXMLHttpRequest;
-        }
-
-        if (xhr.supportsActiveX) {
-            global.ActiveXObject = function ActiveXObject(objId) {
-                if (objId == "Microsoft.XMLHTTP" || /^Msxml2\.XMLHTTP/i.test(objId)) {
-
-                    return new sinon.FakeXMLHttpRequest();
-                }
-
-                return new xhr.GlobalActiveXObject(objId);
-            };
-        }
-
-        return sinon.FakeXMLHttpRequest;
-    };
-
-    sinon.FakeXMLHttpRequest = FakeXMLHttpRequest;
-})(this);
-
-if (typeof module == "object" && typeof require == "function") {
-    module.exports = sinon;
-}
-
-/**
- * @depend fake_xml_http_request.js
- */
-/*jslint eqeqeq: false, onevar: false, regexp: false, plusplus: false*/
-/*global module, require, window*/
-/**
- * The Sinon "server" mimics a web server that receives requests from
- * sinon.FakeXMLHttpRequest and provides an API to respond to those requests,
- * both synchronously and asynchronously. To respond synchronuously, canned
- * answers have to be provided upfront.
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-if (typeof sinon == "undefined") {
-    var sinon = {};
-}
-
-sinon.fakeServer = (function () {
-    var push = [].push;
-    function F() {}
-
-    function create(proto) {
-        F.prototype = proto;
-        return new F();
-    }
-
-    function responseArray(handler) {
-        var response = handler;
-
-        if (Object.prototype.toString.call(handler) != "[object Array]") {
-            response = [200, {}, handler];
-        }
-
-        if (typeof response[2] != "string") {
-            throw new TypeError("Fake server response body should be string, but was " +
-                                typeof response[2]);
-        }
-
-        return response;
-    }
-
-    var wloc = typeof window !== "undefined" ? window.location : {};
-    var rCurrLoc = new RegExp("^" + wloc.protocol + "//" + wloc.host);
-
-    function matchOne(response, reqMethod, reqUrl) {
-        var rmeth = response.method;
-        var matchMethod = !rmeth || rmeth.toLowerCase() == reqMethod.toLowerCase();
-        var url = response.url;
-        var matchUrl = !url || url == reqUrl || (typeof url.test == "function" && url.test(reqUrl));
-
-        return matchMethod && matchUrl;
-    }
-
-    function match(response, request) {
-        var requestMethod = this.getHTTPMethod(request);
-        var requestUrl = request.url;
-
-        if (!/^https?:\/\//.test(requestUrl) || rCurrLoc.test(requestUrl)) {
-            requestUrl = requestUrl.replace(rCurrLoc, "");
-        }
-
-        if (matchOne(response, this.getHTTPMethod(request), requestUrl)) {
-            if (typeof response.response == "function") {
-                var ru = response.url;
-                var args = [request].concat(!ru ? [] : requestUrl.match(ru).slice(1));
-                return response.response.apply(response, args);
-            }
-
-            return true;
-        }
-
-        return false;
-    }
-
-    function log(response, request) {
-        var str;
-
-        str =  "Request:\n"  + sinon.format(request)  + "\n\n";
-        str += "Response:\n" + sinon.format(response) + "\n\n";
-
-        sinon.log(str);
-    }
-
-    return {
-        create: function () {
-            var server = create(this);
-            this.xhr = sinon.useFakeXMLHttpRequest();
-            server.requests = [];
-
-            this.xhr.onCreate = function (xhrObj) {
-                server.addRequest(xhrObj);
-            };
-
-            return server;
-        },
-
-        addRequest: function addRequest(xhrObj) {
-            var server = this;
-            push.call(this.requests, xhrObj);
-
-            xhrObj.onSend = function () {
-                server.handleRequest(this);
-            };
-
-            if (this.autoRespond && !this.responding) {
-                setTimeout(function () {
-                    server.responding = false;
-                    server.respond();
-                }, this.autoRespondAfter || 10);
-
-                this.responding = true;
-            }
-        },
-
-        getHTTPMethod: function getHTTPMethod(request) {
-            if (this.fakeHTTPMethods && /post/i.test(request.method)) {
-                var matches = (request.requestBody || "").match(/_method=([^\b;]+)/);
-                return !!matches ? matches[1] : request.method;
-            }
-
-            return request.method;
-        },
-
-        handleRequest: function handleRequest(xhr) {
-            if (xhr.async) {
-                if (!this.queue) {
-                    this.queue = [];
-                }
-
-                push.call(this.queue, xhr);
-            } else {
-                this.processRequest(xhr);
-            }
-        },
-
-        respondWith: function respondWith(method, url, body) {
-            if (arguments.length == 1 && typeof method != "function") {
-                this.response = responseArray(method);
-                return;
-            }
-
-            if (!this.responses) { this.responses = []; }
-
-            if (arguments.length == 1) {
-                body = method;
-                url = method = null;
-            }
-
-            if (arguments.length == 2) {
-                body = url;
-                url = method;
-                method = null;
-            }
-
-            push.call(this.responses, {
-                method: method,
-                url: url,
-                response: typeof body == "function" ? body : responseArray(body)
-            });
-        },
-
-        respond: function respond() {
-            if (arguments.length > 0) this.respondWith.apply(this, arguments);
-            var queue = this.queue || [];
-            var request;
-
-            while(request = queue.shift()) {
-                this.processRequest(request);
-            }
-        },
-
-        processRequest: function processRequest(request) {
-            try {
-                if (request.aborted) {
-                    return;
-                }
-
-                var response = this.response || [404, {}, ""];
-
-                if (this.responses) {
-                    for (var i = 0, l = this.responses.length; i < l; i++) {
-                        if (match.call(this, this.responses[i], request)) {
-                            response = this.responses[i].response;
-                            break;
-                        }
-                    }
-                }
-
-                if (request.readyState != 4) {
-                    log(response, request);
-
-                    request.respond(response[0], response[1], response[2]);
-                }
-            } catch (e) {
-                sinon.logError("Fake server request processing", e);
-            }
-        },
-
-        restore: function restore() {
-            return this.xhr.restore && this.xhr.restore.apply(this.xhr, arguments);
-        }
-    };
-}());
-
-if (typeof module == "object" && typeof require == "function") {
-    module.exports = sinon;
-}
-
-/**
- * @depend fake_server.js
- * @depend fake_timers.js
- */
-/*jslint browser: true, eqeqeq: false, onevar: false*/
-/*global sinon*/
-/**
- * Add-on for sinon.fakeServer that automatically handles a fake timer along with
- * the FakeXMLHttpRequest. The direct inspiration for this add-on is jQuery
- * 1.3.x, which does not use xhr object's onreadystatehandler at all - instead,
- * it polls the object for completion with setInterval. Dispite the direct
- * motivation, there is nothing jQuery-specific in this file, so it can be used
- * in any environment where the ajax implementation depends on setInterval or
- * setTimeout.
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-(function () {
-    function Server() {}
-    Server.prototype = sinon.fakeServer;
-
-    sinon.fakeServerWithClock = new Server();
-
-    sinon.fakeServerWithClock.addRequest = function addRequest(xhr) {
-        if (xhr.async) {
-            if (typeof setTimeout.clock == "object") {
-                this.clock = setTimeout.clock;
-            } else {
-                this.clock = sinon.useFakeTimers();
-                this.resetClock = true;
-            }
-
-            if (!this.longestTimeout) {
-                var clockSetTimeout = this.clock.setTimeout;
-                var clockSetInterval = this.clock.setInterval;
-                var server = this;
-
-                this.clock.setTimeout = function (fn, timeout) {
-                    server.longestTimeout = Math.max(timeout, server.longestTimeout || 0);
-
-                    return clockSetTimeout.apply(this, arguments);
-                };
-
-                this.clock.setInterval = function (fn, timeout) {
-                    server.longestTimeout = Math.max(timeout, server.longestTimeout || 0);
-
-                    return clockSetInterval.apply(this, arguments);
-                };
-            }
-        }
-
-        return sinon.fakeServer.addRequest.call(this, xhr);
-    };
-
-    sinon.fakeServerWithClock.respond = function respond() {
-        var returnVal = sinon.fakeServer.respond.apply(this, arguments);
-
-        if (this.clock) {
-            this.clock.tick(this.longestTimeout || 0);
-            this.longestTimeout = 0;
-
-            if (this.resetClock) {
-                this.clock.restore();
-                this.resetClock = false;
-            }
-        }
-
-        return returnVal;
-    };
-
-    sinon.fakeServerWithClock.restore = function restore() {
-        if (this.clock) {
-            this.clock.restore();
-        }
-
-        return sinon.fakeServer.restore.apply(this, arguments);
-    };
-}());
-
-/**
- * @depend ../sinon.js
- * @depend collection.js
- * @depend util/fake_timers.js
- * @depend util/fake_server_with_clock.js
- */
-/*jslint eqeqeq: false, onevar: false, plusplus: false*/
-/*global require, module*/
-/**
- * Manages fake collections as well as fake utilities such as Sinon's
- * timers and fake XHR implementation in one convenient object.
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-if (typeof module == "object" && typeof require == "function") {
-    var sinon = require("../sinon");
-    sinon.extend(sinon, require("./util/fake_timers"));
-}
-
-(function () {
-    var push = [].push;
-
-    function exposeValue(sandbox, config, key, value) {
-        if (!value) {
-            return;
-        }
-
-        if (config.injectInto) {
-            config.injectInto[key] = value;
-        } else {
-            push.call(sandbox.args, value);
-        }
-    }
-
-    function prepareSandboxFromConfig(config) {
-        var sandbox = sinon.create(sinon.sandbox);
-
-        if (config.useFakeServer) {
-            if (typeof config.useFakeServer == "object") {
-                sandbox.serverPrototype = config.useFakeServer;
-            }
-
-            sandbox.useFakeServer();
-        }
-
-        if (config.useFakeTimers) {
-            if (typeof config.useFakeTimers == "object") {
-                sandbox.useFakeTimers.apply(sandbox, config.useFakeTimers);
-            } else {
-                sandbox.useFakeTimers();
-            }
-        }
-
-        return sandbox;
-    }
-
-    sinon.sandbox = sinon.extend(sinon.create(sinon.collection), {
-        useFakeTimers: function useFakeTimers() {
-            this.clock = sinon.useFakeTimers.apply(sinon, arguments);
-
-            return this.add(this.clock);
-        },
-
-        serverPrototype: sinon.fakeServer,
-
-        useFakeServer: function useFakeServer() {
-            var proto = this.serverPrototype || sinon.fakeServer;
-
-            if (!proto || !proto.create) {
-                return null;
-            }
-
-            this.server = proto.create();
-            return this.add(this.server);
-        },
-
-        inject: function (obj) {
-            sinon.collection.inject.call(this, obj);
-
-            if (this.clock) {
-                obj.clock = this.clock;
-            }
-
-            if (this.server) {
-                obj.server = this.server;
-                obj.requests = this.server.requests;
-            }
-
-            return obj;
-        },
-
-        create: function (config) {
-            if (!config) {
-                return sinon.create(sinon.sandbox);
-            }
-
-            var sandbox = prepareSandboxFromConfig(config);
-            sandbox.args = sandbox.args || [];
-            var prop, value, exposed = sandbox.inject({});
-
-            if (config.properties) {
-                for (var i = 0, l = config.properties.length; i < l; i++) {
-                    prop = config.properties[i];
-                    value = exposed[prop] || prop == "sandbox" && sandbox;
-                    exposeValue(sandbox, config, prop, value);
-                }
-            } else {
-                exposeValue(sandbox, config, "sandbox", value);
-            }
-
-            return sandbox;
-        }
-    });
-
-    sinon.sandbox.useFakeXMLHttpRequest = sinon.sandbox.useFakeServer;
-
-    if (typeof module == "object" && typeof require == "function") {
-        module.exports = sinon.sandbox;
-    }
-}());
-
-/**
- * @depend ../sinon.js
- * @depend stub.js
- * @depend mock.js
- * @depend sandbox.js
- */
-/*jslint eqeqeq: false, onevar: false, forin: true, plusplus: false*/
-/*global module, require, sinon*/
-/**
- * Test function, sandboxes fakes
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-(function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-
-    if (!sinon && commonJSModule) {
-        sinon = require("../sinon");
-    }
-
-    if (!sinon) {
-        return;
-    }
-
-    function test(callback) {
-        var type = typeof callback;
-
-        if (type != "function") {
-            throw new TypeError("sinon.test needs to wrap a test function, got " + type);
-        }
-
-        return function () {
-            var config = sinon.getConfig(sinon.config);
-            config.injectInto = config.injectIntoThis && this || config.injectInto;
-            var sandbox = sinon.sandbox.create(config);
-            var exception, result;
-            var args = Array.prototype.slice.call(arguments).concat(sandbox.args);
-
-            try {
-                result = callback.apply(this, args);
-            } catch (e) {
-                exception = e;
-            }
-
-            if (typeof exception !== "undefined") {
-                sandbox.restore();
-                throw exception;
-            }
-            else {
-                sandbox.verifyAndRestore();
-            }
-
-            return result;
-        };
-    }
-
-    test.config = {
-        injectIntoThis: true,
-        injectInto: null,
-        properties: ["spy", "stub", "mock", "clock", "server", "requests"],
-        useFakeTimers: true,
-        useFakeServer: true
-    };
-
-    if (commonJSModule) {
-        module.exports = test;
-    } else {
-        sinon.test = test;
-    }
-}(typeof sinon == "object" && sinon || null));
-
-/**
- * @depend ../sinon.js
- * @depend test.js
- */
-/*jslint eqeqeq: false, onevar: false, eqeqeq: false*/
-/*global module, require, sinon*/
-/**
- * Test case, sandboxes all test functions
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-(function (sinon) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-
-    if (!sinon && commonJSModule) {
-        sinon = require("../sinon");
-    }
-
-    if (!sinon || !Object.prototype.hasOwnProperty) {
-        return;
-    }
-
-    function createTest(property, setUp, tearDown) {
-        return function () {
-            if (setUp) {
-                setUp.apply(this, arguments);
-            }
-
-            var exception, result;
-
-            try {
-                result = property.apply(this, arguments);
-            } catch (e) {
-                exception = e;
-            }
-
-            if (tearDown) {
-                tearDown.apply(this, arguments);
-            }
-
-            if (exception) {
-                throw exception;
-            }
-
-            return result;
-        };
-    }
-
-    function testCase(tests, prefix) {
-        /*jsl:ignore*/
-        if (!tests || typeof tests != "object") {
-            throw new TypeError("sinon.testCase needs an object with test functions");
-        }
-        /*jsl:end*/
-
-        prefix = prefix || "test";
-        var rPrefix = new RegExp("^" + prefix);
-        var methods = {}, testName, property, method;
-        var setUp = tests.setUp;
-        var tearDown = tests.tearDown;
-
-        for (testName in tests) {
-            if (tests.hasOwnProperty(testName)) {
-                property = tests[testName];
-
-                if (/^(setUp|tearDown)$/.test(testName)) {
-                    continue;
-                }
-
-                if (typeof property == "function" && rPrefix.test(testName)) {
-                    method = property;
-
-                    if (setUp || tearDown) {
-                        method = createTest(property, setUp, tearDown);
-                    }
-
-                    methods[testName] = sinon.test(method);
-                } else {
-                    methods[testName] = tests[testName];
-                }
-            }
-        }
-
-        return methods;
-    }
-
-    if (commonJSModule) {
-        module.exports = testCase;
-    } else {
-        sinon.testCase = testCase;
-    }
-}(typeof sinon == "object" && sinon || null));
-
-/**
- * @depend ../sinon.js
- * @depend stub.js
- */
-/*jslint eqeqeq: false, onevar: false, nomen: false, plusplus: false*/
-/*global module, require, sinon*/
-/**
- * Assertions matching the test spy retrieval interface.
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-
-(function (sinon, global) {
-    var commonJSModule = typeof module == "object" && typeof require == "function";
-    var slice = Array.prototype.slice;
-    var assert;
-
-    if (!sinon && commonJSModule) {
-        sinon = require("../sinon");
-    }
-
-    if (!sinon) {
-        return;
-    }
-
-    function verifyIsStub() {
-        var method;
-
-        for (var i = 0, l = arguments.length; i < l; ++i) {
-            method = arguments[i];
-
-            if (!method) {
-                assert.fail("fake is not a spy");
-            }
-
-            if (typeof method != "function") {
-                assert.fail(method + " is not a function");
-            }
-
-            if (typeof method.getCall != "function") {
-                assert.fail(method + " is not stubbed");
-            }
-        }
-    }
-
-    function failAssertion(object, msg) {
-        object = object || global;
-        var failMethod = object.fail || assert.fail;
-        failMethod.call(object, msg);
-    }
-
-    function mirrorPropAsAssertion(name, method, message) {
-        if (arguments.length == 2) {
-            message = method;
-            method = name;
-        }
-
-        assert[name] = function (fake) {
-            verifyIsStub(fake);
-
-            var args = slice.call(arguments, 1);
-            var failed = false;
-
-            if (typeof method == "function") {
-                failed = !method(fake);
-            } else {
-                failed = typeof fake[method] == "function" ?
-                    !fake[method].apply(fake, args) : !fake[method];
-            }
-
-            if (failed) {
-                failAssertion(this, fake.printf.apply(fake, [message].concat(args)));
-            } else {
-                assert.pass(name);
-            }
-        };
-    }
-
-    function exposedName(prefix, prop) {
-        return !prefix || /^fail/.test(prop) ? prop :
-            prefix + prop.slice(0, 1).toUpperCase() + prop.slice(1);
-    };
-
-    assert = {
-        failException: "AssertError",
-
-        fail: function fail(message) {
-            var error = new Error(message);
-            error.name = this.failException || assert.failException;
-
-            throw error;
-        },
-
-        pass: function pass(assertion) {},
-
-        callOrder: function assertCallOrder() {
-            verifyIsStub.apply(null, arguments);
-            var expected = "", actual = "";
-
-            if (!sinon.calledInOrder(arguments)) {
-                try {
-                    expected = [].join.call(arguments, ", ");
-                    var calls = slice.call(arguments);
-                    var i = calls.length;
-                    while (i) {
-                        if (!calls[--i].called) {
-                            calls.splice(i, 1);
-                        }
-                    }
-                    actual = sinon.orderByFirstCall(calls).join(", ");
-                } catch (e) {
-                    // If this fails, we'll just fall back to the blank string
-                }
-
-                failAssertion(this, "expected " + expected + " to be " +
-                              "called in order but were called as " + actual);
-            } else {
-                assert.pass("callOrder");
-            }
-        },
-
-        callCount: function assertCallCount(method, count) {
-            verifyIsStub(method);
-
-            if (method.callCount != count) {
-                var msg = "expected %n to be called " + sinon.timesInWords(count) +
-                    " but was called %c%C";
-                failAssertion(this, method.printf(msg));
-            } else {
-                assert.pass("callCount");
-            }
-        },
-
-        expose: function expose(target, options) {
-            if (!target) {
-                throw new TypeError("target is null or undefined");
-            }
-
-            var o = options || {};
-            var prefix = typeof o.prefix == "undefined" && "assert" || o.prefix;
-            var includeFail = typeof o.includeFail == "undefined" || !!o.includeFail;
-
-            for (var method in this) {
-                if (method != "export" && (includeFail || !/^(fail)/.test(method))) {
-                    target[exposedName(prefix, method)] = this[method];
-                }
-            }
-
-            return target;
-        }
-    };
-
-    mirrorPropAsAssertion("called", "expected %n to have been called at least once but was never called");
-    mirrorPropAsAssertion("notCalled", function (spy) { return !spy.called; },
-                          "expected %n to not have been called but was called %c%C");
-    mirrorPropAsAssertion("calledOnce", "expected %n to be called once but was called %c%C");
-    mirrorPropAsAssertion("calledTwice", "expected %n to be called twice but was called %c%C");
-    mirrorPropAsAssertion("calledThrice", "expected %n to be called thrice but was called %c%C");
-    mirrorPropAsAssertion("calledOn", "expected %n to be called with %1 as this but was called with %t");
-    mirrorPropAsAssertion("alwaysCalledOn", "expected %n to always be called with %1 as this but was called with %t");
-    mirrorPropAsAssertion("calledWithNew", "expected %n to be called with new");
-    mirrorPropAsAssertion("alwaysCalledWithNew", "expected %n to always be called with new");
-    mirrorPropAsAssertion("calledWith", "expected %n to be called with arguments %*%C");
-    mirrorPropAsAssertion("calledWithMatch", "expected %n to be called with match %*%C");
-    mirrorPropAsAssertion("alwaysCalledWith", "expected %n to always be called with arguments %*%C");
-    mirrorPropAsAssertion("alwaysCalledWithMatch", "expected %n to always be called with match %*%C");
-    mirrorPropAsAssertion("calledWithExactly", "expected %n to be called with exact arguments %*%C");
-    mirrorPropAsAssertion("alwaysCalledWithExactly", "expected %n to always be called with exact arguments %*%C");
-    mirrorPropAsAssertion("neverCalledWith", "expected %n to never be called with arguments %*%C");
-    mirrorPropAsAssertion("neverCalledWithMatch", "expected %n to never be called with match %*%C");
-    mirrorPropAsAssertion("threw", "%n did not throw exception%C");
-    mirrorPropAsAssertion("alwaysThrew", "%n did not always throw exception%C");
-
-    if (commonJSModule) {
-        module.exports = assert;
-    } else {
-        sinon.assert = assert;
-    }
-}(typeof sinon == "object" && sinon || null, typeof window != "undefined" ? window : (typeof self != "undefined") ? self : global));
-
-return sinon;}.call(typeof window != 'undefined' && window || {}));
-
 });
-require.register("indemma/vendor/owl/pluralize.js", function(exports, require, module){
-/* This file is part of OWL Pluralization.
 
-OWL Pluralization is free software: you can redistribute it and/or 
-modify it under the terms of the GNU Lesser General Public License
-as published by the Free Software Foundation, either version 3 of
-the License, or (at your option) any later version.
-
-OWL Pluralization is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public 
-License along with OWL Pluralization.  If not, see 
-<http://www.gnu.org/licenses/>.
-*/
-
-// prepare the owl namespace.
-if ( typeof owl === 'undefined' ) owl = {};
-
-owl.pluralize = (function() {
-	var userDefined = {};
-
-	function capitalizeSame(word, sampleWord) {
-		if ( sampleWord.match(/^[A-Z]/) ) {
-			return word.charAt(0).toUpperCase() + word.slice(1);
-		} else {
-			return word;
-		}
-	}
-
-	// returns a plain Object having the given keys,
-	// all with value 1, which can be used for fast lookups.
-	function toKeys(keys) {
-		keys = keys.split(',');
-		var keysLength = keys.length;
-		var table = {};
-		for ( var i=0; i < keysLength; i++ ) {
-			table[ keys[i] ] = 1;
-		}
-		return table;
-	}
-
-	// words that are always singular, always plural, or the same in both forms.
-	var uninflected = toKeys("aircraft,advice,blues,corn,molasses,equipment,gold,information,cotton,jewelry,kin,legislation,luck,luggage,moose,music,offspring,rice,silver,trousers,wheat,bison,bream,breeches,britches,carp,chassis,clippers,cod,contretemps,corps,debris,diabetes,djinn,eland,elk,flounder,gallows,graffiti,headquarters,herpes,high,homework,innings,jackanapes,mackerel,measles,mews,mumps,news,pincers,pliers,proceedings,rabies,salmon,scissors,sea,series,shears,species,swine,trout,tuna,whiting,wildebeest,pike,oats,tongs,dregs,snuffers,victuals,tweezers,vespers,pinchers,bellows,cattle");
-
-	var irregular = {
-		// pronouns
-		I: 'we',
-		you: 'you',
-		he: 'they',
-		it: 'they',  // or them
-		me: 'us',
-		you: 'you',
-		him: 'them',
-		them: 'them',
-		myself: 'ourselves',
-		yourself: 'yourselves',
-		himself: 'themselves',
-		herself: 'themselves',
-		itself: 'themselves',
-		themself: 'themselves',
-		oneself: 'oneselves',
-
-		child: 'children',
-		dwarf: 'dwarfs',  // dwarfs are real; dwarves are fantasy.
-		mongoose: 'mongooses',
-		mythos: 'mythoi',
-		ox: 'oxen',
-		soliloquy: 'soliloquies',
-		trilby: 'trilbys',
-		person: 'people',
-		forum: 'forums', // fora is ok but uncommon.
-
-		// latin plural in popular usage.
-		syllabus: 'syllabi',
-		alumnus: 'alumni', 
-		genus: 'genera',
-		viscus: 'viscera',
-		stigma: 'stigmata'
-	};
-
-	var suffixRules = [
-		// common suffixes
-		[ /man$/i, 'men' ],
-		[ /([lm])ouse$/i, '$1ice' ],
-		[ /tooth$/i, 'teeth' ],
-		[ /goose$/i, 'geese' ],
-		[ /foot$/i, 'feet' ],
-		[ /zoon$/i, 'zoa' ],
-		[ /([tcsx])is$/i, '$1es' ],
-
-		// fully assimilated suffixes
-		[ /ix$/i, 'ices' ],
-		[ /^(cod|mur|sil|vert)ex$/i, '$1ices' ],
-		[ /^(agend|addend|memorand|millenni|dat|extrem|bacteri|desiderat|strat|candelabr|errat|ov|symposi)um$/i, '$1a' ],
-		[ /^(apheli|hyperbat|periheli|asyndet|noumen|phenomen|criteri|organ|prolegomen|\w+hedr)on$/i, '$1a' ],
-		[ /^(alumn|alg|vertebr)a$/i, '$1ae' ],
-		
-		// churches, classes, boxes, etc.
-		[ /([cs]h|ss|x)$/i, '$1es' ],
-
-		// words with -ves plural form
-		[ /([aeo]l|[^d]ea|ar)f$/i, '$1ves' ],
-		[ /([nlw]i)fe$/i, '$1ves' ],
-
-		// -y
-		[ /([aeiou])y$/i, '$1ys' ],
-		[ /(^[A-Z][a-z]*)y$/, '$1ys' ], // case sensitive!
-		[ /y$/i, 'ies' ],
-
-		// -o
-		[ /([aeiou])o$/i, '$1os' ],
-		[ /^(pian|portic|albin|generalissim|manifest|archipelag|ghett|medic|armadill|guan|octav|command|infern|phot|ditt|jumb|pr|dynam|ling|quart|embry|lumbag|rhin|fiasc|magnet|styl|alt|contralt|sopran|bass|crescend|temp|cant|sol|kimon)o$/i, '$1os' ],
-		[ /o$/i, 'oes' ],
-
-		// words ending in s...
-		[ /s$/i, 'ses' ]
-	];
-
-	// pluralizes the given singular noun.  There are three ways to call it:
-	//   pluralize(noun) -> pluralNoun
-	//     Returns the plural of the given noun.
-	//   Example: 
-	//     pluralize("person") -> "people"
-	//     pluralize("me") -> "us"
-	//
-	//   pluralize(noun, count) -> plural or singular noun
-	//   Inflect the noun according to the count, returning the singular noun
-	//   if the count is 1.
-	//   Examples:
-	//     pluralize("person", 3) -> "people"
-	//     pluralize("person", 1) -> "person"
-	//     pluralize("person", 0) -> "people"
-	//
-	//   pluralize(noun, count, plural) -> plural or singular noun
-	//   you can provide an irregular plural yourself as the 3rd argument.
-	//   Example:
-	//     pluralize("château", 2 "châteaux") -> "châteaux"
-	function pluralize(word, count, plural) {
-		// handle the empty string reasonably.
-		if ( word === '' ) return '';
-
-		// singular case.
-		if ( count === 1 ) return word;
-
-		// life is very easy if an explicit plural was provided.
-		if ( typeof plural === 'string' ) return plural;
-
-		var lowerWord = word.toLowerCase();
-
-		// user defined rules have the highest priority.
-		if ( lowerWord in userDefined ) {
-			return capitalizeSame(userDefined[lowerWord], word);
-		}
-
-		// single letters are pluralized with 's, "I got five A's on
-		// my report card."
-		if ( word.match(/^[A-Z]$/) ) return word + "'s";
-
-		// some word don't change form when plural.
-		if ( word.match(/fish$|ois$|sheep$|deer$|pox$|itis$/i) ) return word;
-		if ( word.match(/^[A-Z][a-z]*ese$/) ) return word;  // Nationalities.
-		if ( lowerWord in uninflected ) return word;
-
-		// there's a known set of words with irregular plural forms.
-		if ( lowerWord in irregular ) {
-			return capitalizeSame(irregular[lowerWord], word);
-		}
-		
-		// try to pluralize the word depending on its suffix.
-		var suffixRulesLength = suffixRules.length;
-		for ( var i=0; i < suffixRulesLength; i++ ) {
-			var rule = suffixRules[i];
-			if ( word.match(rule[0]) ) {
-				return word.replace(rule[0], rule[1]);
-			}
-		}
-
-		// if all else fails, just add s.
-		return word + 's';
-	}
-
-	pluralize.define = function(word, plural) {
-		userDefined[word.toLowerCase()] = plural;
-	}
-
-	return pluralize;
-
-})();
-
-});
-require.register("indemma/lib/record.js", function(exports, require, module){
+require.register("indemma/lib/record.js", function (exports, module) {
 var $, advisable, bind, extend, merge, observable, type,
   __slice = [].slice;
 
-$ = require('jquery');
+$ = require("component~jquery@1.9.1");
 
-type = require('type');
+type = require("component~type@1.0.0");
 
-bind = require('bind');
+bind = require("component~bind@0.0.1");
 
-observable = require('observable').mixin;
+observable = require("indefinido~observable@es6-modules");
 
-advisable = require('advisable').mixin;
+advisable = require("indefinido~advisable@master").mixin;
 
-extend = require('assimilate');
+extend = require("pluma~assimilate@0.3.0");
 
-merge = require('assimilate').withStrategy('deep');
+merge = require("pluma~assimilate@0.3.0").withStrategy('deep');
 
 this.model = (function() {
   var initialize_record, mixer, modelable;
@@ -24240,17 +12829,18 @@ exports.record = this.record;
 exports.model = this.model;
 
 });
-require.register("indemma/lib/record/associable.js", function(exports, require, module){
-var $, associable, callbacks, extend, model, modifiers, plural, root, singular, subscribers,
+
+require.register("indemma/lib/record/associable.js", function (exports, module) {
+var $, associable, callbacks, descriptors, extend, model, modifiers, plural, root, singular,
   __slice = [].slice;
 
 root = window;
 
-$ = require('jquery');
+$ = require("component~jquery@1.9.1");
 
-extend = require('assimilate');
+extend = require("pluma~assimilate@0.3.0");
 
-require('./resource');
+require("indemma/lib/record/resource.js");
 
 plural = {
   add: function() {
@@ -24331,30 +12921,65 @@ singular = {
   }
 };
 
-subscribers = {
+descriptors = {
   belongs_to: {
-    foreign_key: function(resource_id) {
-      var association_name, current_resource_id, resource, _ref;
+    resource_id: {
+      getter: function() {
+        return this.owner.observed[this.resource + '_id'];
+      },
+      setter: function(resource_id) {
+        var association_name, current_resource_id, resource, _ref;
 
-      association_name = this.resource.toString();
-      if (!resource_id) {
-        this.dirty = true;
-        this.owner[association_name] = resource_id;
-        return resource_id;
-      }
-      current_resource_id = (_ref = this.owner.observed[association_name]) != null ? _ref._id : void 0;
-      if (resource_id !== current_resource_id) {
-        resource = model[association_name];
-        if (!resource) {
-          console.warn("subscribers.belongs_to.foreign_key: associated factory not found for model: " + association_name);
+        association_name = this.resource.toString();
+        if (!resource_id) {
+          this.dirty = true;
+          this.owner[association_name] = resource_id;
           return resource_id;
         }
-        this.owner.observed[association_name] = null;
+        current_resource_id = (_ref = this.owner.observed[association_name]) != null ? _ref._id : void 0;
+        if (resource_id !== current_resource_id) {
+          resource = model[association_name];
+          if (!resource) {
+            console.warn("subscribers.belongs_to.foreign_key: associated factory not found for model: " + association_name);
+            return resource_id;
+          }
+          this.owner.observed[association_name] = null;
+        }
+        return resource_id;
       }
-      return resource_id;
     },
-    associated_changed: function(associated) {
-      return this.owner.observed["" + (this.resource.toString()) + "_id"] = associated ? associated._id : null;
+    resource: {
+      getter: function() {
+        var associated, associated_id, association_name, resource;
+
+        association_name = this.resource.toString();
+        associated = this.owner.observed[association_name];
+        associated_id = this.owner.observed[association_name + '_id'];
+        if (!(((associated != null ? associated._id : void 0) != null) || associated_id)) {
+          return associated;
+        }
+        if (associated != null ? associated.sustained : void 0) {
+          return associated;
+        }
+        resource = model[association_name];
+        if (!resource) {
+          console.warn("descriptors.belongs_to.resource.getter: associated factory not found for model '" + association_name + "' belonging to '" + this.owner.resource + "'");
+          return associated;
+        }
+        associated = resource.find(associated_id || associated._id);
+        if (associated) {
+          return this.owner.observed[association_name] = associated;
+        }
+        associated || (associated = resource({
+          _id: associated_id
+        }));
+        associated.reload();
+        return this.owner.observed[association_name] = associated;
+      },
+      setter: function(associated) {
+        this.owner.observed[this.resource.toString()] = associated;
+        return this.owner.observed[this.resource.toString() + '_id'] = associated ? associated._id : null;
+      }
     }
   }
 };
@@ -24568,8 +13193,15 @@ associable = {
           old_resource_id = this["" + resource + "_id"];
           old_dirty = this.dirty;
           this["" + resource + "_id"] = null;
-          this.subscribe("" + resource + "_id", $.proxy(subscribers.belongs_to.foreign_key, association_proxy));
-          this.subscribe(resource.toString(), $.proxy(subscribers.belongs_to.associated_changed, association_proxy));
+          Object.defineProperty(this, "" + resource + "_id", {
+            get: $.proxy(descriptors.belongs_to.resource_id.getter, association_proxy),
+            set: $.proxy(descriptors.belongs_to.resource_id.setter, association_proxy),
+            configurable: true
+          });
+          Object.defineProperty(this, resource.toString(), {
+            get: $.proxy(descriptors.belongs_to.resource.getter, association_proxy),
+            set: $.proxy(descriptors.belongs_to.resource.setter, association_proxy)
+          });
           this["" + resource + "_id"] = old_resource_id;
           _results.push(this.dirty = old_dirty);
         }
@@ -24627,10 +13259,88 @@ model.associable = {
 };
 
 });
-require.register("indemma/lib/record/persistable.js", function(exports, require, module){
+
+require.register("indemma/lib/record/dirtyable.js", function (exports, module) {
+'use strict';
+var dirtyable, model, record;
+
+dirtyable = {
+  ignores: ['dirty', 'resource', 'route', 'initial_route', 'after_initialize', 'before_initialize', 'parent_resource', 'nested_attributes', 'reloading', 'ready', 'saving', 'salvation', 'sustained', 'element', 'default', 'lock', 'validated', 'validation', 'errors', 'dirty'],
+  change: function(name) {
+    return dirtyable.ignores.indexOf(name) === -1;
+  },
+  descriptor: {
+    get: function() {
+      return this.observed.dirty;
+    },
+    set: function(value) {
+      return this.observed.dirty = value;
+    }
+  },
+  record: {
+    after_initialize: function() {
+      Object.defineProperty(this, 'dirty', dirtyable.descriptor);
+      this.observed.dirty = !!this._id;
+      return this.subscribe(function(added, removed, changed, past) {
+        return this.dirty || (this.dirty = !!Object.keys(changed).filter(dirtyable.change).length);
+      });
+    }
+  }
+};
+
+model = window.model;
+
+record = window.record;
+
+model.dirtyable = true;
+
+record.mix(function(recordable) {
+  return recordable.after_initialize.push(dirtyable.record.after_initialize);
+});
+
+model.mix(function(modelable) {});
+
+module.exports = dirtyable;
+
+});
+
+require.register("indemma/lib/record/errors.js", function (exports, module) {
+
+
+});
+
+require.register("indemma/lib/record/maid.js", function (exports, module) {
+var maid, model;
+
+maid = {
+  model: function() {
+    if (this.washing != null) {
+      return this.record.after_initialize.push(maid.record);
+    }
+  },
+  record: function() {
+    return this.subscribe('dirty', function(dirty) {
+      var _this = this;
+
+      return dirty && setTimeout(function() {
+        return _this.save();
+      }, 500);
+    });
+  }
+};
+
+model = window.model;
+
+model.mix(function(modelable) {
+  return modelable.after_mix.unshift(maid.model);
+});
+
+});
+
+require.register("indemma/lib/record/persistable.js", function (exports, module) {
 var handlers, model, persistable, record;
 
-require('./queryable');
+require("indemma/lib/record/queryable.js");
 
 handlers = {
   store_after_saved: function() {
@@ -24669,65 +13379,15 @@ model.mix(function(modelable) {
 });
 
 });
-require.register("indemma/lib/record/storable.js", function(exports, require, module){
-var extend, merge, model, record, stampit, storable;
 
-extend = require('assimilate');
-
-merge = extend.withStrategy('deep');
-
-stampit = require('../../vendor/stampit');
-
-storable = stampit({
-  store: function(keypath, value, options) {
-    var collection, entry, key, _i, _len;
-
-    collection = this.database;
-    keypath = keypath.toString().split('.');
-    key = keypath.pop();
-    for (_i = 0, _len = keypath.length; _i < _len; _i++) {
-      entry = keypath[_i];
-      collection[entry] || (collection[entry] = {});
-      collection = collection[entry];
-    }
-    if (arguments.length === 1) {
-      this.reads++;
-      return collection[key];
-    } else {
-      this.writes++;
-      value.sustained || (value.sustained = true);
-      return collection[key] = value;
-    }
-  },
-  values: function() {
-    return Object.values(this.database);
-  }
-}, {
-  type: 'object',
-  writes: 0,
-  reads: 0
-}, function() {
-  this.database || (this.database = {});
-  return this;
-});
-
-model = window.model;
-
-record = window.record;
-
-model.storable = true;
-
-module.exports = storable;
-
-});
-require.register("indemma/lib/record/queryable.js", function(exports, require, module){
+require.register("indemma/lib/record/queryable.js", function (exports, module) {
 var extend, model, queryable, record, stampit, storable;
 
-extend = require('assimilate');
+extend = require("pluma~assimilate@0.3.0");
 
-storable = require('./storable');
+storable = require("indemma/lib/record/storable.js");
 
-stampit = require('../../vendor/stampit');
+stampit = require("indemma/vendor/stampit.js");
 
 queryable = {
   storage: storable(),
@@ -24737,8 +13397,8 @@ queryable = {
     }
     return this.storage.store(key);
   },
-  every: function() {
-    return this.storage.values();
+  every: function(callback) {
+    return callback(this.storage.values());
   },
   where: function() {
     throw new Error('queryable.where: Not implemented yet');
@@ -24758,12 +13418,13 @@ model.mix(function(modelable) {
 });
 
 });
-require.register("indemma/lib/record/resource.js", function(exports, require, module){
+
+require.register("indemma/lib/record/resource.js", function (exports, module) {
 var descriptors, model, resource, resourceable, stampit;
 
-stampit = require('../../vendor/stampit');
+stampit = require("indemma/vendor/stampit.js");
 
-require('../../vendor/owl/pluralize');
+require("indemma/vendor/owl/pluralize.js");
 
 resource = stampit({
   toString: function() {
@@ -24862,10 +13523,11 @@ model.singularize = resourceable.singularize;
 model.pluralize = resourceable.pluralize;
 
 });
-require.register("indemma/lib/record/rest.js", function(exports, require, module){
+
+require.register("indemma/lib/record/rest.js", function (exports, module) {
 var $, data_for, request;
 
-$ = require('jquery');
+$ = require("component~jquery@1.9.1");
 
 module.exports = {
   get: function(data) {
@@ -24909,21 +13571,24 @@ request = function(method, url, data) {
 };
 
 });
-require.register("indemma/lib/record/restfulable.js", function(exports, require, module){
+
+require.register("indemma/lib/record/restfulable.js", function (exports, module) {
 var $, merge, model, observable, record, rest, restful, root, type, util,
   __slice = [].slice;
 
-merge = require('assimilate').withStrategy('deep');
+merge = require("pluma~assimilate@0.3.0").withStrategy('deep');
 
-type = require('type');
+type = require("component~type@1.0.0");
 
-observable = require('observable').mixin;
+observable = require("indefinido~observable@es6-modules").mixin;
 
-$ = require('jquery');
+$ = require("component~jquery@1.9.1");
 
-rest = require('./rest.js');
+rest = require("indemma/lib/record/rest.js");
 
 root = typeof exports !== "undefined" && exports !== null ? exports : this;
+
+require("indemma/lib/record/dirtyable.js");
 
 util = {
   model: {
@@ -24997,7 +13662,11 @@ restful = {
         data = {};
       }
       old_route = this.route;
-      default_route = "/" + (model.pluralize(this.resource.name));
+      default_route = '/';
+      if (this.resource.scope != null) {
+        default_route += this.resource.scope + '/';
+      }
+      default_route += this.resource.singular ? this.resource.name : model.pluralize(this.resource.name);
       if (default_route !== this.route) {
         this.route = default_route;
       }
@@ -25053,13 +13722,14 @@ restful = {
       return promise;
     },
     assign_attributes: function(attributes) {
-      var association, association_attributes, association_name, associations_attributes, attribute, message, name, singular_resource, _base, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _m, _ref, _ref1, _ref2, _ref3, _ref4, _results;
+      var association, association_attributes, association_name, associations_attributes, attribute, message, name, singular_resource, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _m, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _results;
 
       _ref = model[this.resource.toString()].has_many;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         association_name = _ref[_i];
-        associations_attributes = attributes[association_name];
+        associations_attributes = attributes[association_name + "_attributes"] || attributes[association_name];
         delete attributes[association_name];
+        delete attributes[association_name + '_attributes'];
         association = this[association_name];
         if (association == null) {
           message = "Association '" + association_name + "' not found. \n";
@@ -25100,7 +13770,7 @@ restful = {
       _ref3 = model[this.resource.toString()].belongs_to;
       for (_m = 0, _len4 = _ref3.length; _m < _len4; _m++) {
         association_name = _ref3[_m];
-        association_attributes = (_ref4 = typeof (_base = attributes[association_name]).json === "function" ? _base.json() : void 0) != null ? _ref4 : attributes[association_name];
+        association_attributes = (_ref4 = (_ref5 = attributes[association_name]) != null ? typeof _ref5.json === "function" ? _ref5.json() : void 0 : void 0) != null ? _ref4 : attributes[association_name];
         delete attributes[association_name];
         delete attributes[association_name + "_attributes"];
         if (association_attributes) {
@@ -25318,26 +13988,26 @@ restful = {
         } else {
           json[name] = method;
         }
+        delete json.dirty;
+        delete json.resource;
+        delete json.route;
+        delete json.initial_route;
+        delete json.after_initialize;
+        delete json.before_initialize;
+        delete json.parent_resource;
+        delete json.nested_attributes;
+        delete json.reloading;
+        delete json.ready;
+        delete json.saving;
+        delete json.salvation;
+        delete json.sustained;
+        delete json.element;
+        delete json["default"];
+        delete json.lock;
+        delete json.validated;
+        delete json.validation;
+        delete json.errors;
       }
-      delete json.dirty;
-      delete json.resource;
-      delete json.route;
-      delete json.initial_route;
-      delete json.after_initialize;
-      delete json.before_initialize;
-      delete json.parent_resource;
-      delete json.nested_attributes;
-      delete json.reloading;
-      delete json.ready;
-      delete json.saving;
-      delete json.salvation;
-      delete json.sustained;
-      delete json.element;
-      delete json["default"];
-      delete json.lock;
-      delete json.validated;
-      delete json.validation;
-      delete json.errors;
       return json;
     }
   }
@@ -25375,25 +14045,26 @@ model.associable && model.associable.mix(function(singular_association, plural_a
 });
 
 });
-require.register("indemma/lib/record/scopable.js", function(exports, require, module){
+
+require.register("indemma/lib/record/scopable.js", function (exports, module) {
 var $, builders, defaults, extend, merge, model, observable, record, rest, scopable, stampit, util,
   __slice = [].slice;
 
-require('./restfulable');
+require("indemma/lib/record/restfulable.js");
 
-require('./resource');
+require("indemma/lib/record/resource.js");
 
-stampit = require('../../vendor/stampit');
+stampit = require("indemma/vendor/stampit.js");
 
-extend = require('assimilate');
+extend = require("pluma~assimilate@0.3.0");
 
-observable = require('observable').mixin;
+observable = require("indefinido~observable@es6-modules").mixin;
 
 merge = extend.withStrategy('deep');
 
-$ = require('jquery');
+$ = require("component~jquery@1.9.1");
 
-rest = require('./rest');
+rest = require("indemma/lib/record/rest.js");
 
 util = {
   model: {
@@ -25677,39 +14348,76 @@ if (model.associable) {
 }
 
 });
-require.register("indemma/lib/record/maid.js", function(exports, require, module){
-var maid, model;
 
-maid = {
-  model: function() {
-    if (this.washing != null) {
-      return this.record.after_initialize.push(maid.record);
+require.register("indemma/lib/record/storable.js", function (exports, module) {
+var extend, merge, model, record, stampit, storable;
+
+extend = require("pluma~assimilate@0.3.0");
+
+merge = extend.withStrategy('deep');
+
+stampit = require("indemma/vendor/stampit.js");
+
+Object.values || (Object.values = (typeof _ !== "undefined" && _ !== null ? _.values : void 0) || function(object) {
+  var key, value, _results;
+
+  _results = [];
+  for (key in object) {
+    value = object[key];
+    _results.push(value);
+  }
+  return _results;
+});
+
+storable = stampit({
+  store: function(keypath, value, options) {
+    var collection, entry, key, _i, _len;
+
+    collection = this.database;
+    keypath = keypath.toString().split('.');
+    key = keypath.pop();
+    for (_i = 0, _len = keypath.length; _i < _len; _i++) {
+      entry = keypath[_i];
+      collection[entry] || (collection[entry] = {});
+      collection = collection[entry];
+    }
+    if (arguments.length === 1) {
+      this.reads++;
+      return collection[key];
+    } else {
+      this.writes++;
+      value.sustained || (value.sustained = true);
+      return collection[key] = value;
     }
   },
-  record: function() {
-    return this.subscribe('dirty', function(dirty) {
-      var _this = this;
-
-      return dirty && setTimeout(function() {
-        return _this.save();
-      }, 500);
-    });
+  values: function() {
+    return Object.values(this.database);
   }
-};
+}, {
+  type: 'object',
+  writes: 0,
+  reads: 0
+}, function() {
+  this.database || (this.database = {});
+  return this;
+});
 
 model = window.model;
 
-model.mix(function(modelable) {
-  return modelable.after_mix.unshift(maid.model);
-});
+record = window.record;
+
+model.storable = true;
+
+module.exports = storable;
 
 });
-require.register("indemma/lib/record/translationable.js", function(exports, require, module){
+
+require.register("indemma/lib/record/translationable.js", function (exports, module) {
 var extend, extensions, root;
 
 root = typeof exports !== "undefined" && exports !== null ? exports : window;
 
-extend = require('assimilate');
+extend = require("pluma~assimilate@0.3.0");
 
 extensions = {
   model: {
@@ -25726,268 +14434,19 @@ model.mix(function(modelable) {
 });
 
 });
-require.register("indemma/lib/record/validations/validatorable.js", function(exports, require, module){
-var stampit;
 
-stampit = require('../../../vendor/stampit');
-
-module.exports = stampit({
-  validate: function() {
-    throw new Error('Composed factory must override the validate method');
-  },
-  validate_each: function() {
-    throw new Error('Composed factory must override the validate each method');
-  }
-});
-
-});
-require.register("indemma/lib/record/validations/confirmation.js", function(exports, require, module){
-var composed, confirmationable, stampit;
-
-stampit = require('../../../vendor/stampit');
-
-confirmationable = stampit({
-  validate_each: function(record, attribute, value) {
-    if (record[attribute] !== record["" + attribute + "_confirmation"]) {
-      return record.errors.add("" + attribute + "_confirmation", 'confirmation', this.options);
-    }
-  }
-});
-
-composed = stampit.compose(require('./validatorable'), confirmationable);
-
-composed.definition_key = 'validates_confirmation_of';
-
-module.exports = composed;
-
-});
-require.register("indemma/lib/record/validations/associated.js", function(exports, require, module){
-var associationable, composed, stampit;
-
-stampit = require('../../../vendor/stampit');
-
-associationable = stampit({
-  validate_each: function(record, attribute, value) {
-    var associated_validation;
-
-    if (record[attribute]) {
-      if (model[record.resource].has_one.indexOf(attribute) === -1) {
-        throw new Error('Only has_one associations are supported to validates_associated');
-      }
-      associated_validation = record[attribute].validate();
-      associated_validation.done(function() {
-        if (record[attribute].errors.length) {
-          return record.errors.add(attribute, 'associated', this.options);
-        }
-      });
-      return associated_validation;
-    }
-  }
-});
-
-composed = stampit.compose(require('./validatorable'), associationable);
-
-composed.definition_key = 'validates_associated';
-
-module.exports = composed;
-
-});
-require.register("indemma/lib/record/validations/presence.js", function(exports, require, module){
-var composed, presenceable, stampit;
-
-stampit = require('../../../vendor/stampit');
-
-presenceable = stampit({
-  validate_each: function(record, attribute, value) {
-    if (value === null || value === '' || value === void 0) {
-      return record.errors.add(attribute, 'blank', this.options);
-    }
-  }
-});
-
-composed = stampit.compose(require('./validatorable'), presenceable);
-
-composed.definition_key = 'validates_presence_of';
-
-module.exports = composed;
-
-});
-require.register("indemma/lib/record/validations/remote.js", function(exports, require, module){
-var composed, remoteable, rest, stampit;
-
-rest = require('../rest');
-
-stampit = require('../../../vendor/stampit');
-
-remoteable = stampit({
-  validate_each: function(record, attribute, value) {
-    var data,
-      _this = this;
-
-    data = this.json(record);
-    return this.post(data).done(function(json) {
-      return _this.succeeded(json, record);
-    });
-  },
-  json: function(record) {
-    var data, param, _base;
-
-    param = this.resource.param_name || this.resource.toString();
-    data = {};
-    data[param] = record.json();
-    (_base = data[param]).id || (_base.id = data[param]._id);
-    delete data[param]._id;
-    return data;
-  },
-  post: function(data) {
-    return jQuery.ajax({
-      url: this.route,
-      data: data,
-      type: 'post',
-      dataType: 'json',
-      context: this
-    });
-  },
-  succeeded: function(json, record) {
-    var error_message, error_messages, _i, _len, _results;
-
-    error_messages = json[this.attribute_name];
-    if (!error_messages) {
-      return;
-    }
-    _results = [];
-    for (_i = 0, _len = error_messages.length; _i < _len; _i++) {
-      error_message = error_messages[_i];
-      _results.push(record.errors.add(this.attribute_name, 'server', {
-        server_message: error_message
-      }));
-    }
-    return _results;
-  }
-}, {
-  message: "Remote validation failed",
-  route: null
-}, function() {
-  var pluralized_resource;
-
-  pluralized_resource = model.pluralize(this.model.resource.toString());
-  this.resource = this.model.resource;
-  this.route || (this.route = "/" + pluralized_resource + "/validate");
-  return this;
-});
-
-composed = stampit.compose(require('./validatorable'), remoteable);
-
-composed.definition_key = 'validates_remotely';
-
-module.exports = composed;
-
-});
-require.register("indemma/lib/record/validations/type.js", function(exports, require, module){
-var composed, stampit, typeable, validations;
-
-validations = require('../validatable');
-
-stampit = require('../../../vendor/stampit');
-
-typeable = stampit({
-  validate_each: function(record, attribute, value) {
-    this.type || (this.type = model[record.resource.toString()][attribute]);
-    if (value) {
-      if (value instanceof this.type) {
-        this.type_name || (this.type_name = this.type.name);
-        if (!value.valid) {
-          return record.errors.add(attribute, 'type', {
-            type_name: this.type_name != null
-          });
-        }
-      } else {
-        throw new Error("Invalid attribute value type! Found " + (typeof value) + " expected " + this.type.name);
-      }
-    }
-  }
-});
-
-composed = stampit.compose(require('./validatorable'), typeable);
-
-composed.definition_key = 'validates_type_of';
-
-module.exports = composed;
-
-});
-require.register("indemma/lib/record/validations/cpf.js", function(exports, require, module){
-var composed, cpfable, stampit;
-
-stampit = require('../../../vendor/stampit');
-
-cpfable = stampit({
-  validate_format: function(value) {
-    var c, d1, dv, i, v, _i, _j;
-
-    value = value.replace(/[\.\-]/g, "");
-    if (value.length < 11) {
-      return false;
-    }
-    if (value.match(/^(0+|1+|2+|3+|4+|5+|6+|7+|8+|9+)$/)) {
-      return false;
-    }
-    c = value.substr(0, 9);
-    dv = value.substr(9, 2);
-    d1 = 0;
-    v = false;
-    i = 0;
-    for (i = _i = 0; _i <= 9; i = ++_i) {
-      d1 += c.charAt(i) * (10 - i);
-    }
-    if (d1 === 0) {
-      return false;
-    }
-    d1 = 11 - (d1 % 11);
-    if (d1 > 9) {
-      d1 = 0;
-    }
-    if (+dv.charAt(0) !== d1) {
-      return false;
-    }
-    d1 *= 2;
-    for (i = _j = 0; _j <= 9; i = ++_j) {
-      d1 += c.charAt(i) * (11 - i);
-    }
-    d1 = 11 - (d1 % 11);
-    if (d1 > 9) {
-      d1 = 0;
-    }
-    if (+dv.charAt(1) !== d1) {
-      return false;
-    }
-    return true;
-  },
-  validate_each: function(record, attribute, value) {
-    if (value && !this.validate_format(value)) {
-      return record.errors.add(attribute, 'cpf', this.options);
-    }
-  }
-});
-
-composed = stampit.compose(require('./validatorable'), cpfable);
-
-composed.definition_key = 'validates_cpf_format';
-
-module.exports = composed;
-
-});
-require.register("indemma/lib/record/validatable.js", function(exports, require, module){
+require.register("indemma/lib/record/validatable.js", function (exports, module) {
 var errorsable, extensions, initializers, manager, messages, observable, root, stampit, type;
 
-require('./translationable');
+require("indemma/lib/record/translationable.js");
 
 root = typeof exports !== "undefined" && exports !== null ? exports : this;
 
-stampit = require('../../vendor/stampit');
+stampit = require("indemma/vendor/stampit.js");
 
-observable = require('observable').mixin;
+observable = require("indefinido~observable@es6-modules");
 
-type = require('type');
+type = require("component~type@1.0.0");
 
 messages = {
   blank: function(attribute_name) {
@@ -26152,7 +14611,7 @@ extensions = {
     validate: function(doned, failed) {
       var results, validator, _i, _len, _ref;
 
-      if (this.validated && !this.dirty) {
+      if (this.validated) {
         return this.validation;
       }
       this.errors.clear();
@@ -26171,7 +14630,7 @@ extensions = {
         old_dirty = record.dirty;
         record.dirty = null;
         record.validated || (record.validated = true);
-        record.dirty = old_dirty;
+        record.observed.dirty = old_dirty;
         return record;
       });
     }
@@ -26190,107 +14649,1190 @@ model.mix(function(modelable) {
   return model.validators = manager.validators;
 });
 
-manager.validators.confirmation = require('./validations/confirmation');
+manager.validators.confirmation = require("indemma/lib/record/validations/confirmation.js");
 
-manager.validators.associated = require('./validations/associated');
+manager.validators.associated = require("indemma/lib/record/validations/associated.js");
 
-manager.validators.presence = require('./validations/presence');
+manager.validators.presence = require("indemma/lib/record/validations/presence.js");
 
-manager.validators.remote = require('./validations/remote');
+manager.validators.remote = require("indemma/lib/record/validations/remote.js");
 
-manager.validators.type = require('./validations/type');
+manager.validators.type = require("indemma/lib/record/validations/type.js");
 
-manager.validators.cpf = require('./validations/cpf');
+manager.validators.cpf = require("indemma/lib/record/validations/cpf.js");
 
 });
-require.register("indemma/lib/extensions/rivets.js", function(exports, require, module){
-var root;
 
-root = typeof exports !== "undefined" && exports !== null ? exports : this;
+require.register("indemma/lib/record/validations/associated.js", function (exports, module) {
+var associationable, composed, stampit;
 
-model.rivets = function() {
-  var model_extensions;
+stampit = require("indemma/vendor/stampit.js");
 
-  model_extensions = {
-    record: {
-      tie: function(element) {
-        var lasso;
+associationable = stampit({
+  validate_each: function(record, attribute, value) {
+    var associated_validation;
 
-        lasso = {};
-        lasso[this.resource] = this;
-        return rivets.bind(element, lasso);
+    if (record[attribute]) {
+      if (model[record.resource].has_one.indexOf(attribute) === -1) {
+        throw new Error('Only has_one associations are supported to validates_associated');
       }
-    },
-    preloadData: true
+      associated_validation = record[attribute].validate();
+      associated_validation.done(function() {
+        if (record[attribute].errors.length) {
+          return record.errors.add(attribute, 'associated', this.options);
+        }
+      });
+      return associated_validation;
+    }
+  }
+});
+
+composed = stampit.compose(require("indemma/lib/record/validations/validatorable.js"), associationable);
+
+composed.definition_key = 'validates_associated';
+
+module.exports = composed;
+
+});
+
+require.register("indemma/lib/record/validations/confirmation.js", function (exports, module) {
+var composed, confirmationable, stampit;
+
+stampit = require("indemma/vendor/stampit.js");
+
+confirmationable = stampit({
+  validate_each: function(record, attribute, value) {
+    if (record[attribute] !== record["" + attribute + "_confirmation"]) {
+      return record.errors.add("" + attribute + "_confirmation", 'confirmation', this.options);
+    }
+  }
+});
+
+composed = stampit.compose(require("indemma/lib/record/validations/validatorable.js"), confirmationable);
+
+composed.definition_key = 'validates_confirmation_of';
+
+module.exports = composed;
+
+});
+
+require.register("indemma/lib/record/validations/cpf.js", function (exports, module) {
+var composed, cpfable, stampit;
+
+stampit = require("indemma/vendor/stampit.js");
+
+cpfable = stampit({
+  validate_format: function(value) {
+    var c, d1, dv, i, v, _i, _j;
+
+    value = value.replace(/[\.\-]/g, "");
+    if (value.length < 11) {
+      return false;
+    }
+    if (value.match(/^(0+|1+|2+|3+|4+|5+|6+|7+|8+|9+)$/)) {
+      return false;
+    }
+    c = value.substr(0, 9);
+    dv = value.substr(9, 2);
+    d1 = 0;
+    v = false;
+    i = 0;
+    for (i = _i = 0; _i <= 9; i = ++_i) {
+      d1 += c.charAt(i) * (10 - i);
+    }
+    if (d1 === 0) {
+      return false;
+    }
+    d1 = 11 - (d1 % 11);
+    if (d1 > 9) {
+      d1 = 0;
+    }
+    if (+dv.charAt(0) !== d1) {
+      return false;
+    }
+    d1 *= 2;
+    for (i = _j = 0; _j <= 9; i = ++_j) {
+      d1 += c.charAt(i) * (11 - i);
+    }
+    d1 = 11 - (d1 % 11);
+    if (d1 > 9) {
+      d1 = 0;
+    }
+    if (+dv.charAt(1) !== d1) {
+      return false;
+    }
+    return true;
+  },
+  validate_each: function(record, attribute, value) {
+    if (value && !this.validate_format(value)) {
+      return record.errors.add(attribute, 'cpf', this.options);
+    }
+  }
+});
+
+composed = stampit.compose(require("indemma/lib/record/validations/validatorable.js"), cpfable);
+
+composed.definition_key = 'validates_cpf_format';
+
+module.exports = composed;
+
+});
+
+require.register("indemma/lib/record/validations/presence.js", function (exports, module) {
+var composed, presenceable, stampit;
+
+stampit = require("indemma/vendor/stampit.js");
+
+presenceable = stampit({
+  validate_each: function(record, attribute, value) {
+    if (value === null || value === '' || value === void 0) {
+      return record.errors.add(attribute, 'blank', this.options);
+    }
+  }
+});
+
+composed = stampit.compose(require("indemma/lib/record/validations/validatorable.js"), presenceable);
+
+composed.definition_key = 'validates_presence_of';
+
+module.exports = composed;
+
+});
+
+require.register("indemma/lib/record/validations/remote.js", function (exports, module) {
+var composed, remoteable, rest, stampit;
+
+rest = require("indemma/lib/record/rest.js");
+
+stampit = require("indemma/vendor/stampit.js");
+
+remoteable = stampit({
+  validate_each: function(record, attribute, value) {
+    var data,
+      _this = this;
+
+    data = this.json(record);
+    return this.post(data).done(function(json) {
+      return _this.succeeded(json, record);
+    });
+  },
+  json: function(record) {
+    var data, param, _base;
+
+    param = this.resource.param_name || this.resource.toString();
+    data = {};
+    data[param] = record.json();
+    (_base = data[param]).id || (_base.id = data[param]._id);
+    delete data[param]._id;
+    return data;
+  },
+  post: function(data) {
+    return jQuery.ajax({
+      url: this.route,
+      data: data,
+      type: 'post',
+      dataType: 'json',
+      context: this
+    });
+  },
+  succeeded: function(json, record) {
+    var error_message, error_messages, _i, _len, _results;
+
+    error_messages = json[this.attribute_name];
+    if (!error_messages) {
+      return;
+    }
+    _results = [];
+    for (_i = 0, _len = error_messages.length; _i < _len; _i++) {
+      error_message = error_messages[_i];
+      _results.push(record.errors.add(this.attribute_name, 'server', {
+        server_message: error_message
+      }));
+    }
+    return _results;
+  }
+}, {
+  message: "Remote validation failed",
+  route: null
+}, function() {
+  var pluralized_resource;
+
+  pluralized_resource = model.pluralize(this.model.resource.toString());
+  this.resource = this.model.resource;
+  this.route || (this.route = "/" + pluralized_resource + "/validate");
+  return this;
+});
+
+composed = stampit.compose(require("indemma/lib/record/validations/validatorable.js"), remoteable);
+
+composed.definition_key = 'validates_remotely';
+
+module.exports = composed;
+
+});
+
+require.register("indemma/lib/record/validations/type.js", function (exports, module) {
+var composed, stampit, typeable, validations;
+
+validations = require("indemma/lib/record/validatable.js");
+
+stampit = require("indemma/vendor/stampit.js");
+
+typeable = stampit({
+  validate_each: function(record, attribute, value) {
+    this.type || (this.type = model[record.resource.toString()][attribute]);
+    if (value) {
+      if (value instanceof this.type) {
+        this.type_name || (this.type_name = this.type.name);
+        if (!value.valid) {
+          return record.errors.add(attribute, 'type', {
+            type_name: this.type_name != null
+          });
+        }
+      } else {
+        throw new Error("Invalid attribute value type! Found " + (typeof value) + " expected " + this.type.name);
+      }
+    }
+  }
+});
+
+composed = stampit.compose(require("indemma/lib/record/validations/validatorable.js"), typeable);
+
+composed.definition_key = 'validates_type_of';
+
+module.exports = composed;
+
+});
+
+require.register("indemma/lib/record/validations/validatorable.js", function (exports, module) {
+var stampit;
+
+stampit = require("indemma/vendor/stampit.js");
+
+module.exports = stampit({
+  validate: function() {
+    throw new Error('Composed factory must override the validate method');
+  },
+  validate_each: function() {
+    throw new Error('Composed factory must override the validate each method');
+  }
+});
+
+});
+
+require.register("indemma/vendor/stampit.js", function (exports, module) {
+!function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.stampit=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+var forIn = _dereq_('mout/object/forIn');
+
+function copyProp(val, key){
+    this[key] = val;
+}
+
+module.exports = function mixInChain(target, objects){
+    var i = 0,
+        n = arguments.length,
+        obj;
+    while(++i < n){
+        obj = arguments[i];
+        if (obj != null) {
+            forIn(obj, copyProp, target);
+        }
+    }
+    return target;
+};
+
+},{"mout/object/forIn":14}],2:[function(_dereq_,module,exports){
+
+
+    /**
+     * Array forEach
+     */
+    function forEach(arr, callback, thisObj) {
+        if (arr == null) {
+            return;
+        }
+        var i = -1,
+            len = arr.length;
+        while (++i < len) {
+            // we iterate over sparse items since there is no way to make it
+            // work properly on IE 7-8. see #64
+            if ( callback.call(thisObj, arr[i], i, arr) === false ) {
+                break;
+            }
+        }
+    }
+
+    module.exports = forEach;
+
+
+
+},{}],3:[function(_dereq_,module,exports){
+var forEach = _dereq_('./forEach');
+var makeIterator = _dereq_('../function/makeIterator_');
+
+    /**
+     * Array map
+     */
+    function map(arr, callback, thisObj) {
+        callback = makeIterator(callback, thisObj);
+        var results = [];
+        if (arr == null){
+            return results;
+        }
+
+        var i = -1, len = arr.length;
+        while (++i < len) {
+            results[i] = callback(arr[i], i, arr);
+        }
+
+        return results;
+    }
+
+     module.exports = map;
+
+
+},{"../function/makeIterator_":4,"./forEach":2}],4:[function(_dereq_,module,exports){
+var prop = _dereq_('./prop');
+var deepMatches = _dereq_('../object/deepMatches');
+
+    /**
+     * Converts argument into a valid iterator.
+     * Used internally on most array/object/collection methods that receives a
+     * callback/iterator providing a shortcut syntax.
+     */
+    function makeIterator(src, thisObj){
+        switch(typeof src) {
+            case 'object':
+                // typeof null == "object"
+                return (src != null)? function(val, key, target){
+                    return deepMatches(val, src);
+                } : src;
+            case 'string':
+            case 'number':
+                return prop(src);
+            case 'function':
+                if (typeof thisObj === 'undefined') {
+                    return src;
+                } else {
+                    return function(val, i, arr){
+                        return src.call(thisObj, val, i, arr);
+                    };
+                }
+            default:
+                return src;
+        }
+    }
+
+    module.exports = makeIterator;
+
+
+
+},{"../object/deepMatches":13,"./prop":5}],5:[function(_dereq_,module,exports){
+
+
+    /**
+     * Returns a function that gets a property of the passed object
+     */
+    function prop(name){
+        return function(obj){
+            return obj[name];
+        };
+    }
+
+    module.exports = prop;
+
+
+
+},{}],6:[function(_dereq_,module,exports){
+var kindOf = _dereq_('./kindOf');
+var isPlainObject = _dereq_('./isPlainObject');
+var mixIn = _dereq_('../object/mixIn');
+
+    /**
+     * Clone native types.
+     */
+    function clone(val){
+        switch (kindOf(val)) {
+            case 'Object':
+                return cloneObject(val);
+            case 'Array':
+                return cloneArray(val);
+            case 'RegExp':
+                return cloneRegExp(val);
+            case 'Date':
+                return cloneDate(val);
+            default:
+                return val;
+        }
+    }
+
+    function cloneObject(source) {
+        if (isPlainObject(source)) {
+            return mixIn({}, source);
+        } else {
+            return source;
+        }
+    }
+
+    function cloneRegExp(r) {
+        var flags = '';
+        flags += r.multiline ? 'm' : '';
+        flags += r.global ? 'g' : '';
+        flags += r.ignorecase ? 'i' : '';
+        return new RegExp(r.source, flags);
+    }
+
+    function cloneDate(date) {
+        return new Date(+date);
+    }
+
+    function cloneArray(arr) {
+        return arr.slice();
+    }
+
+    module.exports = clone;
+
+
+
+},{"../object/mixIn":18,"./isPlainObject":11,"./kindOf":12}],7:[function(_dereq_,module,exports){
+var clone = _dereq_('./clone');
+var forOwn = _dereq_('../object/forOwn');
+var kindOf = _dereq_('./kindOf');
+var isPlainObject = _dereq_('./isPlainObject');
+
+    /**
+     * Recursively clone native types.
+     */
+    function deepClone(val, instanceClone) {
+        switch ( kindOf(val) ) {
+            case 'Object':
+                return cloneObject(val, instanceClone);
+            case 'Array':
+                return cloneArray(val, instanceClone);
+            default:
+                return clone(val);
+        }
+    }
+
+    function cloneObject(source, instanceClone) {
+        if (isPlainObject(source)) {
+            var out = {};
+            forOwn(source, function(val, key) {
+                this[key] = deepClone(val, instanceClone);
+            }, out);
+            return out;
+        } else if (instanceClone) {
+            return instanceClone(source);
+        } else {
+            return source;
+        }
+    }
+
+    function cloneArray(arr, instanceClone) {
+        var out = [],
+            i = -1,
+            n = arr.length,
+            val;
+        while (++i < n) {
+            out[i] = deepClone(arr[i], instanceClone);
+        }
+        return out;
+    }
+
+    module.exports = deepClone;
+
+
+
+
+},{"../object/forOwn":15,"./clone":6,"./isPlainObject":11,"./kindOf":12}],8:[function(_dereq_,module,exports){
+var isKind = _dereq_('./isKind');
+    /**
+     */
+    var isArray = Array.isArray || function (val) {
+        return isKind(val, 'Array');
+    };
+    module.exports = isArray;
+
+
+},{"./isKind":9}],9:[function(_dereq_,module,exports){
+var kindOf = _dereq_('./kindOf');
+    /**
+     * Check if value is from a specific "kind".
+     */
+    function isKind(val, kind){
+        return kindOf(val) === kind;
+    }
+    module.exports = isKind;
+
+
+},{"./kindOf":12}],10:[function(_dereq_,module,exports){
+var isKind = _dereq_('./isKind');
+    /**
+     */
+    function isObject(val) {
+        return isKind(val, 'Object');
+    }
+    module.exports = isObject;
+
+
+},{"./isKind":9}],11:[function(_dereq_,module,exports){
+
+
+    /**
+     * Checks if the value is created by the `Object` constructor.
+     */
+    function isPlainObject(value) {
+        return (!!value
+            && typeof value === 'object'
+            && value.constructor === Object);
+    }
+
+    module.exports = isPlainObject;
+
+
+
+},{}],12:[function(_dereq_,module,exports){
+
+
+    var _rKind = /^\[object (.*)\]$/,
+        _toString = Object.prototype.toString,
+        UNDEF;
+
+    /**
+     * Gets the "kind" of value. (e.g. "String", "Number", etc)
+     */
+    function kindOf(val) {
+        if (val === null) {
+            return 'Null';
+        } else if (val === UNDEF) {
+            return 'Undefined';
+        } else {
+            return _rKind.exec( _toString.call(val) )[1];
+        }
+    }
+    module.exports = kindOf;
+
+
+},{}],13:[function(_dereq_,module,exports){
+var forOwn = _dereq_('./forOwn');
+var isArray = _dereq_('../lang/isArray');
+
+    function containsMatch(array, pattern) {
+        var i = -1, length = array.length;
+        while (++i < length) {
+            if (deepMatches(array[i], pattern)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function matchArray(target, pattern) {
+        var i = -1, patternLength = pattern.length;
+        while (++i < patternLength) {
+            if (!containsMatch(target, pattern[i])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    function matchObject(target, pattern) {
+        var result = true;
+        forOwn(pattern, function(val, key) {
+            if (!deepMatches(target[key], val)) {
+                // Return false to break out of forOwn early
+                return (result = false);
+            }
+        });
+
+        return result;
+    }
+
+    /**
+     * Recursively check if the objects match.
+     */
+    function deepMatches(target, pattern){
+        if (target && typeof target === 'object') {
+            if (isArray(target) && isArray(pattern)) {
+                return matchArray(target, pattern);
+            } else {
+                return matchObject(target, pattern);
+            }
+        } else {
+            return target === pattern;
+        }
+    }
+
+    module.exports = deepMatches;
+
+
+
+},{"../lang/isArray":8,"./forOwn":15}],14:[function(_dereq_,module,exports){
+
+
+    var _hasDontEnumBug,
+        _dontEnums;
+
+    function checkDontEnum(){
+        _dontEnums = [
+                'toString',
+                'toLocaleString',
+                'valueOf',
+                'hasOwnProperty',
+                'isPrototypeOf',
+                'propertyIsEnumerable',
+                'constructor'
+            ];
+
+        _hasDontEnumBug = true;
+
+        for (var key in {'toString': null}) {
+            _hasDontEnumBug = false;
+        }
+    }
+
+    /**
+     * Similar to Array/forEach but works over object properties and fixes Don't
+     * Enum bug on IE.
+     * based on: http://whattheheadsaid.com/2010/10/a-safer-object-keys-compatibility-implementation
+     */
+    function forIn(obj, fn, thisObj){
+        var key, i = 0;
+        // no need to check if argument is a real object that way we can use
+        // it for arrays, functions, date, etc.
+
+        //post-pone check till needed
+        if (_hasDontEnumBug == null) checkDontEnum();
+
+        for (key in obj) {
+            if (exec(fn, obj, key, thisObj) === false) {
+                break;
+            }
+        }
+
+        if (_hasDontEnumBug) {
+            while (key = _dontEnums[i++]) {
+                // since we aren't using hasOwn check we need to make sure the
+                // property was overwritten
+                if (obj[key] !== Object.prototype[key]) {
+                    if (exec(fn, obj, key, thisObj) === false) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    function exec(fn, obj, key, thisObj){
+        return fn.call(thisObj, obj[key], key, obj);
+    }
+
+    module.exports = forIn;
+
+
+
+},{}],15:[function(_dereq_,module,exports){
+var hasOwn = _dereq_('./hasOwn');
+var forIn = _dereq_('./forIn');
+
+    /**
+     * Similar to Array/forEach but works over object properties and fixes Don't
+     * Enum bug on IE.
+     * based on: http://whattheheadsaid.com/2010/10/a-safer-object-keys-compatibility-implementation
+     */
+    function forOwn(obj, fn, thisObj){
+        forIn(obj, function(val, key){
+            if (hasOwn(obj, key)) {
+                return fn.call(thisObj, obj[key], key, obj);
+            }
+        });
+    }
+
+    module.exports = forOwn;
+
+
+
+},{"./forIn":14,"./hasOwn":16}],16:[function(_dereq_,module,exports){
+
+
+    /**
+     * Safer Object.hasOwnProperty
+     */
+     function hasOwn(obj, prop){
+         return Object.prototype.hasOwnProperty.call(obj, prop);
+     }
+
+     module.exports = hasOwn;
+
+
+
+},{}],17:[function(_dereq_,module,exports){
+var hasOwn = _dereq_('./hasOwn');
+var deepClone = _dereq_('../lang/deepClone');
+var isObject = _dereq_('../lang/isObject');
+
+    /**
+     * Deep merge objects.
+     */
+    function merge() {
+        var i = 1,
+            key, val, obj, target;
+
+        // make sure we don't modify source element and it's properties
+        // objects are passed by reference
+        target = deepClone( arguments[0] );
+
+        while (obj = arguments[i++]) {
+            for (key in obj) {
+                if ( ! hasOwn(obj, key) ) {
+                    continue;
+                }
+
+                val = obj[key];
+
+                if ( isObject(val) && isObject(target[key]) ){
+                    // inception, deep merge objects
+                    target[key] = merge(target[key], val);
+                } else {
+                    // make sure arrays, regexp, date, objects are cloned
+                    target[key] = deepClone(val);
+                }
+
+            }
+        }
+
+        return target;
+    }
+
+    module.exports = merge;
+
+
+
+},{"../lang/deepClone":7,"../lang/isObject":10,"./hasOwn":16}],18:[function(_dereq_,module,exports){
+var forOwn = _dereq_('./forOwn');
+
+    /**
+    * Combine properties from all the objects into first one.
+    * - This method affects target object in place, if you want to create a new Object pass an empty object as first param.
+    * @param {object} target    Target Object
+    * @param {...object} objects    Objects to be combined (0...n objects).
+    * @return {object} Target Object.
+    */
+    function mixIn(target, objects){
+        var i = 0,
+            n = arguments.length,
+            obj;
+        while(++i < n){
+            obj = arguments[i];
+            if (obj != null) {
+                forOwn(obj, copyProp, target);
+            }
+        }
+        return target;
+    }
+
+    function copyProp(val, key){
+        this[key] = val;
+    }
+
+    module.exports = mixIn;
+
+
+},{"./forOwn":15}],19:[function(_dereq_,module,exports){
+/**
+ * Stampit
+ **
+ * Create objects from reusable, composable behaviors.
+ **
+ * Copyright (c) 2013 Eric Elliott
+ * http://opensource.org/licenses/MIT
+ **/
+'use strict';
+var forEach = _dereq_('mout/array/forEach');
+var mixIn = _dereq_('mout/object/mixIn');
+var merge = _dereq_('mout/object/merge');
+var map = _dereq_('mout/array/map');
+var forOwn = _dereq_('mout/object/forOwn');
+var mixInChain = _dereq_('./mixinchain.js');
+var slice = [].slice;
+
+var create = function (o) {
+  if (arguments.length > 1) {
+    throw new Error('Object.create implementation only accepts the first parameter.');
+  }
+  function F() {}
+  F.prototype = o;
+  return new F();
+};
+
+if(!Array.isArray) {
+  Array.isArray = function (vArg) {
+    return Object.prototype.toString.call(vArg) === "[object Array]";
   };
-  return model.mix(function(modelable) {
-    return $.extend(true, modelable, model_extensions);
+}
+
+var extractFunctions = function extractFunctions(arg) {
+  var arr = [],
+    args = [].slice.call(arguments);
+
+  if (typeof arg === 'function') {
+    arr = map(args, function (fn) {
+      if (typeof fn === 'function') {
+        return fn;
+      }
+    });
+  } else if (typeof arg === 'object') {
+    forEach(args, function (obj) {
+      forOwn(obj, function (fn) {
+        arr.push(fn);
+      });
+    });
+  } else if ( Array.isArray(arg) ) {
+    forEach(arg, function (fn) {
+      arr.push(fn);
+    });
+  }
+  return arr;
+};
+
+/**
+ * Return a factory function that will produce new objects using the
+ * prototypes that are passed in or composed.
+ *
+ * @param  {Object} [methods] A map of method names and bodies for delegation.
+ * @param  {Object} [state]   A map of property names and values to clone for each new object.
+ * @param  {Function} [enclose] A closure (function) used to create private data and privileged methods.
+ * @return {Function} factory A factory to produce objects using the given prototypes.
+ * @return {Function} factory.create Just like calling the factory function.
+ * @return {Object} factory.fixed An object map containing the fixed prototypes.
+ * @return {Function} factory.methods Add methods to the methods prototype. Chainable.
+ * @return {Function} factory.state Add properties to the state prototype. Chainable.
+ * @return {Function} factory.enclose Add or replace the closure prototype. Not chainable.
+ */
+var stampit = function stampit(methods, state, enclose) {
+  var fixed = {
+      methods: methods || {},
+      state: state,
+      enclose: extractFunctions(enclose)
+    },
+
+    factory = function factory(properties) {
+      var state = merge({}, fixed.state),
+        instance = mixIn(create(fixed.methods || {}),
+          state, properties),
+        closures = fixed.enclose,
+        args = slice.call(arguments, 1);
+
+      forEach(closures, function (fn) {
+        if (typeof fn === 'function') {
+          instance = fn.apply(instance, args) || instance;
+        }
+      });
+
+      return instance;
+    };
+
+  return mixIn(factory, {
+    create: factory,
+    fixed: fixed,
+    /**
+     * Take n objects and add them to the methods prototype.
+     * @return {Object} stamp  The factory in question (`this`).
+     */
+    methods: function stampMethods() {
+      var obj = fixed.methods || {},
+        args = [obj].concat([].slice.call(arguments));
+      fixed.methods = mixInChain.apply(this, args);
+      return this;
+    },
+    /**
+     * Take n objects and add them to the state prototype.
+     * @return {Object} stamp  The factory in question (`this`).
+     */
+    state: function stampState() {
+      var obj = fixed.state || {},
+        args = [obj].concat([].slice.call(arguments));
+      fixed.state = mixIn.apply(this, args);
+      return this;
+    },
+    /**
+     * Take n functions, an array of functions, or n objects and add
+     * the functions to the enclose prototype.
+     * @return {Object} stamp  The factory in question (`this`).
+     */
+    enclose: function stampEnclose() {
+      fixed.enclose = fixed.enclose
+        .concat( extractFunctions.apply(null, arguments) );
+      return this;
+    }
   });
 };
 
+/**
+ * Take two or more factories produced from stampit() and
+ * combine them to produce a new factory. Combining overrides
+ * properties with last-in priority.
+ *
+ * @param {...Function} factory A factory produced by stampit().
+ * @return {Function} A new stampit factory composed from arguments.
+ */
+var compose = function compose() {
+  var args = [].slice.call(arguments),
+    obj = stampit();
+
+  forEach(args, function (source) {
+    if (source) {
+      if (source.fixed.methods) {
+        obj.fixed.methods = mixInChain({}, obj.fixed.methods,
+          source.fixed.methods);
+      }
+
+      if (source.fixed.state) {
+        obj.fixed.state = mixIn({}, obj.fixed.state,
+          source.fixed.state);
+      }
+
+      if (source.fixed.enclose) {
+        obj.fixed.enclose = obj.fixed.enclose
+          .concat(source.fixed.enclose);
+      }
+    }
+  });
+
+  return stampit(obj.fixed.methods, obj.fixed.state,
+    obj.fixed.enclose);
+};
+
+/**
+ * Take an old-fashioned JS constructor and return a stampit stamp
+ * that you can freely compose with other stamps.
+ * @param  {Function} Constructor 
+ * @return {Function}             A composable stampit factory
+ *                                (aka stamp).
+ */
+var convertConstructor = function convertConstructor(Constructor) {
+  return stampit().methods(Constructor.prototype).enclose(Constructor);
+};
+
+module.exports = mixIn(stampit, {
+  compose: compose,
+  /**
+   * Alias for mixIn
+   */
+  extend: mixIn,
+  /**
+   * Take a destination object followed by one or more source objects,
+   * and copy the source object properties to the destination object,
+   * with last in priority overrides.
+   * @param {Object} destination An object to copy properties to.
+   * @param {...Object} source An object to copy properties from.
+   * @returns {Object}
+   */
+  mixIn: mixIn,
+
+  convertConstructor: convertConstructor
 });
-require.alias("pluma-assimilate/dist/assimilate.js", "indemma/deps/assimilate/dist/assimilate.js");
-require.alias("pluma-assimilate/dist/assimilate.js", "indemma/deps/assimilate/index.js");
-require.alias("pluma-assimilate/dist/assimilate.js", "assimilate/index.js");
-require.alias("pluma-assimilate/dist/assimilate.js", "pluma-assimilate/index.js");
 
-require.alias("component-type/index.js", "indemma/deps/type/index.js");
-require.alias("component-type/index.js", "type/index.js");
+},{"./mixinchain.js":1,"mout/array/forEach":2,"mout/array/map":3,"mout/object/forOwn":15,"mout/object/merge":17,"mout/object/mixIn":18}]},{},[19])
+(19)
+});
+});
 
-require.alias("component-bind/index.js", "indemma/deps/bind/index.js");
-require.alias("component-bind/index.js", "bind/index.js");
+require.register("indemma/vendor/owl/pluralize.js", function (exports, module) {
+/* This file is part of OWL Pluralization.
 
-require.alias("component-jquery/index.js", "indemma/deps/jquery/index.js");
-require.alias("component-jquery/index.js", "jquery/index.js");
+OWL Pluralization is free software: you can redistribute it and/or 
+modify it under the terms of the GNU Lesser General Public License
+as published by the Free Software Foundation, either version 3 of
+the License, or (at your option) any later version.
 
-require.alias("indefinido-observable/components/cjohansen-sinon/sinon.js", "indemma/deps/observable/components/cjohansen-sinon/sinon.js");
-require.alias("indefinido-observable/index.js", "indemma/deps/observable/index.js");
-require.alias("indefinido-observable/lib/observable.js", "indemma/deps/observable/lib/observable.js");
-require.alias("indefinido-observable/lib/adapters/rivets.js", "indemma/deps/observable/lib/adapters/rivets.js");
-require.alias("indefinido-observable/vendor/shims/accessors.js", "indemma/deps/observable/vendor/shims/accessors.js");
-require.alias("indefinido-observable/vendor/shims/accessors-legacy.js", "indemma/deps/observable/vendor/shims/accessors-legacy.js");
-require.alias("indefinido-observable/vendor/shims/array.indexOf.js", "indemma/deps/observable/vendor/shims/array.indexOf.js");
-require.alias("indefinido-observable/vendor/shims/object.create.js", "indemma/deps/observable/vendor/shims/object.create.js");
-require.alias("indefinido-observable/index.js", "observable/index.js");
+OWL Pluralization is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
 
-require.alias("component-jquery/index.js", "indefinido-observable/deps/jquery/index.js");
+You should have received a copy of the GNU Lesser General Public 
+License along with OWL Pluralization.  If not, see 
+<http://www.gnu.org/licenses/>.
+*/
 
-require.alias("chaijs-chai/index.js", "indemma/deps/chai/index.js");
-require.alias("chaijs-chai/lib/chai.js", "indemma/deps/chai/lib/chai.js");
-require.alias("chaijs-chai/lib/chai/assertion.js", "indemma/deps/chai/lib/chai/assertion.js");
-require.alias("chaijs-chai/lib/chai/core/assertions.js", "indemma/deps/chai/lib/chai/core/assertions.js");
-require.alias("chaijs-chai/lib/chai/interface/assert.js", "indemma/deps/chai/lib/chai/interface/assert.js");
-require.alias("chaijs-chai/lib/chai/interface/expect.js", "indemma/deps/chai/lib/chai/interface/expect.js");
-require.alias("chaijs-chai/lib/chai/interface/should.js", "indemma/deps/chai/lib/chai/interface/should.js");
-require.alias("chaijs-chai/lib/chai/utils/addChainableMethod.js", "indemma/deps/chai/lib/chai/utils/addChainableMethod.js");
-require.alias("chaijs-chai/lib/chai/utils/addMethod.js", "indemma/deps/chai/lib/chai/utils/addMethod.js");
-require.alias("chaijs-chai/lib/chai/utils/addProperty.js", "indemma/deps/chai/lib/chai/utils/addProperty.js");
-require.alias("chaijs-chai/lib/chai/utils/eql.js", "indemma/deps/chai/lib/chai/utils/eql.js");
-require.alias("chaijs-chai/lib/chai/utils/flag.js", "indemma/deps/chai/lib/chai/utils/flag.js");
-require.alias("chaijs-chai/lib/chai/utils/getActual.js", "indemma/deps/chai/lib/chai/utils/getActual.js");
-require.alias("chaijs-chai/lib/chai/utils/getEnumerableProperties.js", "indemma/deps/chai/lib/chai/utils/getEnumerableProperties.js");
-require.alias("chaijs-chai/lib/chai/utils/getMessage.js", "indemma/deps/chai/lib/chai/utils/getMessage.js");
-require.alias("chaijs-chai/lib/chai/utils/getName.js", "indemma/deps/chai/lib/chai/utils/getName.js");
-require.alias("chaijs-chai/lib/chai/utils/getPathValue.js", "indemma/deps/chai/lib/chai/utils/getPathValue.js");
-require.alias("chaijs-chai/lib/chai/utils/getProperties.js", "indemma/deps/chai/lib/chai/utils/getProperties.js");
-require.alias("chaijs-chai/lib/chai/utils/index.js", "indemma/deps/chai/lib/chai/utils/index.js");
-require.alias("chaijs-chai/lib/chai/utils/inspect.js", "indemma/deps/chai/lib/chai/utils/inspect.js");
-require.alias("chaijs-chai/lib/chai/utils/objDisplay.js", "indemma/deps/chai/lib/chai/utils/objDisplay.js");
-require.alias("chaijs-chai/lib/chai/utils/overwriteMethod.js", "indemma/deps/chai/lib/chai/utils/overwriteMethod.js");
-require.alias("chaijs-chai/lib/chai/utils/overwriteProperty.js", "indemma/deps/chai/lib/chai/utils/overwriteProperty.js");
-require.alias("chaijs-chai/lib/chai/utils/test.js", "indemma/deps/chai/lib/chai/utils/test.js");
-require.alias("chaijs-chai/lib/chai/utils/transferFlags.js", "indemma/deps/chai/lib/chai/utils/transferFlags.js");
-require.alias("chaijs-chai/lib/chai/utils/type.js", "indemma/deps/chai/lib/chai/utils/type.js");
-require.alias("chaijs-chai/index.js", "indemma/deps/chai/index.js");
-require.alias("chaijs-chai/index.js", "chai/index.js");
-require.alias("chaijs-assertion-error/index.js", "chaijs-chai/deps/assertion-error/index.js");
-require.alias("chaijs-assertion-error/index.js", "chaijs-chai/deps/assertion-error/index.js");
-require.alias("chaijs-assertion-error/index.js", "chaijs-assertion-error/index.js");
+// prepare the owl namespace.
+if ( typeof owl === 'undefined' ) owl = {};
 
-require.alias("chaijs-chai/index.js", "chaijs-chai/index.js");
+owl.pluralize = (function() {
+	var userDefined = {};
 
-require.alias("indefinido-advisable/index.js", "indemma/deps/advisable/index.js");
-require.alias("indefinido-advisable/lib/advisable.js", "indemma/deps/advisable/lib/advisable.js");
-require.alias("indefinido-advisable/index.js", "advisable/index.js");
-require.alias("component-jquery/index.js", "indefinido-advisable/deps/jquery/index.js");
+	function capitalizeSame(word, sampleWord) {
+		if ( sampleWord.match(/^[A-Z]/) ) {
+			return word.charAt(0).toUpperCase() + word.slice(1);
+		} else {
+			return word;
+		}
+	}
 
+	// returns a plain Object having the given keys,
+	// all with value 1, which can be used for fast lookups.
+	function toKeys(keys) {
+		keys = keys.split(',');
+		var keysLength = keys.length;
+		var table = {};
+		for ( var i=0; i < keysLength; i++ ) {
+			table[ keys[i] ] = 1;
+		}
+		return table;
+	}
+
+	// words that are always singular, always plural, or the same in both forms.
+	var uninflected = toKeys("aircraft,advice,blues,corn,molasses,equipment,gold,information,cotton,jewelry,kin,legislation,luck,luggage,moose,music,offspring,rice,silver,trousers,wheat,bison,bream,breeches,britches,carp,chassis,clippers,cod,contretemps,corps,debris,diabetes,djinn,eland,elk,flounder,gallows,graffiti,headquarters,herpes,high,homework,innings,jackanapes,mackerel,measles,mews,mumps,news,pincers,pliers,proceedings,rabies,salmon,scissors,sea,series,shears,species,swine,trout,tuna,whiting,wildebeest,pike,oats,tongs,dregs,snuffers,victuals,tweezers,vespers,pinchers,bellows,cattle");
+
+	var irregular = {
+		// pronouns
+		I: 'we',
+		you: 'you',
+		he: 'they',
+		it: 'they',  // or them
+		me: 'us',
+		you: 'you',
+		him: 'them',
+		them: 'them',
+		myself: 'ourselves',
+		yourself: 'yourselves',
+		himself: 'themselves',
+		herself: 'themselves',
+		itself: 'themselves',
+		themself: 'themselves',
+		oneself: 'oneselves',
+
+		child: 'children',
+		dwarf: 'dwarfs',  // dwarfs are real; dwarves are fantasy.
+		mongoose: 'mongooses',
+		mythos: 'mythoi',
+		ox: 'oxen',
+		soliloquy: 'soliloquies',
+		trilby: 'trilbys',
+		person: 'people',
+		forum: 'forums', // fora is ok but uncommon.
+
+		// latin plural in popular usage.
+		syllabus: 'syllabi',
+		alumnus: 'alumni', 
+		genus: 'genera',
+		viscus: 'viscera',
+		stigma: 'stigmata'
+	};
+
+	var suffixRules = [
+		// common suffixes
+		[ /man$/i, 'men' ],
+		[ /([lm])ouse$/i, '$1ice' ],
+		[ /tooth$/i, 'teeth' ],
+		[ /goose$/i, 'geese' ],
+		[ /foot$/i, 'feet' ],
+		[ /zoon$/i, 'zoa' ],
+		[ /([tcsx])is$/i, '$1es' ],
+
+		// fully assimilated suffixes
+		[ /ix$/i, 'ices' ],
+		[ /^(cod|mur|sil|vert)ex$/i, '$1ices' ],
+		[ /^(agend|addend|memorand|millenni|dat|extrem|bacteri|desiderat|strat|candelabr|errat|ov|symposi)um$/i, '$1a' ],
+		[ /^(apheli|hyperbat|periheli|asyndet|noumen|phenomen|criteri|organ|prolegomen|\w+hedr)on$/i, '$1a' ],
+		[ /^(alumn|alg|vertebr)a$/i, '$1ae' ],
+		
+		// churches, classes, boxes, etc.
+		[ /([cs]h|ss|x)$/i, '$1es' ],
+
+		// words with -ves plural form
+		[ /([aeo]l|[^d]ea|ar)f$/i, '$1ves' ],
+		[ /([nlw]i)fe$/i, '$1ves' ],
+
+		// -y
+		[ /([aeiou])y$/i, '$1ys' ],
+		[ /(^[A-Z][a-z]*)y$/, '$1ys' ], // case sensitive!
+		[ /y$/i, 'ies' ],
+
+		// -o
+		[ /([aeiou])o$/i, '$1os' ],
+		[ /^(pian|portic|albin|generalissim|manifest|archipelag|ghett|medic|armadill|guan|octav|command|infern|phot|ditt|jumb|pr|dynam|ling|quart|embry|lumbag|rhin|fiasc|magnet|styl|alt|contralt|sopran|bass|crescend|temp|cant|sol|kimon)o$/i, '$1os' ],
+		[ /o$/i, 'oes' ],
+
+		// words ending in s...
+		[ /s$/i, 'ses' ]
+	];
+
+	// pluralizes the given singular noun.  There are three ways to call it:
+	//   pluralize(noun) -> pluralNoun
+	//     Returns the plural of the given noun.
+	//   Example: 
+	//     pluralize("person") -> "people"
+	//     pluralize("me") -> "us"
+	//
+	//   pluralize(noun, count) -> plural or singular noun
+	//   Inflect the noun according to the count, returning the singular noun
+	//   if the count is 1.
+	//   Examples:
+	//     pluralize("person", 3) -> "people"
+	//     pluralize("person", 1) -> "person"
+	//     pluralize("person", 0) -> "people"
+	//
+	//   pluralize(noun, count, plural) -> plural or singular noun
+	//   you can provide an irregular plural yourself as the 3rd argument.
+	//   Example:
+	//     pluralize("château", 2 "châteaux") -> "châteaux"
+	function pluralize(word, count, plural) {
+		// handle the empty string reasonably.
+		if ( word === '' ) return '';
+
+		// singular case.
+		if ( count === 1 ) return word;
+
+		// life is very easy if an explicit plural was provided.
+		if ( typeof plural === 'string' ) return plural;
+
+		var lowerWord = word.toLowerCase();
+
+		// user defined rules have the highest priority.
+		if ( lowerWord in userDefined ) {
+			return capitalizeSame(userDefined[lowerWord], word);
+		}
+
+		// single letters are pluralized with 's, "I got five A's on
+		// my report card."
+		if ( word.match(/^[A-Z]$/) ) return word + "'s";
+
+		// some word don't change form when plural.
+		if ( word.match(/fish$|ois$|sheep$|deer$|pox$|itis$/i) ) return word;
+		if ( word.match(/^[A-Z][a-z]*ese$/) ) return word;  // Nationalities.
+		if ( lowerWord in uninflected ) return word;
+
+		// there's a known set of words with irregular plural forms.
+		if ( lowerWord in irregular ) {
+			return capitalizeSame(irregular[lowerWord], word);
+		}
+		
+		// try to pluralize the word depending on its suffix.
+		var suffixRulesLength = suffixRules.length;
+		for ( var i=0; i < suffixRulesLength; i++ ) {
+			var rule = suffixRules[i];
+			if ( word.match(rule[0]) ) {
+				return word.replace(rule[0], rule[1]);
+			}
+		}
+
+		// if all else fails, just add s.
+		return word + 's';
+	}
+
+	pluralize.define = function(word, plural) {
+		userDefined[word.toLowerCase()] = plural;
+	}
+
+	return pluralize;
+
+})();
+
+});
+
+require("indemma")

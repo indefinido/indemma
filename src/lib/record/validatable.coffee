@@ -2,7 +2,7 @@ require './translationable'
 
 root       = exports ? @
 stampit    = require '../../vendor/stampit'
-observable = require('observable').mixin
+observable = require 'observable'
 type       = require 'type'
 
 # TODO better model require
@@ -158,7 +158,7 @@ extensions =
       validation
 
     validate: (doned, failed) ->
-      return @validation if @validated and not @dirty
+      return @validation if @validated
 
       @errors.clear()
       results  = [@]
@@ -181,8 +181,8 @@ extensions =
 
         record.validated ||= true
 
-        # Restore dirty state
-        record.dirty     = old_dirty
+        # Restore dirty state, without publishing changes
+        record.observed.dirty = old_dirty
 
         record
 
@@ -199,6 +199,11 @@ manager =
 
 # TODO better stampit integration
 model.mix (modelable) ->
+
+  # TODO discover why component builder is including this file
+  # multiple times and remove this check
+  return if modelable.record.validate
+
   jQuery.extend modelable, extensions.model
 
   jQuery.extend modelable.record, extensions.record
@@ -215,4 +220,3 @@ manager.validators.presence     = require './validations/presence'
 manager.validators.remote       = require './validations/remote'
 manager.validators.type         = require './validations/type'
 manager.validators.cpf          = require './validations/cpf'
-

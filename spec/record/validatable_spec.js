@@ -2,7 +2,7 @@ var root;
 
 root = typeof exports !== "undefined" && exports !== null ? exports : window;
 
-require('indemma/lib/record/validatable');
+require('indemma/lib/record/validatable.js');
 
 describe('model', function() {
   var corporation, model, person;
@@ -104,6 +104,7 @@ describe('model', function() {
         validation = anonymous.validation;
         anonymous.validate().should.be.eq(validation);
         anonymous.dirty = true;
+        anonymous.observation.scheduler.deliver();
         return anonymous.validate().should.not.be.eq(validation);
       });
     });

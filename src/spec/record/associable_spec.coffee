@@ -1,6 +1,7 @@
 root = exports ? window
 
-require 'indemma/lib/record/associable'
+require 'indemma/lib/record/associable.js'
+$ = require 'jquery'
 
 describe 'record',  ->
   record = root.record
@@ -49,13 +50,14 @@ describe 'model',  ->
 
 
     describe "#associated_id", ->
-      it 'should return an partial resource when acessing associated', ->
-        arthur.corporation_id = radio._id
+      xdescribe 'with autobuild option on the asssociation', ->
+        xit 'should return an partial resource when acessing associated', ->
+          arthur.corporation_id = radio._id
 
-        arthur.should.have.property 'corporation'
-        arthur.corporation.should.be.object
-        arthur.corporation.should.have.property 'resource'
-        arthur.corporation.should.have.property '_id', radio._id
+          arthur.should.have.property 'corporation'
+          arthur.corporation.should.be.object
+          arthur.corporation.should.have.property 'resource'
+          arthur.corporation.should.have.property '_id', radio._id
 
       xit 'should fetch the resource when accessing associated and resource not present', (done) ->
         radio = corporation
@@ -121,7 +123,8 @@ describe 'model',  ->
         beforeEach -> association = person().friends
 
         it 'should have query methods', ->
-          association.should.have.property 'has_many'
+          # THINK Why has many check is here
+          # association.should.have.property 'has_many'
           association.should.have.property 'find'
           association.should.have.property 'each'
           association.should.have.property 'reload'
