@@ -422,30 +422,30 @@ restful =
       # TODO Use _.omit function
       # TODO Use object.defineProperty to not need to delete this properties
       # Remove model reserved words
-        delete json.dirty
-        delete json.resource
-        delete json.route
-        delete json.initial_route # TODO implement better initial_route and remove attribute from here
+      delete json.dirty
+      delete json.resource
+      delete json.route
+      delete json.initial_route # TODO implement better initial_route and remove attribute from here
 
-        delete json.after_initialize
-        delete json.before_initialize
-        delete json.parent_resource
-        delete json.nested_attributes
+      delete json.after_initialize
+      delete json.before_initialize
+      delete json.parent_resource
+      delete json.nested_attributes
 
-        delete json.reloading
-        delete json.ready
+      delete json.reloading
+      delete json.ready
 
-        delete json.saving
-        delete json.salvation
-        delete json.sustained
+      delete json.saving
+      delete json.salvation
+      delete json.sustained
 
-        delete json.element
-        delete json.default
-        delete json.lock
+      delete json.element
+      delete json.default
+      delete json.lock
 
-        delete json.validated
-        delete json.validation
-        delete json.errors
+      delete json.validated
+      delete json.validation
+      delete json.errors
 
       json
 

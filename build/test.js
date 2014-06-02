@@ -18726,26 +18726,26 @@ restful = {\n\
         } else {\n\
           json[name] = method;\n\
         }\n\
-        delete json.dirty;\n\
-        delete json.resource;\n\
-        delete json.route;\n\
-        delete json.initial_route;\n\
-        delete json.after_initialize;\n\
-        delete json.before_initialize;\n\
-        delete json.parent_resource;\n\
-        delete json.nested_attributes;\n\
-        delete json.reloading;\n\
-        delete json.ready;\n\
-        delete json.saving;\n\
-        delete json.salvation;\n\
-        delete json.sustained;\n\
-        delete json.element;\n\
-        delete json[\"default\"];\n\
-        delete json.lock;\n\
-        delete json.validated;\n\
-        delete json.validation;\n\
-        delete json.errors;\n\
       }\n\
+      delete json.dirty;\n\
+      delete json.resource;\n\
+      delete json.route;\n\
+      delete json.initial_route;\n\
+      delete json.after_initialize;\n\
+      delete json.before_initialize;\n\
+      delete json.parent_resource;\n\
+      delete json.nested_attributes;\n\
+      delete json.reloading;\n\
+      delete json.ready;\n\
+      delete json.saving;\n\
+      delete json.salvation;\n\
+      delete json.sustained;\n\
+      delete json.element;\n\
+      delete json[\"default\"];\n\
+      delete json.lock;\n\
+      delete json.validated;\n\
+      delete json.validation;\n\
+      delete json.errors;\n\
       return json;\n\
     }\n\
   }\n\
