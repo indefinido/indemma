@@ -1,6 +1,6 @@
-require 'indemma/lib/record/restfulable'
-require 'indemma/lib/record/validatable'
-require 'indemma/lib/record/resource'
+require 'indemma/lib/record/restfulable.js'
+require 'indemma/lib/record/validatable.js'
+require 'indemma/lib/record/resource.js'
 
 'use strict'
 
@@ -8,8 +8,6 @@ root = exports ? window
 
 model  = root.model  # TODO model = require 'indemma/model'
 record = root.record # TODO model = require 'indemma/record'
-jQuery = require 'component-jquery'
-
 
 # Move to shared behaviour!
 should_behave_like_errorsable = ->
@@ -51,11 +49,12 @@ describe 'restfulable', ->
     describe '()',  ->
 
       beforeEach ->
-        # TODO Convert to @arthur
-        @arthur = arthur = record.call
-          resource: 'person'
-          name    : 'Arthur Philip Dent'
+        @person = model.call resource: 'person'
 
+        # TODO Convert to @arthur
+        @arthur = @person name: 'Arthur Philip Dent'
+
+        # TODO put persistance check in other property
         @arthur.dirty = true
 
       describe '.save()', ->
@@ -63,7 +62,7 @@ describe 'restfulable', ->
         afterEach  -> jQuery.ajax.restore()
 
         it 'should be able to serialize record', ->
-          JSON.stringify arthur.json()
+          JSON.stringify @arthur.json()
 
         it 'should ignore key in transient fields'
 
@@ -72,7 +71,7 @@ describe 'restfulable', ->
         # TODO erase this test and implement the above test (should
         # send paramenters accordingly)
         it 'should make ajax call', ->
-          arthur.save()
+          @arthur.save()
           jQuery.ajax.called.should.be.true
 
   describe 'model' ,  ->
@@ -109,7 +108,7 @@ describe 'restfulable', ->
           object     = {}
 
           arthur     = person name: object
-          arthur.assign_attributes name: {}
+          arthur.assign_attributes name: {wearing: 'robe'}
 
           arthur.name.should.not.be.eq object
 
@@ -183,13 +182,13 @@ describe 'restfulable', ->
 
           it 'should create record when only callback is passed', (done) ->
             person.create -> done()
-            jQuery.ajax.callCount.should.be.eq 3 # 2 is counts is from the beforeEach
+            jQuery.ajax.callCount.should.be.eq 3 # 2 are from the beforeEach
 
           it 'should throw exception when nothing is passed', () ->
             expect(person.create).to.throw TypeError
 
           it 'should make ajax calls', ->
-            jQuery.ajax.callCount.should.be.eq 3
+            jQuery.ajax.callCount.should.be.eq 2
 
 
       describe '.destroy()', ->

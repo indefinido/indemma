@@ -2,6 +2,9 @@ extend  = require 'assimilate'
 merge   = extend.withStrategy 'deep'
 stampit = require '../../vendor/stampit'
 
+# TODO use this as an external component or shim
+Object.values ||= _?.values || (object) -> value for key, value of object
+
 storable = stampit
   store: (keypath, value, options) ->
     collection = @database

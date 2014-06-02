@@ -2,7 +2,7 @@ var root;
 
 root = typeof exports !== "undefined" && exports !== null ? exports : window;
 
-require('indemma/lib/record/validatable');
+require('indemma/lib/record/validatable.js');
 
 describe('model #() validates presence of', function() {
   return describe('basic usage', function() {

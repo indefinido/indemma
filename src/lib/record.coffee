@@ -1,7 +1,7 @@
 $          = require 'jquery'
 type       = require 'type'
 bind       = require 'bind'
-observable = require('observable').mixin
+observable = require 'observable'
 advisable  = require('advisable' ).mixin
 extend     = require 'assimilate'
 merge      = require('assimilate').withStrategy 'deep'

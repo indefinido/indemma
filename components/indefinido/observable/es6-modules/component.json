@@ -1,0 +1,39 @@
+{
+  "name": "observable",
+  "repository": "indefinido/observable",
+  "description": "Observable capabilities built upon observable shim.",
+  "version": "0.2.0",
+  "keywords": [],
+  "dependencies": {
+    "component/jquery": "*"
+  },
+  "main": "index.js",
+  "development": {
+    "dependencies": {
+      "chaijs/chai": "*"
+    },
+    "scripts": [
+      "vendor/spec/sinon.js",
+      "vendor/spec/sinon/**/*.js"
+    ]
+  },
+  "license": "WTFPL",
+  "scripts": [
+    "index.js",
+    "lib/adapters/rivets.js",
+    "lib/legacy/notifierable.js",
+    "lib/legacy/schedulerable.js",
+    "lib/lookup.js",
+    "lib/observable.js",
+    "lib/observable/keypath_observer.js",
+    "lib/observable/observation.js",
+    "lib/observable/selection.js",
+    "lib/observable/self_observer.js",
+    "lib/platform.js",
+    "vendor/observe-js/observe.js",
+    "vendor/shims/accessors-legacy.js",
+    "vendor/shims/accessors.js",
+    "vendor/shims/array.indexOf.js",
+    "vendor/shims/object.create.js"
+  ]
+}

@@ -2,44 +2,32 @@
   "name": "indemma",
   "repo": "indefinido/indemma",
   "description": "Indemma (mind picture = memory), client side ES5 observable REST model",
-  "version": "0.1.9",
+  "version": "0.1.12",
   "keywords": [],
   "dependencies": {
     "pluma/assimilate": "0.3.0",
     "component/type": "*",
     "component/bind": "*",
     "component/jquery": "*",
-    "indefinido/observable": "*",
     "indefinido/advisable": "*",
-    "chaijs/chai": "*"
+    "indefinido/observable": "es6-modules"
   },
-  "development": {},
+  "development": {
+    "dependencies": {
+      "chaijs/chai": "*"
+    },
+    "scripts": [
+      "vendor/spec/sinon.js",
+      "vendor/spec/sinon/**/*.js"
+    ]
+  },
   "license": "WTFPL",
+  "paths": ["vendor/components"],
   "scripts": [
     "index.js",
-    "vendor/stampit.js",
-    "vendor/sinon.js",
-    "vendor/owl/pluralize.js",
+    "lib/**/*.js",
 
-    "lib/record.js",
-    "lib/record/associable.js",
-    "lib/record/persistable.js",
-    "lib/record/storable.js",
-    "lib/record/queryable.js",
-    "lib/record/resource.js",
-    "lib/record/rest.js",
-    "lib/record/restfulable.js",
-    "lib/record/scopable.js",
-    "lib/record/maid.js",
-    "lib/record/translationable.js",
-    "lib/record/validations/validatorable.js",
-    "lib/record/validations/confirmation.js",
-    "lib/record/validations/associated.js",
-    "lib/record/validations/presence.js",
-    "lib/record/validations/remote.js",
-    "lib/record/validations/type.js",
-    "lib/record/validations/cpf.js",
-    "lib/record/validatable.js",
-    "lib/extensions/rivets.js"
+    "vendor/stampit.js",
+    "vendor/owl/pluralize.js"
   ]
 }

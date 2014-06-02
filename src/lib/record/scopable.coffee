@@ -47,8 +47,11 @@ scopable =
           done = data
           data = {}
 
+        # Copy current scope data for request
+        # TODO think in a better way to only copy scope data for the request
         scope = extend {}, @scope.data
-        observable.unobserve scope
+        delete scope[method] for method of observable.methods
+
 
         if scope.noned?
           deferred = $.Deferred()
@@ -108,6 +111,7 @@ scopable =
       @scope.fetch.call @, data, done, fail
 
     # TODO optmize this iterations or add support for stampit on associable and merge factories
+    # TODO rename this method to forward extensions to association, and store extensions on has_many definitions
     # @ = record instance
     forward_scopes_to_associations: ->
       factory = model[@resource.name]
@@ -125,38 +129,8 @@ scopable =
         association         = @[association_name]
         association.scope   = scopable.builder association
 
-
         for scope in associated_factory.scope.declared
           association.scope scope, associated_factory["$#{scope}"]
-
-      for associated_resource in factory.has_one
-        # TODO change this warn message into a exception when
-        # associations are renamable
-        unless model[associated_resource]
-          console.warn("Associated factory not found for associated resource: #{associated_resource}")
-          continue
-
-        for scope in model[associated_resource].scope.declared
-          @[associated_resource][scope] = factory[scope]
-
-        # TODO improve associable inner workings to stampit objects
-      if factory.belongs_to.length
-        generate_forwarder = (associated_resource) ->
-          associated_factory = model[associated_resource]
-
-          # TODO change this warn message into a exception when
-          # associations are renamable
-          return console.warn("Associated factory not found for associated resource: #{associated_resource}") unless associated_factory
-
-          declared_scopes    = associated_factory.scope.declared
-
-          ->
-            for scope in declared_scopes
-              @[associated_resource][scope] = associated_factory[scope]
-
-        for associated_resource in factory.belongs_to
-          forwarder = generate_forwarder associated_resource
-          @after "build_#{associated_resource}", forwarder
 
       true
   # @ = model instance
@@ -253,12 +227,14 @@ if model.associable
       # TODO implement setter on this association and let user to set
       reload.done (records, status) ->
 
-        # Clear current stored cache on this association
-        # it to an empty array
-        Array.prototype.splice.call @, 0
+        # if no records were found by the server on this association
+        unless records.length
+          # Clear current stored cache on this association
+          # it to an empty array
+          Array.prototype.splice.call @, 0 if @length
 
-        # return if no records were found by the server
-        return unless records.length
+          return true
+
 
         singular_resource = model.singularize @resource
 
@@ -272,8 +248,17 @@ if model.associable
             record["#{association_name}_attributes"] = record[association_name]
             delete record[association_name]
 
+        # Update found records
+        # TODO create update method
+        create = []
+        for record, index in records
+          if target = @find record._id
+            target.assign_attributes record
+          else
+            create.push record
+
         # Load new records on this association
-        @add.apply @, records
+        @add.apply @, create
 
         # Override the response records object with added to association records
         records.splice 0
@@ -290,5 +275,4 @@ if model.associable
 
       # TODO cache models
       @get().done (records) =>
-        for record in @
-          callback record
+        callback record for record in @

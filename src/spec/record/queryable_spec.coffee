@@ -1,6 +1,6 @@
 root = exports ? window
 
-queryable = require 'indemma/lib/record/queryable'
+queryable = require 'indemma/lib/record/queryable.js'
 
 describe 'queryable',  ->
 
@@ -17,11 +17,17 @@ describe 'queryable',  ->
 
     describe '#find', ->
       beforeEach ->
+        @xhr = jQuery.Deferred()
+        sinon.stub(jQuery, "ajax").returns @xhr
+
         @arthur = @person
           _id: '1'
           name: 'Arthur Philip Dent'
 
         @arthur.save()
+        @xhr.resolveWith @arthur, [@arthur.json()]
+
+      afterEach  -> jQuery.ajax.restore()
 
       it 'should retrieve a record by key', ->
         @person.find('1').should.have.property 'name', @arthur.name

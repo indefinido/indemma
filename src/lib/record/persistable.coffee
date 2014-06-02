@@ -12,6 +12,8 @@ handlers =
 
 persistable =
   record:
+    # TODO better caching check after resource initialization
+    # TODO think how to retrieve already stored resources
     after_initialize: ->
       if @_id
         # TODO remove global model usage

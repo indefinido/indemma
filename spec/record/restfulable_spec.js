@@ -1,10 +1,10 @@
-var jQuery, model, record, root, should_behave_like_errorsable;
+var model, record, root, should_behave_like_errorsable;
 
-require('indemma/lib/record/restfulable');
+require('indemma/lib/record/restfulable.js');
 
-require('indemma/lib/record/validatable');
+require('indemma/lib/record/validatable.js');
 
-require('indemma/lib/record/resource');
+require('indemma/lib/record/resource.js');
 
 'use strict';
 
@@ -13,8 +13,6 @@ root = typeof exports !== "undefined" && exports !== null ? exports : window;
 model = root.model;
 
 record = root.record;
-
-jQuery = require('component-jquery');
 
 should_behave_like_errorsable = function() {
   return describe('.errors', function() {
@@ -62,8 +60,10 @@ describe('restfulable', function() {
     arthur = null;
     return describe('()', function() {
       beforeEach(function() {
-        this.arthur = arthur = record.call({
-          resource: 'person',
+        this.person = model.call({
+          resource: 'person'
+        });
+        this.arthur = this.person({
           name: 'Arthur Philip Dent'
         });
         return this.arthur.dirty = true;
@@ -76,12 +76,12 @@ describe('restfulable', function() {
           return jQuery.ajax.restore();
         });
         it('should be able to serialize record', function() {
-          return JSON.stringify(arthur.json());
+          return JSON.stringify(this.arthur.json());
         });
         it('should ignore key in transient fields');
         it('should send paramenters accordingly');
         return it('should make ajax call', function() {
-          arthur.save();
+          this.arthur.save();
           return jQuery.ajax.called.should.be["true"];
         });
       });
@@ -129,7 +129,9 @@ describe('restfulable', function() {
             name: object
           });
           arthur.assign_attributes({
-            name: {}
+            name: {
+              wearing: 'robe'
+            }
           });
           return arthur.name.should.not.be.eq(object);
         });
@@ -255,7 +257,7 @@ describe('restfulable', function() {
             return expect(person.create).to["throw"](TypeError);
           });
           return it('should make ajax calls', function() {
-            return jQuery.ajax.callCount.should.be.eq(3);
+            return jQuery.ajax.callCount.should.be.eq(2);
           });
         });
       });

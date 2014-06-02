@@ -1,0 +1,25 @@
+{
+  "name": "assimilate",
+  "version": "0.3.0",
+  "license": "MIT",
+  "description": "Extends objects.",
+  "keywords": [
+    "extend",
+    "inherit",
+    "mixin"
+  ],
+  "main": "dist/assimilate.js",
+  "dependencies": {},
+  "development": {},
+  "scripts": [
+    "dist/assimilate.js"
+  ],
+  "styles": [],
+  "ignore": [
+    "**/.*",
+    "build",
+    "components",
+    "node_modules"
+  ],
+  "repository": "pluma/assimilate"
+}

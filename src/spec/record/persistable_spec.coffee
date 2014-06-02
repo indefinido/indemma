@@ -1,6 +1,6 @@
 root = exports ? window
 
-persistable = require 'indemma/lib/record/persistable'
+require 'indemma/lib/record/persistable.js'
 
 describe 'persistable',  ->
 
@@ -10,16 +10,25 @@ describe 'persistable',  ->
 
     describe '#find', ->
       beforeEach ->
+        @xhr = jQuery.Deferred()
+        sinon.stub(jQuery, "ajax").returns @xhr
+
         @person = model.call
           resource  : 'person'
           has_many  : 'friends'
           belongs_to: 'corporation'
 
         @arthur = @person
-          _id: '1'
           name: 'Arthur Philip Dent'
 
-      it 'should call try to store a record after saving', (done) ->
+        @xhr.resolveWith @arthur, [_id: 1]
+
+        # TODO use another way to check if record has persisted
+        @arthur.dirty = true
+
+      afterEach  -> jQuery.ajax.restore()
+
+      it 'should try to store a record after saving when initialzed without id', (done) ->
         sinon.stub(@person.storage, 'store').returns true
 
         @arthur.save =>
