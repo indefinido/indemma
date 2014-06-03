@@ -13459,7 +13459,7 @@ descriptors = {
       }
       route = '/';
       if (this.parent != null) {
-        route += "" + this.parent.route + "/" + this.parent._id + "/";
+        route += ("" + this.parent.route + "/" + this.parent._id) + "/";
       }
       if (this.resource.scope != null) {
         route += this.resource.scope + '/';
@@ -14109,14 +14109,16 @@ scopable = {
       fail: [],
       declared: [],
       fetch: function(data, done, fail) {
-        var deferred, scope;
+        var deferred, method, scope;
 
         if (typeof data === 'function') {
           done = data;
           data = {};
         }
         scope = extend({}, this.scope.data);
-        observable.unobserve(scope);
+        for (method in observable.methods) {
+          delete scope[method];
+        }
         if (scope.noned != null) {
           deferred = $.Deferred();
           deferred.resolveWith(this, [[]]);
@@ -14642,6 +14644,9 @@ manager = {
 };
 
 model.mix(function(modelable) {
+  if (modelable.record.validate) {
+    return;
+  }
   jQuery.extend(modelable, extensions.model);
   jQuery.extend(modelable.record, extensions.record);
   modelable.after_mix.unshift(initializers.create_validators);

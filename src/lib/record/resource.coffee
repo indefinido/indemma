@@ -33,10 +33,10 @@ descriptors =
       @resource = name: @resource if typeof @resource == 'string'
 
       route  = '/'
-      route += "#{@parent.route}/#{@parent._id}/" if @parent?
-        route += @resource.scope + '/' if @resource.scope?
+      route += "#{@parent.route}/#{@parent._id}" + "/" if @parent?
+      route += @resource.scope + '/' if @resource.scope?
 
-        route += if @resource.singular then @resource.name else model.pluralize @resource.name
+      route += if @resource.singular then @resource.name else model.pluralize @resource.name
 
       @route = route
 

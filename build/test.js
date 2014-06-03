@@ -18186,7 +18186,7 @@ descriptors = {\n\
       }\n\
       route = '/';\n\
       if (this.parent != null) {\n\
-        route += \"\" + this.parent.route + \"/\" + this.parent._id + \"/\";\n\
+        route += (\"\" + this.parent.route + \"/\" + this.parent._id) + \"/\";\n\
       }\n\
       if (this.resource.scope != null) {\n\
         route += this.resource.scope + '/';\n\
@@ -18848,14 +18848,16 @@ scopable = {\n\
       fail: [],\n\
       declared: [],\n\
       fetch: function(data, done, fail) {\n\
-        var deferred, scope;\n\
+        var deferred, method, scope;\n\
 \n\
         if (typeof data === 'function') {\n\
           done = data;\n\
           data = {};\n\
         }\n\
         scope = extend({}, this.scope.data);\n\
-        observable.unobserve(scope);\n\
+        for (method in observable.methods) {\n\
+          delete scope[method];\n\
+        }\n\
         if (scope.noned != null) {\n\
           deferred = $.Deferred();\n\
           deferred.resolveWith(this, [[]]);\n\
@@ -19387,6 +19389,9 @@ manager = {\n\
 };\n\
 \n\
 model.mix(function(modelable) {\n\
+  if (modelable.record.validate) {\n\
+    return;\n\
+  }\n\
   jQuery.extend(modelable, extensions.model);\n\
   jQuery.extend(modelable.record, extensions.record);\n\
   modelable.after_mix.unshift(initializers.create_validators);\n\
