@@ -304,7 +304,6 @@ associable =
           # To prevent association loading request we must nullify the
           # association when subscribing
           old_resource_id     = @["#{resource}_id"]
-          old_resource        = @[resource]
           old_dirty           = @dirty
           @["#{resource}_id"] = null
 
@@ -316,7 +315,6 @@ associable =
 
           # Restore id after loader prevention has passed
           @["#{resource}_id"] = old_resource_id
-          @[resource]         = old_resource
           @dirty              = old_dirty
 
           # Execute relation attributes binding
@@ -345,9 +343,15 @@ associable =
           # TODO put deprecation warning on parent key
           association_proxy = resource: resource, parent_resource: @resource, owner: record
 
+          old_resource        = @[resource]
+
           Object.defineProperty record, resource.toString(),
             get: $.proxy descriptors.belongs_to.resource.getter, association_proxy
             set: $.proxy descriptors.belongs_to.resource.setter, association_proxy
+
+          # Execute setter in order to do the apropriate actions to
+          # the previoulsy stored value in the association property
+          @[resource]         = old_resource
 
   # @ = record
   record:
