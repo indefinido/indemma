@@ -12831,10 +12831,10 @@ exports.model = this.model;
 });
 
 require.register("indemma/lib/record/associable.js", function (exports, module) {
-var $, associable, callbacks, descriptors, extend, model, plural, singular, sroot,
+var $, associable, callbacks, descriptors, extend, model, plural, root, singular,
   __slice = [].slice;
 
-sroot = window;
+root = window;
 
 $ = require("component~jquery@1.9.1");
 
