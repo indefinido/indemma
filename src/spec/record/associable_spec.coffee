@@ -49,7 +49,7 @@ describe 'model',  ->
       $.type(person.belongs_to).should.be.eq 'array'
 
 
-    describe "#associated_id", ->
+    describe "{associated}_id", ->
       xdescribe 'with autobuild option on the asssociation', ->
         xit 'should return an partial resource when acessing associated', ->
           arthur.corporation_id = radio._id
@@ -76,7 +76,14 @@ describe 'model',  ->
           corporation.should.have.property 'name', radio.name
 
 
-    describe "#associated", ->
+    describe "{associated}", ->
+
+      describe 'with autoload option on the association', ->
+
+        it 'should create associated when sustained and stored', ->
+          radio.sustained.should.be.true
+          arthur.corporation_id = radio._id
+          arthur.should.have.property 'corporation', radio
 
       it 'should update associated id and record when associated record changes', ->
         radio = corporation
@@ -92,7 +99,7 @@ describe 'model',  ->
         arthur.should.to.have.property 'corporation_id', radio._id
 
 
-    describe "#build_associated", ->
+    describe "#build_{associated}", ->
       it 'should add builded object to association named attribute', ->
         arthur = person
           name: 'Arthur Dent'

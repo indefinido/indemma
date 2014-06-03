@@ -1,4 +1,4 @@
-root   = window
+sroot   = window
 $      = require 'jquery'
 extend = require 'assimilate'
 
@@ -77,10 +77,9 @@ descriptors =
             console.warn "subscribers.belongs_to.foreign_key: associated factory not found for model: #{association_name}"
             return resource_id
 
-          # TODO remote find or local find automatically, and implement find_or_initialize_by
-          # this code is not needed, since the association loader already loads the associated record when trying to get it
-          # associated   = resource.find resource_id
-          # associated ||= resource _id: resource_id
+          # For getter to read, we store conveniently on observable
+          # repository
+          @owner.observed[association_name + '_id'] = resource_id
 
           # Nullify associated object, so next time user accesses it,
           # association loader loads the new object
@@ -117,9 +116,9 @@ descriptors =
         # Found associated in storage, update this model and return associated
         return @owner.observed[association_name] = associated if associated
 
-
         # Auto load
         # Not found associated in storage
+        # TODO remote find or local find automatically, and implement find_or_initialize_by
         associated ||= resource _id: associated_id  # initialize and store a new record
         associated.reload()                         # fetch resource
 
@@ -130,65 +129,6 @@ descriptors =
       setter: (associated) ->
         @owner.observed[@resource.toString()        ] = associated
         @owner.observed[@resource.toString() + '_id'] = if associated then associated._id else null
-
-modifiers =
-# Called before record initialization to create the a lazy loader
-  # for other records
-  belongs_to:
-    associated_loader: ->
-      association_name = @resource.toString()
-
-      unless @owner.observed?
-        # When initializing a owner record in legacy browsers, we will
-        # run the getter to set the default value for the associate
-        # property
-        #
-        # TODO in the accessors shim, better way of getting the
-        # default value for further usage
-        @owner.observed    = {}
-        temporary_observed = true
-
-      definition = Object.defineProperty @owner, association_name,
-        # Observable already sets property for us
-        set: (associated) ->
-          @observed[association_name] = associated
-
-        get: =>
-          associated     = @owner.observed[association_name]
-          associated_id  = @owner.observed[association_name + '_id']
-
-          # Returns null or undefined depending on sustained state of
-          # resource and on retrievability of the resource
-          return associated unless associated?._id? or associated_id
-
-          # Returns imediatelly for resources on storage
-          # TODO make this extenxible
-          return associated if associated?.sustained
-
-          resource = model[association_name]
-          unless resource
-            console.warn "subscribers.belongs_to.foreign_key: associated factory not found for model: #{association_name}"
-            return associated
-
-          # Search through stored resources to see if it is stored
-          associated   = resource.find associated_id || associated._id
-
-          # Found associated in storage, update this model and return associated
-          return @owner.observed[association_name] = associated if associated
-
-          # Not found associated in storage
-          associated ||= resource _id: associated_id  # initialize and store a new record
-          associated.reload()                         # fetch resource
-
-          # Store temporary unloaded resource in this model
-          @owner.observed[association_name] = associated
-
-        configurable: true
-        enumerable: true
-
-      delete @owner.observed if temporary_observed
-
-      definition
 
 callbacks =
   has_many:
@@ -364,6 +304,7 @@ associable =
           # To prevent association loading request we must nullify the
           # association when subscribing
           old_resource_id     = @["#{resource}_id"]
+          old_resource        = @[resource]
           old_dirty           = @dirty
           @["#{resource}_id"] = null
 
@@ -373,13 +314,10 @@ associable =
             set: $.proxy descriptors.belongs_to.resource_id.setter, association_proxy
             configurable: true
 
-          Object.defineProperty @, resource.toString(),
-            get: $.proxy descriptors.belongs_to.resource.getter, association_proxy
-            set: $.proxy descriptors.belongs_to.resource.setter, association_proxy
-
           # Restore id after loader prevention has passed
           @["#{resource}_id"] = old_resource_id
-          @dirty = old_dirty
+          @[resource]         = old_resource
+          @dirty              = old_dirty
 
           # Execute relation attributes binding
           # TODO validate bindings! When @resource._id != @["#{resource}_id"]
@@ -407,8 +345,9 @@ associable =
           # TODO put deprecation warning on parent key
           association_proxy = resource: resource, parent_resource: @resource, owner: record
 
-          modifiers.belongs_to.associated_loader.call association_proxy
-
+          Object.defineProperty record, resource.toString(),
+            get: $.proxy descriptors.belongs_to.resource.getter, association_proxy
+            set: $.proxy descriptors.belongs_to.resource.setter, association_proxy
 
   # @ = record
   record:
