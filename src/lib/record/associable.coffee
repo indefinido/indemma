@@ -1,4 +1,4 @@
-sroot   = window
+root   = window
 $      = require 'jquery'
 extend = require 'assimilate'
 
