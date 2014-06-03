@@ -57,6 +57,12 @@ describe 'restfulable', ->
         # TODO put persistance check in other property
         @arthur.dirty = true
 
+      describe '.json()', ->
+
+        it 'should remove all non data properties', ->
+          @arthur.json().should.not.have.property 'before_initialize'
+
+
       describe '.save()', ->
         beforeEach -> sinon.stub(jQuery, "ajax").returns(jQuery.Deferred())
         afterEach  -> jQuery.ajax.restore()

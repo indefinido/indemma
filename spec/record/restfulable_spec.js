@@ -68,6 +68,11 @@ describe('restfulable', function() {
         });
         return this.arthur.dirty = true;
       });
+      describe('.json()', function() {
+        return it('should remove all non data properties', function() {
+          return this.arthur.json().should.not.have.property('before_initialize');
+        });
+      });
       return describe('.save()', function() {
         beforeEach(function() {
           return sinon.stub(jQuery, "ajax").returns(jQuery.Deferred());
