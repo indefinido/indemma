@@ -58,6 +58,7 @@ descriptors =
     resource_id:
       getter: -> @owner.observed[@resource + '_id']
       setter: (resource_id) ->
+        # TODO check for association name in association proxy
         association_name = @resource.toString()
 
         # TODO faster nullifing association check
@@ -71,11 +72,6 @@ descriptors =
         # associated[@owner.resource.toString()] = @owner
         current_resource_id = @owner.observed[association_name]?._id
         if resource_id != current_resource_id
-          # Update association with blank resource that will update
-          resource = model[association_name]
-          unless resource
-            console.warn "subscribers.belongs_to.foreign_key: associated factory not found for model: #{association_name}"
-            return resource_id
 
           # For getter to read, we store conveniently on observable
           # repository

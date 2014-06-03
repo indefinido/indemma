@@ -85,6 +85,8 @@ describe 'model',  ->
           arthur.corporation_id = radio._id
           arthur.should.have.property 'corporation', radio
 
+
+
       it 'should update associated id and record when associated record changes', ->
         radio = corporation
           _id: 1
