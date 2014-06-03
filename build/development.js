@@ -17550,10 +17550,10 @@ exports.model = this.model;\n\
 ));
 
 require.register("indemma/lib/record/associable.js", Function("exports, module",
-"var $, associable, callbacks, descriptors, extend, model, modifiers, plural, root, singular,\n\
+"var $, associable, callbacks, descriptors, extend, model, plural, singular, sroot,\n\
   __slice = [].slice;\n\
 \n\
-root = window;\n\
+sroot = window;\n\
 \n\
 $ = require(\"component~jquery@1.9.1\");\n\
 \n\
@@ -17662,6 +17662,7 @@ descriptors = {\n\
             console.warn(\"subscribers.belongs_to.foreign_key: associated factory not found for model: \" + association_name);\n\
             return resource_id;\n\
           }\n\
+          this.owner.observed[association_name + '_id'] = resource_id;\n\
           this.owner.observed[association_name] = null;\n\
         }\n\
         return resource_id;\n\
@@ -17699,58 +17700,6 @@ descriptors = {\n\
         this.owner.observed[this.resource.toString()] = associated;\n\
         return this.owner.observed[this.resource.toString() + '_id'] = associated ? associated._id : null;\n\
       }\n\
-    }\n\
-  }\n\
-};\n\
-\n\
-modifiers = {\n\
-  belongs_to: {\n\
-    associated_loader: function() {\n\
-      var association_name, definition, temporary_observed,\n\
-        _this = this;\n\
-\n\
-      association_name = this.resource.toString();\n\
-      if (this.owner.observed == null) {\n\
-        this.owner.observed = {};\n\
-        temporary_observed = true;\n\
-      }\n\
-      definition = Object.defineProperty(this.owner, association_name, {\n\
-        set: function(associated) {\n\
-          return this.observed[association_name] = associated;\n\
-        },\n\
-        get: function() {\n\
-          var associated, associated_id, resource;\n\
-\n\
-          associated = _this.owner.observed[association_name];\n\
-          associated_id = _this.owner.observed[association_name + '_id'];\n\
-          if (!(((associated != null ? associated._id : void 0) != null) || associated_id)) {\n\
-            return associated;\n\
-          }\n\
-          if (associated != null ? associated.sustained : void 0) {\n\
-            return associated;\n\
-          }\n\
-          resource = model[association_name];\n\
-          if (!resource) {\n\
-            console.warn(\"subscribers.belongs_to.foreign_key: associated factory not found for model: \" + association_name);\n\
-            return associated;\n\
-          }\n\
-          associated = resource.find(associated_id || associated._id);\n\
-          if (associated) {\n\
-            return _this.owner.observed[association_name] = associated;\n\
-          }\n\
-          associated || (associated = resource({\n\
-            _id: associated_id\n\
-          }));\n\
-          associated.reload();\n\
-          return _this.owner.observed[association_name] = associated;\n\
-        },\n\
-        configurable: true,\n\
-        enumerable: true\n\
-      });\n\
-      if (temporary_observed) {\n\
-        delete this.owner.observed;\n\
-      }\n\
-      return definition;\n\
     }\n\
   }\n\
 };\n\
@@ -17859,7 +17808,7 @@ associable = {\n\
       return true;\n\
     },\n\
     create_after_hooks: function(definition) {\n\
-      var association_attributes, association_name, association_proxy, old_dirty, old_resource_id, options, resource, _i, _j, _k, _len, _len1, _len2, _name, _ref, _ref1, _ref2, _results;\n\
+      var association_attributes, association_name, association_proxy, old_dirty, old_resource, old_resource_id, options, resource, _i, _j, _k, _len, _len1, _len2, _name, _ref, _ref1, _ref2, _results;\n\
 \n\
       options = model[this.resource.name || this.resource.toString()];\n\
       if (options.has_many) {\n\
@@ -17912,6 +17861,7 @@ associable = {\n\
           this[\"build_\" + resource] = $.proxy(singular.build, association_proxy);\n\
           this[\"create_\" + resource] = $.proxy(singular.create, association_proxy);\n\
           old_resource_id = this[\"\" + resource + \"_id\"];\n\
+          old_resource = this[resource];\n\
           old_dirty = this.dirty;\n\
           this[\"\" + resource + \"_id\"] = null;\n\
           Object.defineProperty(this, \"\" + resource + \"_id\", {\n\
@@ -17919,11 +17869,8 @@ associable = {\n\
             set: $.proxy(descriptors.belongs_to.resource_id.setter, association_proxy),\n\
             configurable: true\n\
           });\n\
-          Object.defineProperty(this, resource.toString(), {\n\
-            get: $.proxy(descriptors.belongs_to.resource.getter, association_proxy),\n\
-            set: $.proxy(descriptors.belongs_to.resource.setter, association_proxy)\n\
-          });\n\
           this[\"\" + resource + \"_id\"] = old_resource_id;\n\
+          this[resource] = old_resource;\n\
           _results.push(this.dirty = old_dirty);\n\
         }\n\
         return _results;\n\
@@ -17943,7 +17890,10 @@ associable = {\n\
             parent_resource: this.resource,\n\
             owner: record\n\
           };\n\
-          _results.push(modifiers.belongs_to.associated_loader.call(association_proxy));\n\
+          _results.push(Object.defineProperty(record, resource.toString(), {\n\
+            get: $.proxy(descriptors.belongs_to.resource.getter, association_proxy),\n\
+            set: $.proxy(descriptors.belongs_to.resource.setter, association_proxy)\n\
+          }));\n\
         }\n\
         return _results;\n\
       }\n\

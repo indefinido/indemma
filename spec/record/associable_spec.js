@@ -55,7 +55,7 @@ describe('model', function() {
     it('should add a belongs_to property with the associations descriptions', function() {
       return $.type(person.belongs_to).should.be.eq('array');
     });
-    describe("#associated_id", function() {
+    describe("{associated}_id", function() {
       xdescribe('with autobuild option on the asssociation', function() {
         return xit('should return an partial resource when acessing associated', function() {
           arthur.corporation_id = radio._id;
@@ -81,7 +81,14 @@ describe('model', function() {
         });
       });
     });
-    describe("#associated", function() {
+    describe("{associated}", function() {
+      describe('with autoload option on the association', function() {
+        return it('should create associated when sustained and stored', function() {
+          radio.sustained.should.be["true"];
+          arthur.corporation_id = radio._id;
+          return arthur.should.have.property('corporation', radio);
+        });
+      });
       return it('should update associated id and record when associated record changes', function() {
         radio = corporation({
           _id: 1,
@@ -94,7 +101,7 @@ describe('model', function() {
         return arthur.should.to.have.property('corporation_id', radio._id);
       });
     });
-    return describe("#build_associated", function() {
+    return describe("#build_{associated}", function() {
       return it('should add builded object to association named attribute', function() {
         arthur = person({
           name: 'Arthur Dent'
