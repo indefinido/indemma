@@ -112,50 +112,66 @@ describe('restfulable', function() {
         });
       });
       describe('.assign_attributes()', function() {
-        var friend, person;
-
-        friend = person = null;
         beforeEach(function() {
-          person = model.call({
+          this.personable = model.call({
             resource: 'person',
             has_many: 'friends',
+            belongs_to: 'company',
+            has_one: 'towel',
             name: String
           });
-          return friend = model.call({
+          this.friendable = model.call({
             resource: 'friend',
-            belongs_to: 'person'
+            belongs_to: 'person',
+            name: String
+          });
+          this.companyable = model.call({
+            resource: 'company',
+            has_many: 'people',
+            name: String
+          });
+          this.towelable = model.call({
+            resource: 'towel',
+            belongs_to: 'person',
+            material: String
+          });
+          this.arthur = this.personable({
+            name: 'Arthur Dent'
+          });
+          this.ford = this.friendable({
+            name: 'Ford Perfect'
+          });
+          this.marvin = this.friendable({
+            name: 'Marvin'
+          });
+          this.megadodo = this.companyable({
+            name: 'Megadodo Publications'
+          });
+          return this.towel = this.towelable({
+            material: 'Microfiber'
           });
         });
         it('should not assign attribute with the same value twice', function() {
-          var arthur, object;
+          var object;
 
           object = {};
-          arthur = person({
+          this.arthur = this.person({
             name: object
           });
-          arthur.assign_attributes({
+          this.arthur.assign_attributes({
             name: {
               wearing: 'robe'
             }
           });
-          return arthur.name.should.not.be.eq(object);
+          return this.arthur.name.should.not.be.eq(object);
         });
-        return it('assigns associations properly', function() {
-          var arthur, attributes, ford, marvin, search_record;
+        it('assigns associations properly', function() {
+          var attributes, search_record;
 
-          arthur = person({
-            name: 'Arthur Dent'
-          });
-          ford = friend({
-            name: 'Ford Perfect'
-          });
-          marvin = friend({
-            name: 'Marvin'
-          });
           attributes = {
-            friends: [ford, marvin]
+            friends: [this.ford, this.marvin]
           };
-          arthur.assign_attributes(attributes);
+          this.arthur.assign_attributes(attributes);
           search_record = function(association, search) {
             var associated, _i, _len;
 
@@ -169,8 +185,52 @@ describe('restfulable', function() {
             }
             return false;
           };
-          search_record(arthur.friends, ford).should.be.eq["true"];
-          return search_record(arthur.friends, arthur).should.be.eq["true"];
+          search_record(this.arthur.friends, this.ford).should.be.eq["true"];
+          return search_record(this.arthur.friends, this.arthur).should.be.eq["true"];
+        });
+        describe('when assigning has one', function() {
+          it('should build new objects when associated not defined', function() {
+            this.arthur.assign_attributes({
+              towel: {
+                material: 'Copper'
+              }
+            });
+            this.arthur.should.have.property('towel');
+            return this.arthur.towel.should.have.property('material', 'Copper');
+          });
+          return it('should not build new objects when associated already defined', function() {
+            this.arthur.towel = this.towel;
+            this.arthur.assign_attributes({
+              towel: {
+                name: 'Copper'
+              }
+            });
+            this.arthur.should.have.property('towel', this.towel);
+            this.arthur.towel.should.have.property('name', 'Copper');
+            return this.towel.should.have.property('name', 'Copper');
+          });
+        });
+        return describe('when assigning belongs to', function() {
+          it('should build new objects when associated not defined', function() {
+            this.arthur.assign_attributes({
+              company: {
+                name: 'Megado'
+              }
+            });
+            this.arthur.should.have.property('company');
+            return this.arthur.company.should.have.property('name', 'Megado');
+          });
+          return it('should not build new objects when associated already defined', function() {
+            this.arthur.company = this.megadodo;
+            this.arthur.assign_attributes({
+              company: {
+                name: 'Megado'
+              }
+            });
+            this.arthur.should.have.property('company', this.megadodo);
+            this.arthur.company.should.have.property('name', 'Megado');
+            return this.megadodo.should.have.property('name', 'Megado');
+          });
         });
       });
       describe('with singular resource', function() {

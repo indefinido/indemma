@@ -85,13 +85,14 @@ initializers =
     # TODO remove the extra inheritance level of model[@resource]
     @errors = errorsable model: model[@resource]
 
-    # TODO only add after save when resourceable is included
+    # TODO only add before save when resourceable is included
     # TODO @after_initialize validate_field_types
     # TODO only execute save operation if record is valid
     @before 'save', -> @validate() if @save
 
     # TODO move this functionality control to validatable
-    @validated = false
+    @validated  = false
+    @validation = null
     @subscribe 'dirty', (value) -> value and @validated = false
 
     Object.defineProperty @, 'valid',
