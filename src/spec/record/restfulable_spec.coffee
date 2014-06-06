@@ -97,34 +97,51 @@ describe 'restfulable', ->
             belongs_to: 'person'
 
       describe '.assign_attributes()', ->
-        friend = person = null
 
         beforeEach ->
-          person   = model.call
+          @personable = model.call
             resource: 'person'
             has_many: 'friends'
+            belongs_to: 'company'
+            has_one: 'towel'
             name: String
 
-          friend   = model.call
+          @friendable = model.call
             resource: 'friend'
             belongs_to: 'person'
+            name: String
+
+          @companyable = model.call
+            resource: 'company'
+            has_many: 'people'
+            name: String
+
+          @towelable = model.call
+            resource: 'towel'
+            belongs_to: 'person'
+            material: String
+
+
+          @arthur   = @personable name: 'Arthur Dent'
+          @ford     = @friendable name: 'Ford Perfect'
+          @marvin   = @friendable name: 'Marvin'
+          @megadodo = @companyable name: 'Megadodo Publications'
+          @towel    = @towelable material: 'Microfiber'
+
 
         # TODO implement setter on has many association and move this code to there
         it 'should not assign attribute with the same value twice', ->
           object     = {}
 
-          arthur     = person name: object
-          arthur.assign_attributes name: {wearing: 'robe'}
+          @arthur    = @person name: object
+          @arthur.assign_attributes name: {wearing: 'robe'}
 
-          arthur.name.should.not.be.eq object
+          @arthur.name.should.not.be.eq object
 
         it 'assigns associations properly', ->
-          arthur     = person name: 'Arthur Dent'
-          ford       = friend name: 'Ford Perfect'
-          marvin     = friend name: 'Marvin'
-          attributes = friends: [ford, marvin]
+          attributes = friends: [@ford, @marvin]
 
-          arthur.assign_attributes attributes
+          @arthur.assign_attributes attributes
 
           search_record = (association, search) ->
             search = JSON.stringify search.json()
@@ -134,9 +151,38 @@ describe 'restfulable', ->
 
             false
 
-          search_record(arthur.friends, ford).should.be.eq.true
-          search_record(arthur.friends, arthur).should.be.eq.true
+          search_record(@arthur.friends, @ford  ).should.be.eq.true
+          search_record(@arthur.friends, @arthur).should.be.eq.true
 
+        describe 'when assigning has one', ->
+          it 'should build new objects when associated not defined', ->
+            @arthur.assign_attributes towel: {material: 'Copper'}
+
+            @arthur.should.have.property 'towel'
+            @arthur.towel.should.have.property 'material', 'Copper'
+
+          it 'should not build new objects when associated already defined', ->
+            @arthur.towel = @towel
+            @arthur.assign_attributes towel: {name: 'Copper'}
+
+            @arthur.should.have.property 'towel', @towel
+            @arthur.towel.should.have.property 'name', 'Copper'
+            @towel.should.have.property 'name', 'Copper'
+
+        describe 'when assigning belongs to', ->
+          it 'should build new objects when associated not defined', ->
+            @arthur.assign_attributes company: {name: 'Megado'}
+
+            @arthur.should.have.property 'company'
+            @arthur.company.should.have.property 'name', 'Megado'
+
+          it 'should not build new objects when associated already defined', ->
+            @arthur.company = @megadodo
+            @arthur.assign_attributes company: {name: 'Megado'}
+
+            @arthur.should.have.property 'company', @megadodo
+            @arthur.company.should.have.property 'name', 'Megado'
+            @megadodo.should.have.property 'name', 'Megado'
 
       describe 'with singular resource', ->
         describe '.create()', ->

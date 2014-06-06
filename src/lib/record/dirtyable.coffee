@@ -5,8 +5,11 @@ dirtyable =
   ignores: ['dirty', 'resource', 'route', 'initial_route', 'after_initialize', 'before_initialize', 'parent_resource', 'nested_attributes', 'reloading', 'ready', 'saving', 'salvation', 'sustained', 'element', 'default', 'lock', 'validated', 'validation', 'errors', 'dirty']
   change: (name) -> dirtyable.ignores.indexOf(name) == -1
   descriptor:
-    get: -> @observed.dirty
-    set: (value) -> @observed.dirty = value
+    get:         -> @observed.dirty
+    set: (value) ->
+      @observed.dirty = value
+      @observation.scheduler.schedule()
+      value
   record:
     after_initialize: ->
       Object.defineProperty @, 'dirty', dirtyable.descriptor

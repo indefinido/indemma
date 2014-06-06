@@ -13165,7 +13165,8 @@ associable = {
           old_resource = this[resource];
           Object.defineProperty(record, resource.toString(), {
             get: $.proxy(descriptors.belongs_to.resource.getter, association_proxy),
-            set: $.proxy(descriptors.belongs_to.resource.setter, association_proxy)
+            set: $.proxy(descriptors.belongs_to.resource.setter, association_proxy),
+            configurable: true
           });
           _results.push(this[resource] = old_resource);
         }
@@ -13219,7 +13220,9 @@ dirtyable = {
       return this.observed.dirty;
     },
     set: function(value) {
-      return this.observed.dirty = value;
+      this.observed.dirty = value;
+      this.observation.scheduler.schedule();
+      return value;
     }
   },
   record: {
@@ -13667,7 +13670,7 @@ restful = {
       return promise;
     },
     assign_attributes: function(attributes) {
-      var association, association_attributes, association_name, associations_attributes, attribute, message, name, singular_resource, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _m, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _results;
+      var associated, association, association_attributes, association_name, associations_attributes, attribute, message, name, singular_resource, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _m, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _results;
 
       _ref = model[this.resource.toString()].has_many;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -13709,7 +13712,9 @@ restful = {
         delete attributes[association_name];
         delete attributes[association_name + "_attributes"];
         if (association_attributes) {
-          this[association_name] = this["build_" + association_name](association_attributes);
+          associated = this[association_name] || this["build_" + association_name]();
+          associated.assign_attributes(association_attributes);
+          this[association_name] = associated;
         }
       }
       _ref3 = model[this.resource.toString()].belongs_to;
@@ -13719,7 +13724,9 @@ restful = {
         delete attributes[association_name];
         delete attributes[association_name + "_attributes"];
         if (association_attributes) {
-          this[association_name] = this["build_" + association_name](association_attributes);
+          associated = this[association_name] || this["build_" + association_name]();
+          associated.assign_attributes(association_attributes);
+          this[association_name] = associated;
         }
       }
       _results = [];
@@ -14477,6 +14484,7 @@ initializers = {
       }
     });
     this.validated = false;
+    this.validation = null;
     this.subscribe('dirty', function(value) {
       return value && (this.validated = false);
     });
@@ -14620,15 +14628,16 @@ stampit = require("indemma/vendor/stampit.js");
 
 associationable = stampit({
   validate_each: function(record, attribute, value) {
-    var associated_validation;
+    var associated, associated_validation;
 
-    if (record[attribute]) {
+    associated = record[attribute];
+    if (associated) {
       if (model[record.resource].has_one.indexOf(attribute) === -1) {
         throw new Error('Only has_one associations are supported to validates_associated');
       }
-      associated_validation = record[attribute].validate();
+      associated_validation = associated.validate();
       associated_validation.done(function() {
-        if (record[attribute].errors.length) {
+        if (associated.errors.length) {
           return record.errors.add(attribute, 'associated', this.options);
         }
       });

@@ -189,7 +189,10 @@ restful =
         # assignment method
         delete attributes[association_name]
         delete attributes[association_name + "_attributes"]
-        @[association_name] = @["build_#{association_name}"] association_attributes if association_attributes
+        if association_attributes
+          associated  = @[association_name] || @["build_#{association_name}"]()
+          associated.assign_attributes association_attributes
+          @[association_name] = associated
 
 
       # Nested attributes
@@ -202,7 +205,10 @@ restful =
         # assignment method
         delete attributes[association_name]
         delete attributes[association_name + "_attributes"]
-        @[association_name] = @["build_#{association_name}"] association_attributes if association_attributes
+        if association_attributes
+          associated = @[association_name] || @["build_#{association_name}"]()
+          associated.assign_attributes association_attributes
+          @[association_name] = associated
 
 
       # Assign remaining attributes

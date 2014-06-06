@@ -14474,142 +14474,6 @@ require.modules["chaijs~chai"] = require.modules["chaijs~chai@1.9.1"];
 require.modules["chai"] = require.modules["chaijs~chai@1.9.1"];
 
 
-require.register("pluma~assimilate@0.3.0", Function("exports, module",
-"/*! assimilate 0.3.0 Copyright (c) 2013 Alan Plum. MIT licensed. */\n\
-var slice = Array.prototype.slice;\n\
-\n\
-function bind(fn, self) {\n\
-    var args = slice.call(arguments, 2);\n\
-    if (typeof Function.prototype.bind === 'function') {\n\
-        return Function.prototype.bind.apply(fn, [self].concat(args));\n\
-    }\n\
-    return function() {\n\
-        return fn.apply(self, args.concat(slice.call(arguments, 0)));\n\
-    };\n\
-}\n\
-\n\
-function simpleCopy(target, name, source) {\n\
-    target[name] = source[name];\n\
-}\n\
-\n\
-function properCopy(target, name, source) {\n\
-    var descriptor = Object.getOwnPropertyDescriptor(source, name);\n\
-    Object.defineProperty(target, name, descriptor);\n\
-}\n\
-\n\
-function ownProperties(obj) {\n\
-    return Object.getOwnPropertyNames(obj);\n\
-}\n\
-\n\
-function allKeys(obj) {\n\
-    var keys = [];\n\
-    for (var name in obj) {\n\
-        keys.push(name);\n\
-    }\n\
-    return keys;\n\
-}\n\
-\n\
-function ownKeys(obj) {\n\
-    var keys = [];\n\
-    for (var name in obj) {\n\
-        if (obj.hasOwnProperty(name)) {\n\
-            keys.push(name);\n\
-        }\n\
-    }\n\
-    return keys;\n\
-}\n\
-\n\
-function assimilateWithStrategy(target) {\n\
-    var strategy = this,\n\
-    sources = slice.call(arguments, 1),\n\
-    i, source, names, j, name;\n\
-\n\
-    if (target === undefined || target === null) {\n\
-        target = {};\n\
-    }\n\
-\n\
-    for (i = 0; i < sources.length; i++) {\n\
-        source = sources[i];\n\
-        names = strategy.keysFn(source);\n\
-        for (j = 0; j < names.length; j++) {\n\
-            name = names[j];\n\
-            strategy.copyFn(target, name, source);\n\
-        }\n\
-    }\n\
-\n\
-    return target;\n\
-}\n\
-\n\
-var strategies = {\n\
-    DEFAULT: {\n\
-        keysFn: ownKeys,\n\
-        copyFn: simpleCopy\n\
-    },\n\
-    PROPER: {\n\
-        keysFn: ownProperties,\n\
-        copyFn: properCopy\n\
-    },\n\
-    INHERITED: {\n\
-        keysFn: allKeys,\n\
-        copyFn: simpleCopy\n\
-    },\n\
-    DEEP: {\n\
-        keysFn: ownKeys,\n\
-        copyFn: function recursiveCopy(target, name, source) {\n\
-            var val = source[name];\n\
-            var old = target[name];\n\
-            if (typeof val === 'object' && typeof old === 'object') {\n\
-                assimilateWithStrategy.call(strategies.DEEP, old, val);\n\
-            } else {\n\
-                simpleCopy(target, name, source);\n\
-            }\n\
-        }\n\
-    },\n\
-    STRICT: {\n\
-        keysFn: ownKeys,\n\
-        copyFn: function strictCopy(target, name, source) {\n\
-            if (source[name] !== undefined) {\n\
-                simpleCopy(target, name, source);\n\
-            }\n\
-        }\n\
-    },\n\
-    FALLBACK: {\n\
-        keysFn: function fallbackCopy(target, name, source) {\n\
-            if (target[name] === undefined) {\n\
-                simpleCopy(target, name, source);\n\
-            }\n\
-        },\n\
-        copyFn: simpleCopy\n\
-    }\n\
-};\n\
-\n\
-var assimilate = bind(assimilateWithStrategy, strategies.DEFAULT);\n\
-assimilate.strategies = strategies;\n\
-assimilate.withStrategy = function withStrategy(strategy) {\n\
-    if (typeof strategy === 'string') {\n\
-        strategy = strategies[strategy.toUpperCase()];\n\
-    }\n\
-    if (!strategy) {\n\
-        throw new Error('Unknwon or invalid strategy:' + strategy);\n\
-    }\n\
-    if (typeof strategy.copyFn !== 'function') {\n\
-        throw new Error('Strategy missing copy function:' + strategy);\n\
-    }\n\
-    if (typeof strategy.keysFn !== 'function') {\n\
-        throw new Error('Strategy missing keys function:' + strategy);\n\
-    }\n\
-    return bind(assimilateWithStrategy, strategy);\n\
-};\n\
-\n\
-module.exports = assimilate;\n\
-//# sourceURL=components/pluma/assimilate/0.3.0/dist/assimilate.js"
-));
-
-require.modules["pluma-assimilate"] = require.modules["pluma~assimilate@0.3.0"];
-require.modules["pluma~assimilate"] = require.modules["pluma~assimilate@0.3.0"];
-require.modules["assimilate"] = require.modules["pluma~assimilate@0.3.0"];
-
-
 require.register("indefinido~observable@es6-modules", Function("exports, module",
 "module.exports = require(\"indefinido~observable@es6-modules/lib/observable.js\");\n\
 \n\
@@ -17347,6 +17211,142 @@ require.modules["indefinido~observable"] = require.modules["indefinido~observabl
 require.modules["observable"] = require.modules["indefinido~observable@es6-modules"];
 
 
+require.register("pluma~assimilate@0.3.0", Function("exports, module",
+"/*! assimilate 0.3.0 Copyright (c) 2013 Alan Plum. MIT licensed. */\n\
+var slice = Array.prototype.slice;\n\
+\n\
+function bind(fn, self) {\n\
+    var args = slice.call(arguments, 2);\n\
+    if (typeof Function.prototype.bind === 'function') {\n\
+        return Function.prototype.bind.apply(fn, [self].concat(args));\n\
+    }\n\
+    return function() {\n\
+        return fn.apply(self, args.concat(slice.call(arguments, 0)));\n\
+    };\n\
+}\n\
+\n\
+function simpleCopy(target, name, source) {\n\
+    target[name] = source[name];\n\
+}\n\
+\n\
+function properCopy(target, name, source) {\n\
+    var descriptor = Object.getOwnPropertyDescriptor(source, name);\n\
+    Object.defineProperty(target, name, descriptor);\n\
+}\n\
+\n\
+function ownProperties(obj) {\n\
+    return Object.getOwnPropertyNames(obj);\n\
+}\n\
+\n\
+function allKeys(obj) {\n\
+    var keys = [];\n\
+    for (var name in obj) {\n\
+        keys.push(name);\n\
+    }\n\
+    return keys;\n\
+}\n\
+\n\
+function ownKeys(obj) {\n\
+    var keys = [];\n\
+    for (var name in obj) {\n\
+        if (obj.hasOwnProperty(name)) {\n\
+            keys.push(name);\n\
+        }\n\
+    }\n\
+    return keys;\n\
+}\n\
+\n\
+function assimilateWithStrategy(target) {\n\
+    var strategy = this,\n\
+    sources = slice.call(arguments, 1),\n\
+    i, source, names, j, name;\n\
+\n\
+    if (target === undefined || target === null) {\n\
+        target = {};\n\
+    }\n\
+\n\
+    for (i = 0; i < sources.length; i++) {\n\
+        source = sources[i];\n\
+        names = strategy.keysFn(source);\n\
+        for (j = 0; j < names.length; j++) {\n\
+            name = names[j];\n\
+            strategy.copyFn(target, name, source);\n\
+        }\n\
+    }\n\
+\n\
+    return target;\n\
+}\n\
+\n\
+var strategies = {\n\
+    DEFAULT: {\n\
+        keysFn: ownKeys,\n\
+        copyFn: simpleCopy\n\
+    },\n\
+    PROPER: {\n\
+        keysFn: ownProperties,\n\
+        copyFn: properCopy\n\
+    },\n\
+    INHERITED: {\n\
+        keysFn: allKeys,\n\
+        copyFn: simpleCopy\n\
+    },\n\
+    DEEP: {\n\
+        keysFn: ownKeys,\n\
+        copyFn: function recursiveCopy(target, name, source) {\n\
+            var val = source[name];\n\
+            var old = target[name];\n\
+            if (typeof val === 'object' && typeof old === 'object') {\n\
+                assimilateWithStrategy.call(strategies.DEEP, old, val);\n\
+            } else {\n\
+                simpleCopy(target, name, source);\n\
+            }\n\
+        }\n\
+    },\n\
+    STRICT: {\n\
+        keysFn: ownKeys,\n\
+        copyFn: function strictCopy(target, name, source) {\n\
+            if (source[name] !== undefined) {\n\
+                simpleCopy(target, name, source);\n\
+            }\n\
+        }\n\
+    },\n\
+    FALLBACK: {\n\
+        keysFn: function fallbackCopy(target, name, source) {\n\
+            if (target[name] === undefined) {\n\
+                simpleCopy(target, name, source);\n\
+            }\n\
+        },\n\
+        copyFn: simpleCopy\n\
+    }\n\
+};\n\
+\n\
+var assimilate = bind(assimilateWithStrategy, strategies.DEFAULT);\n\
+assimilate.strategies = strategies;\n\
+assimilate.withStrategy = function withStrategy(strategy) {\n\
+    if (typeof strategy === 'string') {\n\
+        strategy = strategies[strategy.toUpperCase()];\n\
+    }\n\
+    if (!strategy) {\n\
+        throw new Error('Unknwon or invalid strategy:' + strategy);\n\
+    }\n\
+    if (typeof strategy.copyFn !== 'function') {\n\
+        throw new Error('Strategy missing copy function:' + strategy);\n\
+    }\n\
+    if (typeof strategy.keysFn !== 'function') {\n\
+        throw new Error('Strategy missing keys function:' + strategy);\n\
+    }\n\
+    return bind(assimilateWithStrategy, strategy);\n\
+};\n\
+\n\
+module.exports = assimilate;\n\
+//# sourceURL=components/pluma/assimilate/0.3.0/dist/assimilate.js"
+));
+
+require.modules["pluma-assimilate"] = require.modules["pluma~assimilate@0.3.0"];
+require.modules["pluma~assimilate"] = require.modules["pluma~assimilate@0.3.0"];
+require.modules["assimilate"] = require.modules["pluma~assimilate@0.3.0"];
+
+
 require.register("indemma", Function("exports, module",
 "module.exports = require(\"indemma/lib/record.js\");\n\
 \n\
@@ -17886,7 +17886,8 @@ associable = {\n\
           old_resource = this[resource];\n\
           Object.defineProperty(record, resource.toString(), {\n\
             get: $.proxy(descriptors.belongs_to.resource.getter, association_proxy),\n\
-            set: $.proxy(descriptors.belongs_to.resource.setter, association_proxy)\n\
+            set: $.proxy(descriptors.belongs_to.resource.setter, association_proxy),\n\
+            configurable: true\n\
           });\n\
           _results.push(this[resource] = old_resource);\n\
         }\n\
@@ -17941,7 +17942,9 @@ dirtyable = {\n\
       return this.observed.dirty;\n\
     },\n\
     set: function(value) {\n\
-      return this.observed.dirty = value;\n\
+      this.observed.dirty = value;\n\
+      this.observation.scheduler.schedule();\n\
+      return value;\n\
     }\n\
   },\n\
   record: {\n\
@@ -18396,7 +18399,7 @@ restful = {\n\
       return promise;\n\
     },\n\
     assign_attributes: function(attributes) {\n\
-      var association, association_attributes, association_name, associations_attributes, attribute, message, name, singular_resource, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _m, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _results;\n\
+      var associated, association, association_attributes, association_name, associations_attributes, attribute, message, name, singular_resource, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _m, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _results;\n\
 \n\
       _ref = model[this.resource.toString()].has_many;\n\
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {\n\
@@ -18441,7 +18444,9 @@ restful = {\n\
         delete attributes[association_name];\n\
         delete attributes[association_name + \"_attributes\"];\n\
         if (association_attributes) {\n\
-          this[association_name] = this[\"build_\" + association_name](association_attributes);\n\
+          associated = this[association_name] || this[\"build_\" + association_name]();\n\
+          associated.assign_attributes(association_attributes);\n\
+          this[association_name] = associated;\n\
         }\n\
       }\n\
       _ref3 = model[this.resource.toString()].belongs_to;\n\
@@ -18451,7 +18456,9 @@ restful = {\n\
         delete attributes[association_name];\n\
         delete attributes[association_name + \"_attributes\"];\n\
         if (association_attributes) {\n\
-          this[association_name] = this[\"build_\" + association_name](association_attributes);\n\
+          associated = this[association_name] || this[\"build_\" + association_name]();\n\
+          associated.assign_attributes(association_attributes);\n\
+          this[association_name] = associated;\n\
         }\n\
       }\n\
       _results = [];\n\
@@ -19222,6 +19229,7 @@ initializers = {\n\
       }\n\
     });\n\
     this.validated = false;\n\
+    this.validation = null;\n\
     this.subscribe('dirty', function(value) {\n\
       return value && (this.validated = false);\n\
     });\n\
@@ -19366,15 +19374,16 @@ stampit = require(\"indemma/vendor/stampit.js\");\n\
 \n\
 associationable = stampit({\n\
   validate_each: function(record, attribute, value) {\n\
-    var associated_validation;\n\
+    var associated, associated_validation;\n\
 \n\
-    if (record[attribute]) {\n\
+    associated = record[attribute];\n\
+    if (associated) {\n\
       if (model[record.resource].has_one.indexOf(attribute) === -1) {\n\
         throw new Error('Only has_one associations are supported to validates_associated');\n\
       }\n\
-      associated_validation = record[attribute].validate();\n\
+      associated_validation = associated.validate();\n\
       associated_validation.done(function() {\n\
-        if (record[attribute].errors.length) {\n\
+        if (associated.errors.length) {\n\
           return record.errors.add(attribute, 'associated', this.options);\n\
         }\n\
       });\n\

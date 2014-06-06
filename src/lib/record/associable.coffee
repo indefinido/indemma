@@ -344,6 +344,7 @@ associable =
           Object.defineProperty record, resource.toString(),
             get: $.proxy descriptors.belongs_to.resource.getter, association_proxy
             set: $.proxy descriptors.belongs_to.resource.setter, association_proxy
+            configurable: true
 
           # Execute setter in order to do the apropriate actions to
           # the previoulsy stored value in the association property
