@@ -190,7 +190,7 @@ restful =
         delete attributes[association_name]
         delete attributes[association_name + "_attributes"]
         if association_attributes
-          associated  = @[association_name] || @["build_#{association_name}"]()
+          associated  = @[association_name] || @["build_#{association_name}"] _id: association_name._id
           associated.assign_attributes association_attributes
           @[association_name] = associated
 
@@ -206,7 +206,7 @@ restful =
         delete attributes[association_name]
         delete attributes[association_name + "_attributes"]
         if association_attributes
-          associated = @[association_name] || @["build_#{association_name}"]()
+          associated = @[association_name] || @["build_#{association_name}"] _id: association_name._id
           associated.assign_attributes association_attributes
           @[association_name] = associated
 
