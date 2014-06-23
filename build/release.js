@@ -13712,7 +13712,9 @@ restful = {
         delete attributes[association_name];
         delete attributes[association_name + "_attributes"];
         if (association_attributes) {
-          associated = this[association_name] || this["build_" + association_name]();
+          associated = this[association_name] || this["build_" + association_name]({
+            _id: association_attributes._id
+          });
           associated.assign_attributes(association_attributes);
           this[association_name] = associated;
         }
@@ -13724,7 +13726,9 @@ restful = {
         delete attributes[association_name];
         delete attributes[association_name + "_attributes"];
         if (association_attributes) {
-          associated = this[association_name] || this["build_" + association_name]();
+          associated = this[association_name] || this["build_" + association_name]({
+            _id: association_attributes._id
+          });
           associated.assign_attributes(association_attributes);
           this[association_name] = associated;
         }
