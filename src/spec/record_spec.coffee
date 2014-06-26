@@ -14,10 +14,16 @@ describe 'model',  ->
 
     xit 'should throw exception if no resource is passed'
 
-    it 'should create a record factory', ->
+    it 'should create a resource factory', ->
       person = model.call resource: 'person'
       person.should.be.object
 
       john = person()
       john.should.be.object
       john.resource.should.have.property 'name', 'person'
+
+    it 'should execute after mix callbacks', (done) ->
+
+      person = model.call
+        resource: 'person'
+        after_mix: [-> done()]
