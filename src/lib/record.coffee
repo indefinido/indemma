@@ -77,6 +77,12 @@ merge      = require('assimilate').withStrategy 'deep'
     else
       after_initialize = []
 
+    # TODO Use stampit and solve this mess!!
+    if @after_mix
+      after_mix = @after_mix.splice 0
+    else
+      after_mix = []
+
     instance = bind @, initialize_record
 
     extend instance, merge @, modelable
@@ -86,10 +92,9 @@ merge      = require('assimilate').withStrategy 'deep'
 
     @record.before_initialize   = instance.record.before_initialize.concat []
 
-    callback.call instance, instance for callback in modelable.after_mix
+    callback.call instance, instance for callback in modelable.after_mix.concat after_mix
 
     # Store model for later use
-
     # TODO implement correctly stampit usage, and remove the need for
     # direct storage
     mixer[@resource.name || @resource.toString()] = instance

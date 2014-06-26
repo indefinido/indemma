@@ -29,7 +29,7 @@ scopable =
       else
         @["$#{name}"] = defaults[type] || type
 
-      type    = $.type type unless $.type(type) == 'string'
+      type    = $.type type if $.type(type) != 'string' or type.toString() == ''
       builder = builders[type]
 
       throw "Unknown scope type: '#{type}', For model with resource: '#{@resource}'" unless builder?

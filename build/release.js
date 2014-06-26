@@ -12762,7 +12762,7 @@ this.model = (function() {
     return instance;
   };
   mixer = function(options) {
-    var after_initialize, callback, instance, _i, _len, _ref;
+    var after_initialize, after_mix, callback, instance, _i, _len, _ref;
 
     if (this === window) {
       throw 'Model mixin called incorrectly call with model.call {} instead of model({})';
@@ -12775,12 +12775,17 @@ this.model = (function() {
     } else {
       after_initialize = [];
     }
+    if (this.after_mix) {
+      after_mix = this.after_mix.splice(0);
+    } else {
+      after_mix = [];
+    }
     instance = bind(this, initialize_record);
     extend(instance, merge(this, modelable));
     this.record = instance.record = merge({}, instance.record, modelable.record);
     this.record.after_initialize = instance.record.after_initialize = instance.record.after_initialize.concat(after_initialize);
     this.record.before_initialize = instance.record.before_initialize.concat([]);
-    _ref = modelable.after_mix;
+    _ref = modelable.after_mix.concat(after_mix);
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       callback = _ref[_i];
       callback.call(instance, instance);
@@ -14048,7 +14053,7 @@ scopable = {
       } else {
         this["$" + name] = defaults[type] || type;
       }
-      if ($.type(type) !== 'string') {
+      if ($.type(type) !== 'string' || type.toString() === '') {
         type = $.type(type);
       }
       builder = builders[type];

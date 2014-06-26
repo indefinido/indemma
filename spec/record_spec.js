@@ -22,7 +22,7 @@ describe('model', function() {
   model = root.model;
   return describe('#()', function() {
     xit('should throw exception if no resource is passed');
-    return it('should create a record factory', function() {
+    it('should create a resource factory', function() {
       var john, person;
 
       person = model.call({
@@ -32,6 +32,18 @@ describe('model', function() {
       john = person();
       john.should.be.object;
       return john.resource.should.have.property('name', 'person');
+    });
+    return it('should execute after mix callbacks', function(done) {
+      var person;
+
+      return person = model.call({
+        resource: 'person',
+        after_mix: [
+          function() {
+            return done();
+          }
+        ]
+      });
     });
   });
 });

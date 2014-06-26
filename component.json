@@ -2,7 +2,7 @@
   "name": "indemma",
   "repo": "indefinido/indemma",
   "description": "Indemma (mind picture = memory), client side ES5 observable REST model",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "keywords": [],
   "dependencies": {
     "pluma/assimilate": "0.3.0",

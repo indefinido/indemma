@@ -17479,7 +17479,7 @@ this.model = (function() {\n\
     return instance;\n\
   };\n\
   mixer = function(options) {\n\
-    var after_initialize, callback, instance, _i, _len, _ref;\n\
+    var after_initialize, after_mix, callback, instance, _i, _len, _ref;\n\
 \n\
     if (this === window) {\n\
       throw 'Model mixin called incorrectly call with model.call {} instead of model({})';\n\
@@ -17492,12 +17492,17 @@ this.model = (function() {\n\
     } else {\n\
       after_initialize = [];\n\
     }\n\
+    if (this.after_mix) {\n\
+      after_mix = this.after_mix.splice(0);\n\
+    } else {\n\
+      after_mix = [];\n\
+    }\n\
     instance = bind(this, initialize_record);\n\
     extend(instance, merge(this, modelable));\n\
     this.record = instance.record = merge({}, instance.record, modelable.record);\n\
     this.record.after_initialize = instance.record.after_initialize = instance.record.after_initialize.concat(after_initialize);\n\
     this.record.before_initialize = instance.record.before_initialize.concat([]);\n\
-    _ref = modelable.after_mix;\n\
+    _ref = modelable.after_mix.concat(after_mix);\n\
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {\n\
       callback = _ref[_i];\n\
       callback.call(instance, instance);\n\
@@ -18787,7 +18792,7 @@ scopable = {\n\
       } else {\n\
         this[\"$\" + name] = defaults[type] || type;\n\
       }\n\
-      if ($.type(type) !== 'string') {\n\
+      if ($.type(type) !== 'string' || type.toString() === '') {\n\
         type = $.type(type);\n\
       }\n\
       builder = builders[type];\n\
