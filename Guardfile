@@ -14,13 +14,13 @@ guard 'coffeescript', :input => 'src', :output => '.', :bare => true
 guard 'shell' do
   watch(/(.*).coffee/) { |m|
     puts '  Building release component'
-    puts `component-build --name release`
+    puts `component build --name release`
 
     puts '  Building development component'
-    puts `component-build --name development --dev`
+    puts `component build --name development --dev`
 
     puts '  Building tests component'
-    puts `component-build --name test --dev`
+    puts `component build --name test --dev`
   }
 
   watch(/component.json|lib\/observable/) { |m|
@@ -28,12 +28,12 @@ guard 'shell' do
     puts `component install --dev`
 
     puts '  Building release component'
-    puts `component-build --name release`
+    puts `component build --name release`
 
     puts '  Building development component'
-    puts `component-build --name development --dev`
+    puts `component build --name development --dev`
 
     puts '  Building tests component'
-    puts `component-build --name test --dev`
+    puts `component build --name test --dev`
   }
 end
