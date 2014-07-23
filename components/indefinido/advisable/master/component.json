@@ -8,7 +8,7 @@
     "mixin"
   ],
   "dependencies": {
-    "components/jquery": "1.9.1"
+    "component/jquery": "*"
   },
   "development": {},
   "license": "WTFP",

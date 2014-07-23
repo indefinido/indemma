@@ -96,7 +96,7 @@ describe 'model',  ->
 
         # Record for some reason changed
         anonymous.dirty = true
-        anonymous.observation.scheduler.deliver()
+        anonymous.observation.deliver()
 
         # We expect it to instanitante new validation deferred
         anonymous.validate().should.not.be.eq validation
