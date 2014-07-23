@@ -37,7 +37,7 @@ describe('dirtyable', function() {
         });
         return it('should be true on record changes', function() {
           this.arthur.name = 10;
-          this.arthur.observation.scheduler.deliver();
+          this.arthur.observation.deliver();
           return this.arthur.dirty.should.be["true"];
         });
       });

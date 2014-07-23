@@ -1,14 +1,14 @@
 {
   "name": "advisable",
   "description": "Aspect oriented programming mixin",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "keywords": [
     "aspect",
     "aop",
     "mixin"
   ],
   "dependencies": {
-    "component/jquery": "*"
+    "components/jquery": "1.9.1"
   },
   "development": {},
   "license": "WTFP",

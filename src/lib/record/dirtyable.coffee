@@ -6,10 +6,8 @@ dirtyable =
   change: (name) -> dirtyable.ignores.indexOf(name) == -1
   descriptor:
     get:         -> @observed.dirty
-    set: (value) ->
-      @observed.dirty = value
-      @observation.scheduler.schedule()
-      value
+    set: (value) -> @observed.dirty = value
+
   record:
     after_initialize: ->
       Object.defineProperty @, 'dirty', dirtyable.descriptor
@@ -19,6 +17,14 @@ dirtyable =
 
       @subscribe (added, removed, changed, past) ->
         @dirty ||= !!Object.keys(changed).filter(dirtyable.change).length
+
+# Shim browsers without Object.observe
+unless Object.observe
+  dirt = dirtyable.descriptor.set
+  dirtyable.descriptor.set = (value) ->
+    value = dirt.apply @, arguments
+    @observation.scheduler.schedule()
+    value
 
 
 

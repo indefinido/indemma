@@ -16,7 +16,7 @@ scheduler = function(options) {
     };
   }
   jQuery.extend(options, {
-    keypaths: {
+    schedulable_keypaths: {
       value: []
     },
     schedule: {
@@ -28,7 +28,7 @@ scheduler = function(options) {
           return _this.deliver();
         };
         clearTimeout(timeout);
-        return timeout = setTimeout(deliver, 500 || options.wait);
+        return timeout = setTimeout(deliver, 20 || options.wait);
       }
     }
   });
@@ -37,27 +37,29 @@ scheduler = function(options) {
 
 jQuery.extend(scheduler, {
   methods: {
-    property: function(object, keypath) {
-      if (this.keypaths.indexOf(keypath) !== -1) {
+    schedulable: function(object, keypath) {
+      var observer, observers, value;
+
+      if (this.schedulable_keypaths.indexOf(keypath) !== -1) {
         return;
       }
-      this.keypaths.push(keypath);
-      return Object.defineProperty(object, keypath, {
+      this.schedulable_keypaths.push(keypath);
+      observers = object.observation.observers;
+      observer = observers[keypath];
+      value = observer.path_.getValueFrom(object);
+      Object.defineProperty(object, keypath, {
         get: this.getter(object, keypath),
         set: this.setter(object, keypath),
         enumerable: true,
         configurable: true
       });
+      if (value !== observer.path_.getValueFrom(object)) {
+        observer.setValue(value);
+        return object.observation.deliver();
+      }
     },
     deliver: function() {
-      var keypath, observer, _ref;
-
-      _ref = this.target.observation.observers;
-      for (keypath in _ref) {
-        observer = _ref[keypath];
-        observer.deliver();
-      }
-      return true;
+      return this.target.observation.deliver();
     },
     setter: function(object, keypath, callback) {
       var current_setter;
@@ -67,12 +69,14 @@ jQuery.extend(scheduler, {
         return function(value) {
           current_setter.call(this, value);
           this.observed[keypath] = value;
-          return this.observation.scheduler.schedule();
+          this.observation.scheduler.schedule();
+          return value;
         };
       } else {
         return function(value) {
           this.observed[keypath] = value;
-          return this.observation.scheduler.schedule();
+          this.observation.scheduler.schedule();
+          return value;
         };
       }
     },
@@ -90,12 +94,42 @@ jQuery.extend(scheduler, {
 });
 
 schedulerable = function(observable) {
+  schedulerable.storage_for(observable);
+  schedulerable.schedulable_observers();
+  return schedulerable.augment(observable);
+};
+
+schedulerable.storage_for = function(observable) {};
+
+schedulerable.schedulable_observers = function() {
+  import {Path} from '../../vendor/observe-js/observe.js';
   var original;
 
-  original = observable.methods.subscribe;
+  original = Path.prototype.setValueFrom;
+  return Path.prototype.setValueFrom = function(object) {
+    var changed;
+
+    changed = original.apply(this, arguments);
+    if (changed) {
+      return object.observation.scheduler.schedule();
+    }
+  };
+};
+
+schedulerable.augment = function(observable) {
+  var subscribe, unobserve;
+
+  subscribe = observable.methods.subscribe;
   observable.methods.subscribe = function(keypath, callback) {
-    original.apply(this, arguments);
-    return this.observation.scheduler.property(this, keypath);
+    subscribe.apply(this, arguments);
+    if (typeof keypath !== 'function') {
+      return this.observation.scheduler.schedulable(this, keypath);
+    }
+  };
+  unobserve = observable.unobserve;
+  observable.unobserve = function() {
+    unobserve.apply(this, arguments);
+    return object.observation.scheduler.destroy();
   };
   return jQuery.extend((function() {
     var object;

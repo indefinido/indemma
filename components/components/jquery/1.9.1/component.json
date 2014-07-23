@@ -7,8 +7,8 @@
     "component"
   ],
   "scripts": [
-    "index.js"
+    "jquery.js"
   ],
   "license": "MIT",
-  "repository": "component/jquery"
+  "repository": "components/jquery"
 }

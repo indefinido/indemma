@@ -1,6 +1,6 @@
 {
   "name": "bind",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "function binding utility",
   "keywords": [
     "bind",

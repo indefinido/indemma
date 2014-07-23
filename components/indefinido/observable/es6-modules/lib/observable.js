@@ -19,15 +19,16 @@ observable = function() {
 jQuery.extend(observable, {
   select: selection(observable),
   observe: function(object) {
-    return Object.defineProperty(object, "observation", {
+    Object.defineProperty(object, "observation", {
       configurable: true,
       enumerable: false,
       value: observation(object)
-    }, Object.defineProperty(object, "observed", {
+    });
+    return Object.defineProperty(object, "observed", {
       configurable: true,
       enumerable: false,
       value: {}
-    }));
+    });
   },
   self: function(object) {
     var observer, observers;
@@ -42,20 +43,18 @@ jQuery.extend(observable, {
     return observer = observers[keypath] || (observers[keypath] = new KeypathObserver(object, keypath));
   },
   unobserve: function(object) {
-    var name, unobserved;
+    var name;
 
     if (!object.observation) {
       return object;
     }
-    unobserved = {};
-    for (name in observation.methods) {
+    for (name in observable.methods) {
       delete object[name];
     }
     object.observation.destroy();
-    object.observation.scheduler.destroy();
     delete object.observation;
     delete object.observed;
-    return unobserved;
+    return object;
   },
   methods: {
     subscribe: function(keypath_or_callback, callback) {
