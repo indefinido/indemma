@@ -1628,4 +1628,4 @@
   global.CompoundObserver = CompoundObserver;
   global.Path = Path;
   global.ObserverTransform = ObserverTransform;
-})(typeof global !== 'undefined' && global && typeof module !== 'undefined' && module ? exports || global : this || window);
+})(typeof global !== 'undefined' && global && typeof module !== 'undefined' && module ? exports || global : exports || this || window);

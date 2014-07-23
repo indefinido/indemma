@@ -35,7 +35,7 @@ describe 'dirtyable', ->
           @arthur.name = 10
 
           # Force instantaneous delivery
-          @arthur.observation.scheduler.deliver()
+          @arthur.observation.deliver()
 
           @arthur.dirty.should.be.true
 

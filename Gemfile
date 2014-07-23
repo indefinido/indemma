@@ -1,7 +1,6 @@
 # A sample Gemfile
 source "https://rubygems.org"
 
-
 group :development do
   # gem 'libv8'
   gem 'guard'

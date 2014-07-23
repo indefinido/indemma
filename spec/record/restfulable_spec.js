@@ -95,17 +95,14 @@ describe('restfulable', function() {
   return describe('model', function() {
     return describe('()', function() {
       describe('.json()', function() {
-        var friend, person;
-
-        friend = person = null;
         return beforeEach(function() {
-          person = model.call({
+          this.personable = model.call({
             resource: 'person',
             has_many: 'friends',
             nested_attributes: ['friends'],
             name: String
           });
-          return friend = model.call({
+          return this.friendable = model.call({
             resource: 'friend',
             belongs_to: 'person'
           });
@@ -155,7 +152,7 @@ describe('restfulable', function() {
           var object;
 
           object = {};
-          this.arthur = this.person({
+          this.arthur = this.personable({
             name: object
           });
           this.arthur.assign_attributes({
@@ -241,28 +238,13 @@ describe('restfulable', function() {
       });
       describe('with plural resource', function() {
         return describe('.create()', function() {
-          var deferred, person, promise;
-
-          deferred = promise = person = null;
-          should_behave_like_errorsable();
           beforeEach(function() {
-            var context;
-
-            person = model.call({
+            this.personable = model.call({
               resource: 'person'
             });
-            deferred = jQuery.Deferred();
-            this.subject = context = person({
-              name: 'Arthur'
-            });
-            context.lock = JSON.stringify(context.json());
-            deferred.resolveWith(context, [
-              {
-                _id: 1,
-                name: 'Arthur'
-              }
-            ]);
-            deferred.resolveWith(person({
+            this.deferred = jQuery.Deferred();
+            this.deferred.resolveWith(this.personable({
+              _id: 1,
               name: 'Arthur'
             }), [
               {
@@ -270,8 +252,8 @@ describe('restfulable', function() {
                 name: 'Arthur'
               }
             ]);
-            sinon.stub(jQuery, "ajax").returns(deferred);
-            return promise = person.create({
+            sinon.stub(jQuery, "ajax").returns(this.deferred);
+            return this.promise = this.personable.create({
               name: 'Arthur'
             }, {
               name: 'Ford'
@@ -280,12 +262,9 @@ describe('restfulable', function() {
           afterEach(function() {
             return jQuery.ajax.restore();
           });
-          it('should return a promise', function(done) {
-            promise.done.should.be["function"];
-            promise.state().should.be.eq('resolved');
-            return promise.done(function() {
-              return done();
-            }).should.be.eq('resolved');
+          it('should return a promise', function() {
+            this.promise.done.should.be["function"];
+            return this.promise.state().should.be.eq('resolved');
           });
           it('should return models when promise is resolved', function(done) {
             var created;
@@ -294,32 +273,32 @@ describe('restfulable', function() {
               this.name.should.be.eq('Arthur');
               return done();
             };
-            return person.create({
+            return this.personable.create({
               name: 'Arthur'
             }, {
               name: 'Ford'
             }, created);
           });
           it('should optionally accept create callback', function(done) {
-            promise = person.create({
+            this.promise = this.personable.create({
               name: 'Arthur'
             }, {
               name: 'Ford'
             });
-            promise.done.should.be["function"];
-            promise.done(function() {
+            this.promise.done.should.be["function"];
+            this.promise.done(function() {
               return done();
             });
-            return promise.state().should.be.eq('resolved');
+            return this.promise.state().should.be.eq('resolved');
           });
           it('should create record when only callback is passed', function(done) {
-            person.create(function() {
+            this.personable.create(function() {
               return done();
             });
             return jQuery.ajax.callCount.should.be.eq(3);
           });
           it('should throw exception when nothing is passed', function() {
-            return expect(person.create).to["throw"](TypeError);
+            return expect(this.personable.create).to["throw"](TypeError);
           });
           return it('should make ajax calls', function() {
             return jQuery.ajax.callCount.should.be.eq(2);

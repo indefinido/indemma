@@ -104,7 +104,7 @@ describe('model', function() {
         validation = anonymous.validation;
         anonymous.validate().should.be.eq(validation);
         anonymous.dirty = true;
-        anonymous.observation.scheduler.deliver();
+        anonymous.observation.deliver();
         return anonymous.validate().should.not.be.eq(validation);
       });
     });

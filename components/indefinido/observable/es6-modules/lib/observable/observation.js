@@ -7,6 +7,17 @@ observation = {
   remove: function(keypath, callback) {
     return this.observers[keypath].remove(callback);
   },
+  deliver: function(discard) {
+    var keypath, observer, _ref, _results;
+
+    _ref = this.observers;
+    _results = [];
+    for (keypath in _ref) {
+      observer = _ref[keypath];
+      _results.push(observer.deliver(discard));
+    }
+    return _results;
+  },
   mute: function(keypath) {
     this.observers[keypath].close();
     return delete this.observers[keypath];

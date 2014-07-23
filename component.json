@@ -1,11 +1,11 @@
 {
   "name": "indemma",
-  "repo": "indefinido/indemma",
+  "repository": "indefinido/indemma",
   "description": "Indemma (mind picture = memory), client side ES5 observable REST model",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "keywords": [],
   "dependencies": {
-    "pluma/assimilate": "0.3.0",
+    "pluma/assimilate": "0.4.0",
     "component/type": "*",
     "component/bind": "*",
     "component/jquery": "*",
@@ -22,11 +22,9 @@
     ]
   },
   "license": "WTFPL",
-  "paths": ["vendor/components"],
   "scripts": [
     "index.js",
     "lib/**/*.js",
-
     "vendor/stampit.js",
     "vendor/owl/pluralize.js"
   ]

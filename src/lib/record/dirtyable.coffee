@@ -3,13 +3,11 @@
 dirtyable =
   # TODO move ignored diryifing properties to the record
   ignores: ['dirty', 'resource', 'route', 'initial_route', 'after_initialize', 'before_initialize', 'parent_resource', 'nested_attributes', 'reloading', 'ready', 'saving', 'salvation', 'sustained', 'element', 'default', 'lock', 'validated', 'validation', 'errors', 'dirty']
-  change: (name) -> dirtyable.ignores.indexOf(name) == -1
+  reserved_filter: (name) -> dirtyable.ignores.indexOf(name) == -1
   descriptor:
     get:         -> @observed.dirty
-    set: (value) ->
-      @observed.dirty = value
-      @observation.scheduler.schedule()
-      value
+    set: (value) -> @observed.dirty = value
+
   record:
     after_initialize: ->
       Object.defineProperty @, 'dirty', dirtyable.descriptor
@@ -18,7 +16,17 @@ dirtyable =
       @observed.dirty = !!@_id
 
       @subscribe (added, removed, changed, past) ->
-        @dirty ||= !!Object.keys(changed).filter(dirtyable.change).length
+        @dirty ||= !!Object.keys(changed).filter(dirtyable.reserved_filter).length
+        @dirty ||= !!Object.keys(added  ).filter(dirtyable.reserved_filter).length
+        @dirty ||= !!Object.keys(removed).filter(dirtyable.reserved_filter).length
+
+# Shim browsers without Object.observe
+unless Object.observe
+  dirt = dirtyable.descriptor.set
+  dirtyable.descriptor.set = (value) ->
+    value = dirt.apply @, arguments
+    @observation.scheduler.schedule()
+    value
 
 
 

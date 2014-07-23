@@ -83,16 +83,15 @@ describe 'restfulable', ->
   describe 'model' ,  ->
     describe '()', ->
       describe '.json()', ->
-        friend = person = null
 
         beforeEach ->
-          person   = model.call
+          @personable   = model.call
             resource: 'person'
             has_many: 'friends'
             nested_attributes: ['friends']
             name: String
 
-          friend   = model.call
+          @friendable   = model.call
             resource: 'friend'
             belongs_to: 'person'
 
@@ -133,7 +132,7 @@ describe 'restfulable', ->
         it 'should not assign attribute with the same value twice', ->
           object     = {}
 
-          @arthur    = @person name: object
+          @arthur    = @personable name: object
           @arthur.assign_attributes name: {wearing: 'robe'}
 
           @arthur.name.should.not.be.eq object
@@ -193,29 +192,21 @@ describe 'restfulable', ->
       describe 'with plural resource', ->
 
         describe '.create()', ->
-          deferred = promise = person = null
-          should_behave_like_errorsable()
-
           beforeEach ->
-            person   = model.call resource: 'person'
-            deferred = jQuery.Deferred()
+            @personable   = model.call resource: 'person'
 
-            @subject = context = person(name: 'Arthur')
-            context.lock = JSON.stringify context.json()
-            deferred.resolveWith context, [_id: 1, name: 'Arthur']
+            @deferred     = jQuery.Deferred()
+            @deferred.resolveWith @personable({_id: 1, name: 'Arthur'}), [{_id: 1, name: 'Arthur'}]
+            sinon.stub(jQuery, "ajax").returns @deferred
 
-            deferred.resolveWith person(name: 'Arthur'), [_id: 1, name: 'Arthur']
-            sinon.stub(jQuery, "ajax").returns(deferred)
-            promise  = person.create {name: 'Arthur'}, {name: 'Ford'}
+            @promise      = @personable.create {name: 'Arthur'}, {name: 'Ford'}
 
           afterEach  -> jQuery.ajax.restore()
 
           # TODO move this test to restful test
-          it 'should return a promise', (done) ->
-            promise.done.should.be.function
-            promise.state().should.be.eq 'resolved'
-            promise.done(-> done()).should.be.eq 'resolved'
-
+          it 'should return a promise', ->
+            @promise.done.should.be.function
+            @promise.state().should.be.eq 'resolved'
 
           it 'should return models when promise is resolved', (done) ->
             # Will be called once for each saved record
@@ -223,21 +214,21 @@ describe 'restfulable', ->
               @name.should.be.eq 'Arthur'
               done()
 
-            person.create {name: 'Arthur'}, {name: 'Ford'}, created
+            @personable.create {name: 'Arthur'}, {name: 'Ford'}, created
 
           it 'should optionally accept create callback', (done) ->
-            promise = person.create {name: 'Arthur'}, {name: 'Ford'}
-            promise.done.should.be.function
-            promise.done -> done()
-            promise.state().should.be.eq 'resolved'
+            @promise = @personable.create {name: 'Arthur'}, {name: 'Ford'}
+            @promise.done.should.be.function
+            @promise.done -> done()
+            @promise.state().should.be.eq 'resolved'
 
 
           it 'should create record when only callback is passed', (done) ->
-            person.create -> done()
+            @personable.create -> done()
             jQuery.ajax.callCount.should.be.eq 3 # 2 are from the beforeEach
 
           it 'should throw exception when nothing is passed', () ->
-            expect(person.create).to.throw TypeError
+            expect(@personable.create).to.throw TypeError
 
           it 'should make ajax calls', ->
             jQuery.ajax.callCount.should.be.eq 2

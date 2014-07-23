@@ -12,4 +12,4 @@ root.expect = chai.expect;
 
 root.should = chai.should();
 
-jQuery = require("component~jquery@1.9.1");
+jQuery = require("component~jquery@1.0.0");
