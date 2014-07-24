@@ -6,21 +6,21 @@ describe 'queryable',  ->
 
   describe 'model', ->
     beforeEach ->
-      @person = model.call
+      @personable = model.call
         resource  : 'person'
 
     it 'should set the queryable key', ->
       model.should.have.property 'queryable', true
 
     it 'should create a storage', ->
-      @person.should.have.property 'storage'
+      @personable.should.have.property 'storage'
 
     describe '#find', ->
       beforeEach ->
         @xhr = jQuery.Deferred()
         sinon.stub(jQuery, "ajax").returns @xhr
 
-        @arthur = @person
+        @arthur = @personable
           _id: '1'
           name: 'Arthur Philip Dent'
 
@@ -30,4 +30,4 @@ describe 'queryable',  ->
       afterEach  -> jQuery.ajax.restore()
 
       it 'should retrieve a record by key', ->
-        @person.find('1').should.have.property 'name', @arthur.name
+        @personable.find('1').should.have.property 'name', @arthur.name

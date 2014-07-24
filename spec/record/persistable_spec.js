@@ -13,12 +13,12 @@ describe('persistable', function() {
       beforeEach(function() {
         this.xhr = jQuery.Deferred();
         sinon.stub(jQuery, "ajax").returns(this.xhr);
-        this.person = model.call({
+        this.personable = model.call({
           resource: 'person',
           has_many: 'friends',
           belongs_to: 'corporation'
         });
-        this.arthur = this.person({
+        this.arthur = this.personable({
           name: 'Arthur Philip Dent'
         });
         this.xhr.resolveWith(this.arthur, [
@@ -34,12 +34,12 @@ describe('persistable', function() {
       return it('should try to store a record after saving when initialzed without id', function(done) {
         var _this = this;
 
-        sinon.stub(this.person.storage, 'store').returns(true);
+        sinon.stub(this.personable.storage, 'store').returns(true);
         this.arthur.save(function() {
-          expect(_this.person.storage.store.calledOnce).to.be["true"];
+          expect(_this.personable.storage.store.calledOnce).to.be["true"];
           return done();
         });
-        return this.person.storage.store.restore();
+        return this.personable.storage.store.restore();
       });
     });
   });

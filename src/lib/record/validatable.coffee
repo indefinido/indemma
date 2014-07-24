@@ -80,6 +80,10 @@ errorsable = stampit
 
 
 initializers =
+  # TODO move ignored properties to the record
+  ignores: ['dirty', 'resource', 'route', 'initial_route', 'after_initialize', 'before_initialize', 'parent_resource', 'nested_attributes', 'reloading', 'ready', 'saving', 'salvation', 'sustained', 'element', 'default', 'lock', 'validated', 'validation', 'errors', 'dirty']
+  reserved_filter: (name) -> @ignores.indexOf(name) == -1
+
   define_triggers: ->
 
     # TODO remove the extra inheritance level of model[@resource]
@@ -93,7 +97,15 @@ initializers =
     # TODO move this functionality control to validatable
     @validated  = false
     @validation = null
-    @subscribe 'dirty', (value) -> value and @validated = false
+    # TODO subscribe and unsubscribe depending on validation state
+    @subscribe (added, removed, changed) ->
+      # When any property is added, removed or changed, we consider
+      # that the record has been modified
+      modified = !!Object.keys($.extend added, removed, changed).filter(initializers.reserved_filter, initializers).length
+
+      # To enable the future validations of this record, mark it as
+      # not validated, since it has changed
+      modified and @validated = false
 
     Object.defineProperty @, 'valid',
       get: ->
@@ -174,19 +186,7 @@ extensions =
       @validation.fail failed
 
       # TODO store this callback
-      @validation.done (record) ->
-        # Disable dirty checking to prevent validation believe that
-        # the model values has changed
-        old_dirty        = record.dirty
-        record.dirty     = null
-
-        record.validated ||= true
-
-        # Restore dirty state, without publishing changes
-        record.observed.dirty = old_dirty
-
-        record
-
+      @validation.done (record) -> record.validated ||= true
 
 # Validators management
 manager =
