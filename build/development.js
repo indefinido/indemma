@@ -18692,42 +18692,45 @@ model.associable = {\n\
 
 require.register("indemma/lib/record/dirtyable.js", Function("exports, module",
 "'use strict';\n\
-var dirt, dirtyable, model, record;\n\
+var dirtyable, model, record;\n\
 \n\
 dirtyable = {\n\
   ignores: ['dirty', 'resource', 'route', 'initial_route', 'after_initialize', 'before_initialize', 'parent_resource', 'nested_attributes', 'reloading', 'ready', 'saving', 'salvation', 'sustained', 'element', 'default', 'lock', 'validated', 'validation', 'errors', 'dirty'],\n\
   reserved_filter: function(name) {\n\
-    return dirtyable.ignores.indexOf(name) === -1;\n\
-  },\n\
-  descriptor: {\n\
-    get: function() {\n\
-      return this.observed.dirty;\n\
-    },\n\
-    set: function(value) {\n\
-      return this.observed.dirty = value;\n\
-    }\n\
+    return this.ignores.indexOf(name) === -1;\n\
   },\n\
   record: {\n\
-    after_initialize: function() {\n\
-      Object.defineProperty(this, 'dirty', dirtyable.descriptor);\n\
-      this.observed.dirty = !!this._id;\n\
-      return this.subscribe(function(added, removed, changed, past) {\n\
-        this.dirty || (this.dirty = !!Object.keys(changed).filter(dirtyable.reserved_filter).length);\n\
-        this.dirty || (this.dirty = !!Object.keys(added).filter(dirtyable.reserved_filter).length);\n\
-        return this.dirty || (this.dirty = !!Object.keys(removed).filter(dirtyable.reserved_filter).length);\n\
-      });\n\
-    }\n\
+    after_initialize: [\n\
+      function() {\n\
+        return this.subscribe(function(added, removed, changed, past) {\n\
+          return this.dirty || (this.dirty = !!Object.keys($.extend({}, added, removed, changed)).filter(dirtyable.reserved_filter, dirtyable).length);\n\
+        });\n\
+      }\n\
+    ]\n\
   }\n\
 };\n\
 \n\
 if (!Object.observe) {\n\
-  dirt = dirtyable.descriptor.set;\n\
-  dirtyable.descriptor.set = function(value) {\n\
-    value = dirt.apply(this, arguments);\n\
-    this.observation.scheduler.schedule();\n\
-    return value;\n\
-  };\n\
+  $.extend(dirtyable, {\n\
+    descriptor: {\n\
+      get: function() {\n\
+        return this.observed.dirty;\n\
+      },\n\
+      set: function(value) {\n\
+        this.observed.dirty = value;\n\
+        this.observation.scheduler.schedule();\n\
+        return value;\n\
+      }\n\
+    }\n\
+  });\n\
+  dirtyable.record.after_initialize.push(function() {\n\
+    return Object.defineProperty(this, 'dirty', dirtyable.descriptor);\n\
+  });\n\
 }\n\
+\n\
+dirtyable.record.after_initialize.push(function() {\n\
+  return this.dirty = !!this._id;\n\
+});\n\
 \n\
 model = window.model;\n\
 \n\
@@ -18736,7 +18739,7 @@ record = window.record;\n\
 model.dirtyable = true;\n\
 \n\
 record.mix(function(recordable) {\n\
-  return recordable.after_initialize.push(dirtyable.record.after_initialize);\n\
+  return recordable.after_initialize = recordable.after_initialize.concat(dirtyable.record.after_initialize);\n\
 });\n\
 \n\
 model.mix(function(modelable) {});\n\
@@ -18838,7 +18841,7 @@ queryable = {\n\
   storage: storable(),\n\
   find: function(key) {\n\
     if (!key) {\n\
-      throw new TypeError(\"InvalidFind: resource.find was called with a falsey value\");\n\
+      throw new TypeError(\"InvalidFind: \" + (this.resource.toString()) + \".find was called with a falsey value\");\n\
     }\n\
     return this.storage.store(key);\n\
   },\n\
@@ -19994,6 +19997,10 @@ errorsable = stampit({\n\
 });\n\
 \n\
 initializers = {\n\
+  ignores: ['dirty', 'resource', 'route', 'initial_route', 'after_initialize', 'before_initialize', 'parent_resource', 'nested_attributes', 'reloading', 'ready', 'saving', 'salvation', 'sustained', 'element', 'default', 'lock', 'validated', 'validation', 'errors', 'dirty'],\n\
+  reserved_filter: function(name) {\n\
+    return this.ignores.indexOf(name) === -1;\n\
+  },\n\
   define_triggers: function() {\n\
     this.errors = errorsable({\n\
       model: model[this.resource]\n\
@@ -20005,8 +20012,11 @@ initializers = {\n\
     });\n\
     this.validated = false;\n\
     this.validation = null;\n\
-    this.subscribe('dirty', function(value) {\n\
-      return value && (this.validated = false);\n\
+    this.subscribe(function(added, removed, changed) {\n\
+      var modified;\n\
+\n\
+      modified = !!Object.keys($.extend(added, removed, changed)).filter(initializers.reserved_filter, initializers).length;\n\
+      return modified && (this.validated = false);\n\
     });\n\
     return Object.defineProperty(this, 'valid', {\n\
       get: function() {\n\
@@ -20100,13 +20110,7 @@ extensions = {\n\
       this.validation.done(doned);\n\
       this.validation.fail(failed);\n\
       return this.validation.done(function(record) {\n\
-        var old_dirty;\n\
-\n\
-        old_dirty = record.dirty;\n\
-        record.dirty = null;\n\
-        record.validated || (record.validated = true);\n\
-        record.observed.dirty = old_dirty;\n\
-        return record;\n\
+        return record.validated || (record.validated = true);\n\
       });\n\
     }\n\
   }\n\

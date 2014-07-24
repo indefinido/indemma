@@ -3,30 +3,31 @@
 dirtyable =
   # TODO move ignored diryifing properties to the record
   ignores: ['dirty', 'resource', 'route', 'initial_route', 'after_initialize', 'before_initialize', 'parent_resource', 'nested_attributes', 'reloading', 'ready', 'saving', 'salvation', 'sustained', 'element', 'default', 'lock', 'validated', 'validation', 'errors', 'dirty']
-  reserved_filter: (name) -> dirtyable.ignores.indexOf(name) == -1
-  descriptor:
-    get:         -> @observed.dirty
-    set: (value) -> @observed.dirty = value
-
+  reserved_filter: (name) -> @ignores.indexOf(name) == -1
   record:
-    after_initialize: ->
-      Object.defineProperty @, 'dirty', dirtyable.descriptor
-
-      # TODO rename _id to id
-      @observed.dirty = !!@_id
-
+    after_initialize: [ ->
       @subscribe (added, removed, changed, past) ->
-        @dirty ||= !!Object.keys(changed).filter(dirtyable.reserved_filter).length
-        @dirty ||= !!Object.keys(added  ).filter(dirtyable.reserved_filter).length
-        @dirty ||= !!Object.keys(removed).filter(dirtyable.reserved_filter).length
-
+        @dirty ||= !!Object.keys($.extend {}, added, removed, changed).filter(dirtyable.reserved_filter, dirtyable).length
+    ]
 # Shim browsers without Object.observe
 unless Object.observe
-  dirt = dirtyable.descriptor.set
-  dirtyable.descriptor.set = (value) ->
-    value = dirt.apply @, arguments
-    @observation.scheduler.schedule()
-    value
+
+  $.extend dirtyable,
+    descriptor:
+      get:         -> @observed.dirty
+      set: (value) ->
+        @observed.dirty = value
+        @observation.scheduler.schedule()
+        value
+
+  dirtyable.record.after_initialize.push ->
+    Object.defineProperty @, 'dirty', dirtyable.descriptor
+
+# Automatically dirt records without id
+# FIXME
+dirtyable.record.after_initialize.push ->
+   # TODO rename _id to id
+   @dirty = !!@_id
 
 
 
@@ -37,7 +38,7 @@ record = window.record     # TODO better way to get parent
 model.dirtyable = true
 
 record.mix (recordable) ->
-  recordable.after_initialize.push dirtyable.record.after_initialize
+  recordable.after_initialize = recordable.after_initialize.concat dirtyable.record.after_initialize
 
 model.mix  (modelable ) ->
   # merge modelable , restful.model

@@ -7,7 +7,7 @@ queryable = require('indemma/lib/record/queryable.js');
 describe('queryable', function() {
   return describe('model', function() {
     beforeEach(function() {
-      return this.person = model.call({
+      return this.personable = model.call({
         resource: 'person'
       });
     });
@@ -15,13 +15,13 @@ describe('queryable', function() {
       return model.should.have.property('queryable', true);
     });
     it('should create a storage', function() {
-      return this.person.should.have.property('storage');
+      return this.personable.should.have.property('storage');
     });
     return describe('#find', function() {
       beforeEach(function() {
         this.xhr = jQuery.Deferred();
         sinon.stub(jQuery, "ajax").returns(this.xhr);
-        this.arthur = this.person({
+        this.arthur = this.personable({
           _id: '1',
           name: 'Arthur Philip Dent'
         });
@@ -32,7 +32,7 @@ describe('queryable', function() {
         return jQuery.ajax.restore();
       });
       return it('should retrieve a record by key', function() {
-        return this.person.find('1').should.have.property('name', this.arthur.name);
+        return this.personable.find('1').should.have.property('name', this.arthur.name);
       });
     });
   });
