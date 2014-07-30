@@ -14,7 +14,6 @@ describe 'maid', ->
       sinon.stub(@arthur, 'save').returns true
 
     it 'should save upon record dirtying', (done) ->
-      debugger
       @arthur.name = 'Arthur Philip Dent'
       setTimeout =>
           @arthur.save.called.should.be.true

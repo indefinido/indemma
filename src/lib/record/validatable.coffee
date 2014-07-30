@@ -109,6 +109,12 @@ initializers =
 
     Object.defineProperty @, 'valid',
       get: ->
+        # To prevent multiple consecutive remote validations, if the
+        # record has not changed since last validation call, we
+        # schedule a validation
+        if @validation?.state() == 'pending'
+          @validation.done -> @valid if @dirty or !@validated
+          return null
 
         @validate()
 
@@ -119,6 +125,18 @@ initializers =
 
       set: -> throw new TypeError "You can't set the value for the valid property."
       enumerable: false
+
+    # The observable package reads the valid property when it's added
+    # to the model, causing it to validate unwatedly. So we need to
+    # stub some calls to prevent validation to
+    # TODO make deliver(true) really ignore the change records,
+    # better yet make it ignore only add records for valid property
+    original_validate = @validate
+    @validate = ->
+    @validation = state: -> 'pending'
+    @observation.deliver true
+    @validation = null
+    @validate = original_validate
 
   create_validators: (definitions) ->
 

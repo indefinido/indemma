@@ -13695,18 +13695,31 @@ descriptors = {
         return this.owner.observed[this.resource + '_id'];
       },
       setter: function(resource_id) {
-        var association_name, current_resource_id, _ref;
+        var association_name, change, current_resource_id, _ref, _ref1;
 
         association_name = this.resource.toString();
-        if (!resource_id) {
+        if (resource_id == null) {
           this.dirty = true;
-          this.owner[association_name] = resource_id;
+          this.owner[association_name] = null;
           return resource_id;
         }
         current_resource_id = (_ref = this.owner.observed[association_name]) != null ? _ref._id : void 0;
         if (resource_id !== current_resource_id) {
           this.owner.observed[association_name + '_id'] = resource_id;
           this.owner.observed[association_name] = null;
+          if (!Object.observe) {
+            if ((_ref1 = this.owner.observation.observers[association_name + '_id']) != null) {
+              _ref1.check_();
+            }
+          } else {
+            change = {
+              oldValue: current_resource_id,
+              type: 'update',
+              name: association_name,
+              object: this
+            };
+            Object.getNotifier(this).notify(change);
+          }
         }
         return resource_id;
       }
@@ -13767,10 +13780,9 @@ callbacks = {
             }
             association.resource = model.singularize(association.resource);
             association.add.apply(association, associations_attributes);
-            _results.push(association.resource = model.pluralize(association.resource));
-          } else {
-            _results.push(void 0);
+            association.resource = model.pluralize(association.resource);
           }
+          _results.push(delete this["" + association_name + "_attributes"]);
         }
         return _results;
       }
@@ -13884,6 +13896,7 @@ associable = {
           association_proxy[this.resource.toString()] = this;
           this["build_" + resource] = $.proxy(singular.build, association_proxy);
           this["create_" + resource] = $.proxy(singular.create, association_proxy);
+          this["" + association_name + "_attributes"] = $.extend(this[association_name], this["" + association_name + "_attributes"]);
         }
         callbacks.has_one.nest_attributes.call(this);
       }
@@ -13929,13 +13942,15 @@ associable = {
             parent_resource: this.resource,
             owner: record
           };
-          old_resource = this[resource];
+          old_resource = record[resource];
           Object.defineProperty(record, resource.toString(), {
             get: $.proxy(descriptors.belongs_to.resource.getter, association_proxy),
             set: $.proxy(descriptors.belongs_to.resource.setter, association_proxy),
             configurable: true
           });
-          _results.push(this[resource] = old_resource);
+          _results.push(record.after_initialize.push((function() {
+            return this[resource] = old_resource;
+          })));
         }
         return _results;
       }
@@ -14806,10 +14821,13 @@ util = {
     map: function(records) {
       var index, record, _i, _len, _results;
 
+      if (this.build) {
+        return record;
+      }
       _results = [];
       for (index = _i = 0, _len = records.length; _i < _len; index = ++_i) {
         record = records[index];
-        _results.push((this.build || this).call(this, record));
+        _results.push(this.call(this, record));
       }
       return _results;
     }
@@ -15262,6 +15280,8 @@ initializers = {
     return this.ignores.indexOf(name) === -1;
   },
   define_triggers: function() {
+    var original_validate;
+
     this.errors = errorsable({
       model: model[this.resource]
     });
@@ -15278,8 +15298,18 @@ initializers = {
       modified = !!Object.keys($.extend(added, removed, changed)).filter(initializers.reserved_filter, initializers).length;
       return modified && (this.validated = false);
     });
-    return Object.defineProperty(this, 'valid', {
+    Object.defineProperty(this, 'valid', {
       get: function() {
+        var _ref;
+
+        if (((_ref = this.validation) != null ? _ref.state() : void 0) === 'pending') {
+          this.validation.done(function() {
+            if (this.dirty || !this.validated) {
+              return this.valid;
+            }
+          });
+          return null;
+        }
         this.validate();
         if (this.validation.state() === 'resolved') {
           return !this.errors.length;
@@ -15292,6 +15322,16 @@ initializers = {
       },
       enumerable: false
     });
+    original_validate = this.validate;
+    this.validate = function() {};
+    this.validation = {
+      state: function() {
+        return 'pending';
+      }
+    };
+    this.observation.deliver(true);
+    this.validation = null;
+    return this.validate = original_validate;
   },
   create_validators: function(definitions) {
     var definition, name, validator, validator_options, _ref, _results;

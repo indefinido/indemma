@@ -35,7 +35,7 @@ describe 'model',  ->
       _id: 2
       name: 'Ford Perfect'
 
-    arthur = person
+    @arthur = arthur = person
       _id: 3
       name: 'Arthur Philip Dent'
 
@@ -52,28 +52,36 @@ describe 'model',  ->
     describe "{associated}_id", ->
       xdescribe 'with autobuild option on the asssociation', ->
         xit 'should return an partial resource when acessing associated', ->
-          arthur.corporation_id = radio._id
+          @arthur.corporation_id = radio._id
 
-          arthur.should.have.property 'corporation'
-          arthur.corporation.should.be.object
-          arthur.corporation.should.have.property 'resource'
-          arthur.corporation.should.have.property '_id', radio._id
+          @arthur.should.have.property 'corporation'
+          @arthur.corporation.should.be.object
+          @arthur.corporation.should.have.property 'resource'
+          @arthur.corporation.should.have.property '_id', radio._id
 
       xit 'should fetch the resource when accessing associated and resource not present', (done) ->
         radio = corporation
           _id: 1
           name: 'Local Radio'
 
-        arthur.corporation_id = radio._id
+        @arthur.corporation_id = radio._id
 
-        arthur.corporation.should.be.object
-        arthur.corporation.should.have.property 'resource', radio.resource
-        arthur.corporation._id.should.be null
-        arthur.corporation.locking.should.be.object
+        @arthur.corporation.should.be.object
+        @arthur.corporation.should.have.property 'resource', radio.resource
+        @arthur.corporation._id.should.be null
+        @arthur.corporation.locking.should.be.object
 
-        arthur.corporation.locking.done (corporation) ->
+        @arthur.corporation.locking.done (corporation) ->
           corporation.should.have.property '_id' , radio.id
           corporation.should.have.property 'name', radio.name
+
+      it 'should notify changes on property', ->
+        radio      = corporation _id: 1, name: 'Local Radio'
+        subscribed = sinon.spy()
+        @arthur.subscribe 'corporation_id', subscribed
+        arthur.corporation_id = radio._id
+        @arthur.observation.deliver()
+        subscribed.called.should.be.true
 
 
     describe "{associated}", ->

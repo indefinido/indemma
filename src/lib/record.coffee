@@ -68,7 +68,7 @@ merge      = require('assimilate').withStrategy 'deep'
 
   # Create model
   mixer = (options) ->
-    throw 'Model mixin called incorrectly call with model.call {} instead of model({})' if @ == window
+    throw 'Model mixin called incorrectly! \n Call with model.call({}) instead of model({}) \n Also the first argument must be non null.' if @ == window
     mixer.stale = true unless mixer.stale # Prevent model changes
 
     # TODO Use stampit and solve this mess!!

@@ -1,13 +1,8 @@
-var root;
-
-root = typeof exports !== "undefined" && exports !== null ? exports : window;
-
-require('indemma/lib/record/validatable.js');
+'use strict';require('indemma/lib/record/validatable.js');
 
 describe('model', function() {
-  var corporation, model, person;
+  var corporation, person;
 
-  model = root.model;
   person = corporation = null;
   beforeEach(function() {
     return person = model.call({
@@ -55,19 +50,27 @@ describe('model', function() {
       });
     });
     return describe('.valid', function() {
-      person = null;
       beforeEach(function() {
-        person.validators.length = 0;
-        return person = model.call({
+        var _ref;
+
+        if ((_ref = this.personable) != null) {
+          _ref.validators.length = 0;
+        }
+        this.personable = model.call({
           resource: 'person',
           name: String,
           validates_presence_of: 'name'
         });
+        this.xhr = jQuery.Deferred();
+        return sinon.stub(jQuery, 'ajax').returns(this.xhr);
+      });
+      afterEach(function() {
+        return jQuery.ajax.restore();
       });
       it('should be true when valid', function() {
         var arthur;
 
-        arthur = person({
+        arthur = this.personable({
           name: "Arthur"
         });
         arthur.should.have.property('valid');
@@ -77,7 +80,7 @@ describe('model', function() {
       it('should exist as read only property', function() {
         var arthur;
 
-        arthur = person({
+        arthur = this.personable({
           name: "Arthur"
         });
         return expect(function() {
@@ -87,16 +90,43 @@ describe('model', function() {
       it('should validate record', function() {
         var anonymous;
 
-        anonymous = person({
+        anonymous = this.personable({
           name: null
         });
         anonymous.valid.should.be["false"];
         return anonymous.errors.length.should.be.eq(1);
       });
-      return it('should not validate record util it changes', function() {
+      it('should not validate record multiple times even with remote', function() {
+        var arthur;
+
+        this.personable = model.call({
+          resource: 'person',
+          name: String,
+          validates_remotely: 'email'
+        });
+        arthur = this.personable({
+          name: "Arthur",
+          email: "arthur.dent@hitchhikers.guide"
+        });
+        arthur.valid;
+        arthur.valid;
+        arthur.valid;
+        arthur.valid;
+        return jQuery.ajax.callCount.should.be.eq(1);
+      });
+      it('should not validate record until it changes', function() {
+        var anonymous;
+
+        anonymous = this.personable({
+          name: null
+        });
+        anonymous.observation.deliver();
+        return anonymous.errors.length.should.be.eq(0);
+      });
+      return it('should not re-validate record until it changes', function() {
         var anonymous, validation;
 
-        anonymous = person({
+        anonymous = this.personable({
           name: null
         });
         anonymous.valid.should.be["false"];
