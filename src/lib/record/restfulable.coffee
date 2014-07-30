@@ -130,8 +130,8 @@ restful =
     assign_attributes: (attributes) ->
 
       # TODO only set associations on nested attributes!
-      # First assign has_many associations
       # TODO implement setter on has_many association and move this code there
+      # First assign has_many associations
       for association_name in model[@resource.toString()].has_many
         associations_attributes = attributes[association_name + "_attributes"] or attributes[association_name]
 

@@ -55,6 +55,9 @@ singular = # belongs_to, has_one ## TODO embeds_one, embedded_in
 
 descriptors =
   belongs_to:
+    # TODO store association observer in association proxy, also
+    # update observable to support creating empty observers on object
+    # attributes
     resource_id:
       getter: -> @owner.observed[@resource + '_id']
       setter: (resource_id) ->
@@ -63,9 +66,9 @@ descriptors =
 
         # TODO faster nullifing association check
         # TODO check if its usefull to only allow disassociating with null
-        unless resource_id
+        unless resource_id?
           @dirty = true
-          @owner[association_name] = resource_id
+          @owner[association_name] = null
           return resource_id
 
         # TODO Discover and update inverse side of association
@@ -80,6 +83,15 @@ descriptors =
           # Nullify associated object, so next time user accesses it,
           # association loader loads the new object
           @owner.observed[association_name] = null
+
+          # If we have any listener associated with this property,
+          # notify it
+          # TODO implement notification api on observable
+          unless Object.observe
+            @owner.observation.observers[association_name + '_id']?.check_()
+          else
+            change = oldValue: current_resource_id, type: 'update', name: association_name, object: @
+            Object.getNotifier(@).notify change
 
         resource_id
 
@@ -98,7 +110,6 @@ descriptors =
         # Returns imediatelly for resources on storage
         # TODO make this extenxible
         return associated if associated?.sustained
-
 
         # Auto build
         resource = model[association_name]
@@ -125,6 +136,15 @@ descriptors =
       setter: (associated) ->
         @owner.observed[@resource.toString()        ] = associated
         @owner.observed[@resource.toString() + '_id'] = if associated then associated._id else null
+
+        # TODO implement change notification
+        # TODO implement notification api on observable
+        # unless Object.observe
+        #   @owner.observation.observers[association_name + '_id']?.check_()
+        # else
+        #   change = oldValue: current_resource_id, type: 'update', name: association_name, object: @
+        #   Object.getNotifier(@).notify change
+
 
 callbacks =
   has_many:
@@ -155,6 +175,8 @@ callbacks =
             association.resource = model.singularize association.resource
             association.add.apply association, associations_attributes
             association.resource = model.pluralize   association.resource
+
+          delete @["#{association_name}_attributes"]
 
     # TODO Update route after setting the id
     # TODO Update route association only once for each associated record
@@ -246,7 +268,7 @@ associable =
 
           # When deserializing has many associated resources from
           # server, it is common to send as the association without
-          # suffix
+          # attributes suffix
           association_attributes = @[association_name] ||  []
           @["#{association_name}_attributes"]          ||= []
           @["#{association_name}_attributes"]            = @["#{association_name}_attributes"].concat association_attributes if association_attributes.length
@@ -258,7 +280,7 @@ associable =
         # Update association attribute
         @after 'saved', callbacks.has_many.update_association
 
-        # Forward nested attributes
+        # Remove nested attributes and convert them into actual records
         callbacks.has_many.nest_attributes.call @
 
       if options.has_one
@@ -273,10 +295,16 @@ associable =
           @["build_#{resource}" ] = $.proxy singular.build , association_proxy
           @["create_#{resource}"] = $.proxy singular.create, association_proxy
 
-          # Update association attribute
-          # TODO @after 'saved', callbacks.has_many.update_association
 
-        # Forward nested attributes
+          # When deserializing has one associated resources from
+          # server, it is common to send as the association without
+          # attributes suffix
+          @["#{association_name}_attributes"] = $.extend @[association_name], @["#{association_name}_attributes"]
+
+          # Update association attribute
+          # TODO @after 'saved', callbacks.has_one.update_association
+
+        # Remove nested attributes and convert them into actual records
         callbacks.has_one.nest_attributes.call @
 
       # Externalize this to a file

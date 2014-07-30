@@ -18409,18 +18409,31 @@ descriptors = {\n\
         return this.owner.observed[this.resource + '_id'];\n\
       },\n\
       setter: function(resource_id) {\n\
-        var association_name, current_resource_id, _ref;\n\
+        var association_name, change, current_resource_id, _ref, _ref1;\n\
 \n\
         association_name = this.resource.toString();\n\
-        if (!resource_id) {\n\
+        if (resource_id == null) {\n\
           this.dirty = true;\n\
-          this.owner[association_name] = resource_id;\n\
+          this.owner[association_name] = null;\n\
           return resource_id;\n\
         }\n\
         current_resource_id = (_ref = this.owner.observed[association_name]) != null ? _ref._id : void 0;\n\
         if (resource_id !== current_resource_id) {\n\
           this.owner.observed[association_name + '_id'] = resource_id;\n\
           this.owner.observed[association_name] = null;\n\
+          if (!Object.observe) {\n\
+            if ((_ref1 = this.owner.observation.observers[association_name + '_id']) != null) {\n\
+              _ref1.check_();\n\
+            }\n\
+          } else {\n\
+            change = {\n\
+              oldValue: current_resource_id,\n\
+              type: 'update',\n\
+              name: association_name,\n\
+              object: this\n\
+            };\n\
+            Object.getNotifier(this).notify(change);\n\
+          }\n\
         }\n\
         return resource_id;\n\
       }\n\
@@ -18483,10 +18496,9 @@ callbacks = {\n\
             }\n\
             association.resource = model.singularize(association.resource);\n\
             association.add.apply(association, associations_attributes);\n\
-            _results.push(association.resource = model.pluralize(association.resource));\n\
-          } else {\n\
-            _results.push(void 0);\n\
+            association.resource = model.pluralize(association.resource);\n\
           }\n\
+          _results.push(delete this[\"\" + association_name + \"_attributes\"]);\n\
         }\n\
         return _results;\n\
       }\n\
@@ -18600,6 +18612,7 @@ associable = {\n\
           association_proxy[this.resource.toString()] = this;\n\
           this[\"build_\" + resource] = $.proxy(singular.build, association_proxy);\n\
           this[\"create_\" + resource] = $.proxy(singular.create, association_proxy);\n\
+          this[\"\" + association_name + \"_attributes\"] = $.extend(this[association_name], this[\"\" + association_name + \"_attributes\"]);\n\
         }\n\
         callbacks.has_one.nest_attributes.call(this);\n\
       }\n\
@@ -18645,13 +18658,15 @@ associable = {\n\
             parent_resource: this.resource,\n\
             owner: record\n\
           };\n\
-          old_resource = this[resource];\n\
+          old_resource = record[resource];\n\
           Object.defineProperty(record, resource.toString(), {\n\
             get: $.proxy(descriptors.belongs_to.resource.getter, association_proxy),\n\
             set: $.proxy(descriptors.belongs_to.resource.setter, association_proxy),\n\
             configurable: true\n\
           });\n\
-          _results.push(this[resource] = old_resource);\n\
+          _results.push(record.after_initialize.push((function() {\n\
+            return this[resource] = old_resource;\n\
+          })));\n\
         }\n\
         return _results;\n\
       }\n\
@@ -19540,10 +19555,13 @@ util = {\n\
     map: function(records) {\n\
       var index, record, _i, _len, _results;\n\
 \n\
+      if (this.build) {\n\
+        return record;\n\
+      }\n\
       _results = [];\n\
       for (index = _i = 0, _len = records.length; _i < _len; index = ++_i) {\n\
         record = records[index];\n\
-        _results.push((this.build || this).call(this, record));\n\
+        _results.push(this.call(this, record));\n\
       }\n\
       return _results;\n\
     }\n\
@@ -20002,6 +20020,8 @@ initializers = {\n\
     return this.ignores.indexOf(name) === -1;\n\
   },\n\
   define_triggers: function() {\n\
+    var original_validate;\n\
+\n\
     this.errors = errorsable({\n\
       model: model[this.resource]\n\
     });\n\
@@ -20018,8 +20038,18 @@ initializers = {\n\
       modified = !!Object.keys($.extend(added, removed, changed)).filter(initializers.reserved_filter, initializers).length;\n\
       return modified && (this.validated = false);\n\
     });\n\
-    return Object.defineProperty(this, 'valid', {\n\
+    Object.defineProperty(this, 'valid', {\n\
       get: function() {\n\
+        var _ref;\n\
+\n\
+        if (((_ref = this.validation) != null ? _ref.state() : void 0) === 'pending') {\n\
+          this.validation.done(function() {\n\
+            if (this.dirty || !this.validated) {\n\
+              return this.valid;\n\
+            }\n\
+          });\n\
+          return null;\n\
+        }\n\
         this.validate();\n\
         if (this.validation.state() === 'resolved') {\n\
           return !this.errors.length;\n\
@@ -20032,6 +20062,16 @@ initializers = {\n\
       },\n\
       enumerable: false\n\
     });\n\
+    original_validate = this.validate;\n\
+    this.validate = function() {};\n\
+    this.validation = {\n\
+      state: function() {\n\
+        return 'pending';\n\
+      }\n\
+    };\n\
+    this.observation.deliver(true);\n\
+    this.validation = null;\n\
+    return this.validate = original_validate;\n\
   },\n\
   create_validators: function(definitions) {\n\
     var definition, name, validator, validator_options, _ref, _results;\n\

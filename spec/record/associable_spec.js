@@ -41,7 +41,7 @@ describe('model', function() {
       _id: 2,
       name: 'Ford Perfect'
     });
-    return arthur = person({
+    return this.arthur = arthur = person({
       _id: 3,
       name: 'Arthur Philip Dent'
     });
@@ -58,27 +58,40 @@ describe('model', function() {
     describe("{associated}_id", function() {
       xdescribe('with autobuild option on the asssociation', function() {
         return xit('should return an partial resource when acessing associated', function() {
-          arthur.corporation_id = radio._id;
-          arthur.should.have.property('corporation');
-          arthur.corporation.should.be.object;
-          arthur.corporation.should.have.property('resource');
-          return arthur.corporation.should.have.property('_id', radio._id);
+          this.arthur.corporation_id = radio._id;
+          this.arthur.should.have.property('corporation');
+          this.arthur.corporation.should.be.object;
+          this.arthur.corporation.should.have.property('resource');
+          return this.arthur.corporation.should.have.property('_id', radio._id);
         });
       });
-      return xit('should fetch the resource when accessing associated and resource not present', function(done) {
+      xit('should fetch the resource when accessing associated and resource not present', function(done) {
         radio = corporation({
           _id: 1,
           name: 'Local Radio'
         });
-        arthur.corporation_id = radio._id;
-        arthur.corporation.should.be.object;
-        arthur.corporation.should.have.property('resource', radio.resource);
-        arthur.corporation._id.should.be(null);
-        arthur.corporation.locking.should.be.object;
-        return arthur.corporation.locking.done(function(corporation) {
+        this.arthur.corporation_id = radio._id;
+        this.arthur.corporation.should.be.object;
+        this.arthur.corporation.should.have.property('resource', radio.resource);
+        this.arthur.corporation._id.should.be(null);
+        this.arthur.corporation.locking.should.be.object;
+        return this.arthur.corporation.locking.done(function(corporation) {
           corporation.should.have.property('_id', radio.id);
           return corporation.should.have.property('name', radio.name);
         });
+      });
+      return it('should notify changes on property', function() {
+        var subscribed;
+
+        radio = corporation({
+          _id: 1,
+          name: 'Local Radio'
+        });
+        subscribed = sinon.spy();
+        this.arthur.subscribe('corporation_id', subscribed);
+        arthur.corporation_id = radio._id;
+        this.arthur.observation.deliver();
+        return subscribed.called.should.be["true"];
       });
     });
     describe("{associated}", function() {

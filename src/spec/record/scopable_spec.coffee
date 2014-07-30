@@ -161,22 +161,23 @@ describe 'scopable', ->
           describe 'of type has_many', ->
 
             beforeEach ->
-              @person = model.call
+              @personable = model.call
                 $hetero: true
                 $by_type: []
                 resource: 'person'
                 has_many: 'towels'
+                nested_attributes: ['towels']
 
-              @towel = model.call
+              @towelable = model.call
                 $by_material: []
                 resource: 'towel'
                 material: 'cotton'
                 belongs_to: 'person'
 
-              @arthur = @person
+              @arthur = @personable
                 name: 'Arthur'
 
-              @person.scope.clear()
+              @personable.scope.clear()
 
             describe '#{generated_scope}', ->
 
@@ -206,7 +207,7 @@ describe 'scopable', ->
                   jQuery.ajax.callCount.should.be.eq 1
 
                 it 'should update resources when already exists in association', (done) ->
-                  aditions = @arthur.towels.add _id: 1, material: 'colan'
+                  additions = @arthur.towels.add _id: 1, material: 'colan'
 
                   # Will be called once for each saved record
                   fetched = (towels) =>
@@ -216,7 +217,7 @@ describe 'scopable', ->
 
                     # Updated the associated object, instead of
                     # creating a new one
-                    aditions[0].material.should.be.eq 'cotton'
+                    additions[0].material.should.be.eq 'cotton'
                     @arthur.towels[0].material.should.be.eq 'cotton'
                     done()
 

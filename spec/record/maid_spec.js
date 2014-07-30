@@ -15,7 +15,6 @@ describe('maid', function() {
     return sinon.stub(this.arthur, 'save').returns(true);
   });
   return it('should save upon record dirtying', function(done) {
-    debugger;
     var _this = this;
 
     this.arthur.name = 'Arthur Philip Dent';

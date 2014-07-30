@@ -160,22 +160,23 @@ describe('scopable', function() {
           });
           return describe('of type has_many', function() {
             beforeEach(function() {
-              this.person = model.call({
+              this.personable = model.call({
                 $hetero: true,
                 $by_type: [],
                 resource: 'person',
-                has_many: 'towels'
+                has_many: 'towels',
+                nested_attributes: ['towels']
               });
-              this.towel = model.call({
+              this.towelable = model.call({
                 $by_material: [],
                 resource: 'towel',
                 material: 'cotton',
                 belongs_to: 'person'
               });
-              this.arthur = this.person({
+              this.arthur = this.personable({
                 name: 'Arthur'
               });
-              return this.person.scope.clear();
+              return this.personable.scope.clear();
             });
             return describe('#{generated_scope}', function() {
               it('can be called on association', function() {
@@ -205,10 +206,10 @@ describe('scopable', function() {
                   return jQuery.ajax.callCount.should.be.eq(1);
                 });
                 return it('should update resources when already exists in association', function(done) {
-                  var aditions, fetched,
+                  var additions, fetched,
                     _this = this;
 
-                  aditions = this.arthur.towels.add({
+                  additions = this.arthur.towels.add({
                     _id: 1,
                     material: 'colan'
                   });
@@ -216,7 +217,7 @@ describe('scopable', function() {
                     towels.should.be.array;
                     towels.should.have.length(1);
                     towels[0].material.should.be.eq('cotton');
-                    aditions[0].material.should.be.eq('cotton');
+                    additions[0].material.should.be.eq('cotton');
                     _this.arthur.towels[0].material.should.be.eq('cotton');
                     return done();
                   };
