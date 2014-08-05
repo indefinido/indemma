@@ -90,8 +90,8 @@ descriptors =
           unless Object.observe
             @owner.observation.observers[association_name + '_id']?.check_()
           else
-            change = oldValue: current_resource_id, type: 'update', name: association_name, object: @
-            Object.getNotifier(@).notify change
+            change = oldValue: current_resource_id, type: 'update', name: association_name + '_id', object: @owner
+            Object.getNotifier(@owner).notify change
 
         resource_id
 

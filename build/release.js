@@ -13715,10 +13715,10 @@ descriptors = {
             change = {
               oldValue: current_resource_id,
               type: 'update',
-              name: association_name,
-              object: this
+              name: association_name + '_id',
+              object: this.owner
             };
-            Object.getNotifier(this).notify(change);
+            Object.getNotifier(this.owner).notify(change);
           }
         }
         return resource_id;
@@ -15324,11 +15324,7 @@ initializers = {
     });
     original_validate = this.validate;
     this.validate = function() {};
-    this.validation = {
-      state: function() {
-        return 'pending';
-      }
-    };
+    this.validation = $.Deferred();
     this.observation.deliver(true);
     this.validation = null;
     return this.validate = original_validate;

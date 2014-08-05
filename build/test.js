@@ -18429,10 +18429,10 @@ descriptors = {\n\
             change = {\n\
               oldValue: current_resource_id,\n\
               type: 'update',\n\
-              name: association_name,\n\
-              object: this\n\
+              name: association_name + '_id',\n\
+              object: this.owner\n\
             };\n\
-            Object.getNotifier(this).notify(change);\n\
+            Object.getNotifier(this.owner).notify(change);\n\
           }\n\
         }\n\
         return resource_id;\n\
@@ -20064,11 +20064,7 @@ initializers = {\n\
     });\n\
     original_validate = this.validate;\n\
     this.validate = function() {};\n\
-    this.validation = {\n\
-      state: function() {\n\
-        return 'pending';\n\
-      }\n\
-    };\n\
+    this.validation = $.Deferred();\n\
     this.observation.deliver(true);\n\
     this.validation = null;\n\
     return this.validate = original_validate;\n\
