@@ -133,7 +133,7 @@ initializers =
     # better yet make it ignore only add records for valid property
     original_validate = @validate
     @validate = ->
-    @validation = state: -> 'pending'
+    @validation = $.Deferred()
     @observation.deliver true
     @validation = null
     @validate = original_validate
