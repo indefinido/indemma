@@ -80,7 +80,7 @@ describe('model', function() {
           return corporation.should.have.property('name', radio.name);
         });
       });
-      return it('should notify changes on property', function() {
+      return it('should notify changes on association properties', function() {
         var subscribed;
 
         radio = corporation({
@@ -89,7 +89,7 @@ describe('model', function() {
         });
         subscribed = sinon.spy();
         this.arthur.subscribe('corporation_id', subscribed);
-        arthur.corporation_id = radio._id;
+        this.arthur.corporation_id = radio._id;
         this.arthur.observation.deliver();
         return subscribed.called.should.be["true"];
       });
@@ -98,29 +98,56 @@ describe('model', function() {
       describe('with autoload option on the association', function() {
         return it('should create associated when sustained and stored', function() {
           radio.sustained.should.be["true"];
-          arthur.corporation_id = radio._id;
-          return arthur.should.have.property('corporation', radio);
+          this.arthur.corporation_id = radio._id;
+          return this.arthur.should.have.property('corporation', radio);
         });
       });
-      return it('should update associated id and record when associated record changes', function() {
+      it('should update associated id and record when associated record changes', function() {
         radio = corporation({
           _id: 1,
           name: 'Local Radio',
           sustained: true
         });
-        expect(arthur.corporation).to.be.undefined;
-        arthur.corporation = radio;
-        arthur.should.to.have.property('corporation', radio);
-        return arthur.should.to.have.property('corporation_id', radio._id);
+        expect(this.arthur.corporation).to.be["null"];
+        this.arthur.corporation = radio;
+        this.arthur.should.to.have.property('corporation', radio);
+        return this.arthur.should.to.have.property('corporation_id', radio._id);
+      });
+      it('should notify only changes on associated', function() {
+        var subscribed;
+
+        radio = corporation({
+          _id: 1,
+          name: 'Local Radio'
+        });
+        subscribed = sinon.spy();
+        this.arthur.observation.deliver();
+        this.arthur.subscribe('corporation', subscribed);
+        this.arthur.corporation = null;
+        this.arthur.observation.deliver();
+        return subscribed.called.should.be["false"];
+      });
+      return it('should notify changes on association properties', function() {
+        var subscribed;
+
+        radio = corporation({
+          _id: 1,
+          name: 'Local Radio'
+        });
+        subscribed = sinon.spy();
+        this.arthur.subscribe('corporation', subscribed);
+        this.arthur.corporation = radio;
+        this.arthur.observation.deliver();
+        return subscribed.called.should.be["true"];
       });
     });
     return describe("#build_{associated}", function() {
       return it('should add builded object to association named attribute', function() {
-        arthur = person({
+        this.arthur = person({
           name: 'Arthur Dent'
         });
-        corporation = arthur.build_corporation();
-        arthur.should.have.property('corporation');
+        corporation = this.arthur.build_corporation();
+        this.arthur.should.have.property('corporation');
         return expect(corporation).to.be.ok;
       });
     });

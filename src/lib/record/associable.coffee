@@ -66,6 +66,7 @@ descriptors =
 
         # TODO faster nullifing association check
         # TODO check if its usefull to only allow disassociating with null
+        # TODO notify nullification of associations
         unless resource_id?
           @dirty = true
           @owner[association_name] = null
@@ -103,12 +104,12 @@ descriptors =
         associated       = @owner.observed[association_name]
         associated_id    = @owner.observed[association_name + '_id']
 
-        # Returns null or undefined depending on sustained state of
-        # resource and on retrievability of the resource
-        return associated unless associated?._id? or associated_id
+        # Returns null depending on sustained state of resource and on
+        # retrievability of the resource
+        return associated || null unless associated?._id? or associated_id
 
         # Returns imediatelly for resources on storage
-        # TODO make this extenxible
+        # TODO make this extensible
         return associated if associated?.sustained
 
         # Auto build
@@ -133,17 +134,25 @@ descriptors =
         @owner.observed[association_name] = associated
 
       # Called when associated record changes, so we can silently update the id
+      # TODO Get observer and notify through them
       setter: (associated) ->
-        @owner.observed[@resource.toString()        ] = associated
-        @owner.observed[@resource.toString() + '_id'] = if associated then associated._id else null
+        association_name = @resource.toString()
+        current_value    = @owner.observed[association_name]
 
-        # TODO implement change notification
+        # Do nothing if the values are not changing
+        return if current_value == associated
+
+        @owner.observed[association_name        ] = associated
+        @owner.observed[association_name + '_id'] = if associated then associated._id else null
+
         # TODO implement notification api on observable
-        # unless Object.observe
-        #   @owner.observation.observers[association_name + '_id']?.check_()
-        # else
-        #   change = oldValue: current_resource_id, type: 'update', name: association_name, object: @
-        #   Object.getNotifier(@).notify change
+        unless Object.observe
+          @owner.observation.observers[association_name]?.check_()
+        else
+          change = oldValue: current_value, type: 'update', name: association_name, object: @owner
+          Object.getNotifier(@owner).notify change
+
+        associated
 
 
 callbacks =

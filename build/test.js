@@ -10528,126 +10528,6 @@ require.modules["indefinido~advisable"] = require.modules["indefinido~advisable@
 require.modules["advisable"] = require.modules["indefinido~advisable@master"];
 
 
-require.register("chaijs~assertion-error@1.0.0", Function("exports, module",
-"/*!\n\
- * assertion-error\n\
- * Copyright(c) 2013 Jake Luer <jake@qualiancy.com>\n\
- * MIT Licensed\n\
- */\n\
-\n\
-/*!\n\
- * Return a function that will copy properties from\n\
- * one object to another excluding any originally\n\
- * listed. Returned function will create a new `{}`.\n\
- *\n\
- * @param {String} excluded properties ...\n\
- * @return {Function}\n\
- */\n\
-\n\
-function exclude () {\n\
-  var excludes = [].slice.call(arguments);\n\
-\n\
-  function excludeProps (res, obj) {\n\
-    Object.keys(obj).forEach(function (key) {\n\
-      if (!~excludes.indexOf(key)) res[key] = obj[key];\n\
-    });\n\
-  }\n\
-\n\
-  return function extendExclude () {\n\
-    var args = [].slice.call(arguments)\n\
-      , i = 0\n\
-      , res = {};\n\
-\n\
-    for (; i < args.length; i++) {\n\
-      excludeProps(res, args[i]);\n\
-    }\n\
-\n\
-    return res;\n\
-  };\n\
-};\n\
-\n\
-/*!\n\
- * Primary Exports\n\
- */\n\
-\n\
-module.exports = AssertionError;\n\
-\n\
-/**\n\
- * ### AssertionError\n\
- *\n\
- * An extension of the JavaScript `Error` constructor for\n\
- * assertion and validation scenarios.\n\
- *\n\
- * @param {String} message\n\
- * @param {Object} properties to include (optional)\n\
- * @param {callee} start stack function (optional)\n\
- */\n\
-\n\
-function AssertionError (message, _props, ssf) {\n\
-  var extend = exclude('name', 'message', 'stack', 'constructor', 'toJSON')\n\
-    , props = extend(_props || {});\n\
-\n\
-  // default values\n\
-  this.message = message || 'Unspecified AssertionError';\n\
-  this.showDiff = false;\n\
-\n\
-  // copy from properties\n\
-  for (var key in props) {\n\
-    this[key] = props[key];\n\
-  }\n\
-\n\
-  // capture stack trace\n\
-  ssf = ssf || arguments.callee;\n\
-  if (ssf && Error.captureStackTrace) {\n\
-    Error.captureStackTrace(this, ssf);\n\
-  }\n\
-}\n\
-\n\
-/*!\n\
- * Inherit from Error.prototype\n\
- */\n\
-\n\
-AssertionError.prototype = Object.create(Error.prototype);\n\
-\n\
-/*!\n\
- * Statically set name\n\
- */\n\
-\n\
-AssertionError.prototype.name = 'AssertionError';\n\
-\n\
-/*!\n\
- * Ensure correct constructor\n\
- */\n\
-\n\
-AssertionError.prototype.constructor = AssertionError;\n\
-\n\
-/**\n\
- * Allow errors to be converted to JSON for static transfer.\n\
- *\n\
- * @param {Boolean} include stack (default: `true`)\n\
- * @return {Object} object that can be `JSON.stringify`\n\
- */\n\
-\n\
-AssertionError.prototype.toJSON = function (stack) {\n\
-  var extend = exclude('constructor', 'toJSON', 'stack')\n\
-    , props = extend({ name: this.name }, this);\n\
-\n\
-  // include stack if exists and not turned off\n\
-  if (false !== stack && this.stack) {\n\
-    props.stack = this.stack;\n\
-  }\n\
-\n\
-  return props;\n\
-};\n\
-\n\
-//# sourceURL=components/chaijs/assertion-error/1.0.0/index.js"
-));
-
-require.modules["chaijs-assertion-error"] = require.modules["chaijs~assertion-error@1.0.0"];
-require.modules["chaijs~assertion-error"] = require.modules["chaijs~assertion-error@1.0.0"];
-require.modules["assertion-error"] = require.modules["chaijs~assertion-error@1.0.0"];
-
-
 require.register("chaijs~type-detect@0.1.1", Function("exports, module",
 "/*!\n\
  * type-detect\n\
@@ -11065,6 +10945,126 @@ function objectEqual(a, b, m) {\n\
 require.modules["chaijs-deep-eql"] = require.modules["chaijs~deep-eql@0.1.3"];
 require.modules["chaijs~deep-eql"] = require.modules["chaijs~deep-eql@0.1.3"];
 require.modules["deep-eql"] = require.modules["chaijs~deep-eql@0.1.3"];
+
+
+require.register("chaijs~assertion-error@1.0.0", Function("exports, module",
+"/*!\n\
+ * assertion-error\n\
+ * Copyright(c) 2013 Jake Luer <jake@qualiancy.com>\n\
+ * MIT Licensed\n\
+ */\n\
+\n\
+/*!\n\
+ * Return a function that will copy properties from\n\
+ * one object to another excluding any originally\n\
+ * listed. Returned function will create a new `{}`.\n\
+ *\n\
+ * @param {String} excluded properties ...\n\
+ * @return {Function}\n\
+ */\n\
+\n\
+function exclude () {\n\
+  var excludes = [].slice.call(arguments);\n\
+\n\
+  function excludeProps (res, obj) {\n\
+    Object.keys(obj).forEach(function (key) {\n\
+      if (!~excludes.indexOf(key)) res[key] = obj[key];\n\
+    });\n\
+  }\n\
+\n\
+  return function extendExclude () {\n\
+    var args = [].slice.call(arguments)\n\
+      , i = 0\n\
+      , res = {};\n\
+\n\
+    for (; i < args.length; i++) {\n\
+      excludeProps(res, args[i]);\n\
+    }\n\
+\n\
+    return res;\n\
+  };\n\
+};\n\
+\n\
+/*!\n\
+ * Primary Exports\n\
+ */\n\
+\n\
+module.exports = AssertionError;\n\
+\n\
+/**\n\
+ * ### AssertionError\n\
+ *\n\
+ * An extension of the JavaScript `Error` constructor for\n\
+ * assertion and validation scenarios.\n\
+ *\n\
+ * @param {String} message\n\
+ * @param {Object} properties to include (optional)\n\
+ * @param {callee} start stack function (optional)\n\
+ */\n\
+\n\
+function AssertionError (message, _props, ssf) {\n\
+  var extend = exclude('name', 'message', 'stack', 'constructor', 'toJSON')\n\
+    , props = extend(_props || {});\n\
+\n\
+  // default values\n\
+  this.message = message || 'Unspecified AssertionError';\n\
+  this.showDiff = false;\n\
+\n\
+  // copy from properties\n\
+  for (var key in props) {\n\
+    this[key] = props[key];\n\
+  }\n\
+\n\
+  // capture stack trace\n\
+  ssf = ssf || arguments.callee;\n\
+  if (ssf && Error.captureStackTrace) {\n\
+    Error.captureStackTrace(this, ssf);\n\
+  }\n\
+}\n\
+\n\
+/*!\n\
+ * Inherit from Error.prototype\n\
+ */\n\
+\n\
+AssertionError.prototype = Object.create(Error.prototype);\n\
+\n\
+/*!\n\
+ * Statically set name\n\
+ */\n\
+\n\
+AssertionError.prototype.name = 'AssertionError';\n\
+\n\
+/*!\n\
+ * Ensure correct constructor\n\
+ */\n\
+\n\
+AssertionError.prototype.constructor = AssertionError;\n\
+\n\
+/**\n\
+ * Allow errors to be converted to JSON for static transfer.\n\
+ *\n\
+ * @param {Boolean} include stack (default: `true`)\n\
+ * @return {Object} object that can be `JSON.stringify`\n\
+ */\n\
+\n\
+AssertionError.prototype.toJSON = function (stack) {\n\
+  var extend = exclude('constructor', 'toJSON', 'stack')\n\
+    , props = extend({ name: this.name }, this);\n\
+\n\
+  // include stack if exists and not turned off\n\
+  if (false !== stack && this.stack) {\n\
+    props.stack = this.stack;\n\
+  }\n\
+\n\
+  return props;\n\
+};\n\
+\n\
+//# sourceURL=components/chaijs/assertion-error/1.0.0/index.js"
+));
+
+require.modules["chaijs-assertion-error"] = require.modules["chaijs~assertion-error@1.0.0"];
+require.modules["chaijs~assertion-error"] = require.modules["chaijs~assertion-error@1.0.0"];
+require.modules["assertion-error"] = require.modules["chaijs~assertion-error@1.0.0"];
 
 
 require.register("chaijs~chai@1.9.1", Function("exports, module",
@@ -18446,7 +18446,7 @@ descriptors = {\n\
         associated = this.owner.observed[association_name];\n\
         associated_id = this.owner.observed[association_name + '_id'];\n\
         if (!(((associated != null ? associated._id : void 0) != null) || associated_id)) {\n\
-          return associated;\n\
+          return associated || null;\n\
         }\n\
         if (associated != null ? associated.sustained : void 0) {\n\
           return associated;\n\
@@ -18467,8 +18467,29 @@ descriptors = {\n\
         return this.owner.observed[association_name] = associated;\n\
       },\n\
       setter: function(associated) {\n\
-        this.owner.observed[this.resource.toString()] = associated;\n\
-        return this.owner.observed[this.resource.toString() + '_id'] = associated ? associated._id : null;\n\
+        var association_name, change, current_value, _ref;\n\
+\n\
+        association_name = this.resource.toString();\n\
+        current_value = this.owner.observed[association_name];\n\
+        if (current_value === associated) {\n\
+          return;\n\
+        }\n\
+        this.owner.observed[association_name] = associated;\n\
+        this.owner.observed[association_name + '_id'] = associated ? associated._id : null;\n\
+        if (!Object.observe) {\n\
+          if ((_ref = this.owner.observation.observers[association_name]) != null) {\n\
+            _ref.check_();\n\
+          }\n\
+        } else {\n\
+          change = {\n\
+            oldValue: current_value,\n\
+            type: 'update',\n\
+            name: association_name,\n\
+            object: this.owner\n\
+          };\n\
+          Object.getNotifier(this.owner).notify(change);\n\
+        }\n\
+        return associated;\n\
       }\n\
     }\n\
   }\n\
