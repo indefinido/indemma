@@ -18446,7 +18446,7 @@ descriptors = {\n\
         associated = this.owner.observed[association_name];\n\
         associated_id = this.owner.observed[association_name + '_id'];\n\
         if (!(((associated != null ? associated._id : void 0) != null) || associated_id)) {\n\
-          return associated;\n\
+          return associated || null;\n\
         }\n\
         if (associated != null ? associated.sustained : void 0) {\n\
           return associated;\n\
@@ -18467,8 +18467,29 @@ descriptors = {\n\
         return this.owner.observed[association_name] = associated;\n\
       },\n\
       setter: function(associated) {\n\
-        this.owner.observed[this.resource.toString()] = associated;\n\
-        return this.owner.observed[this.resource.toString() + '_id'] = associated ? associated._id : null;\n\
+        var association_name, change, current_value, _ref;\n\
+\n\
+        association_name = this.resource.toString();\n\
+        current_value = this.owner.observed[association_name];\n\
+        if (current_value === associated) {\n\
+          return;\n\
+        }\n\
+        this.owner.observed[association_name] = associated;\n\
+        this.owner.observed[association_name + '_id'] = associated ? associated._id : null;\n\
+        if (!Object.observe) {\n\
+          if ((_ref = this.owner.observation.observers[association_name]) != null) {\n\
+            _ref.check_();\n\
+          }\n\
+        } else {\n\
+          change = {\n\
+            oldValue: current_value,\n\
+            type: 'update',\n\
+            name: association_name,\n\
+            object: this.owner\n\
+          };\n\
+          Object.getNotifier(this.owner).notify(change);\n\
+        }\n\
+        return associated;\n\
       }\n\
     }\n\
   }\n\
