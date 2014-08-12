@@ -140,7 +140,7 @@ descriptors =
         current_value    = @owner.observed[association_name]
 
         # Do nothing if the values are not changing
-        return if current_value == associated
+        return if current_value == associated and !(current_value || associated)
 
         @owner.observed[association_name        ] = associated
         @owner.observed[association_name + '_id'] = if associated then associated._id else null

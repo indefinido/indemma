@@ -114,7 +114,7 @@ describe 'model',  ->
 
         @arthur.subscribe 'corporation', subscribed
 
-        @arthur.corporation = null
+        @arthur.corporation = undefined
         @arthur.observation.deliver()
 
         subscribed.called.should.be.false
