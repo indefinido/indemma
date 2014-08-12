@@ -18471,7 +18471,7 @@ descriptors = {\n\
 \n\
         association_name = this.resource.toString();\n\
         current_value = this.owner.observed[association_name];\n\
-        if (current_value === associated) {\n\
+        if (current_value === associated && !(current_value || associated)) {\n\
           return;\n\
         }\n\
         this.owner.observed[association_name] = associated;\n\

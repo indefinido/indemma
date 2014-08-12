@@ -123,7 +123,7 @@ describe('model', function() {
         subscribed = sinon.spy();
         this.arthur.observation.deliver();
         this.arthur.subscribe('corporation', subscribed);
-        this.arthur.corporation = null;
+        this.arthur.corporation = void 0;
         this.arthur.observation.deliver();
         return subscribed.called.should.be["false"];
       });
