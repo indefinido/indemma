@@ -10830,12 +10830,11 @@ var jQuery = require("component~jquery@1.0.0");
 var scheduler, schedulerable;
 
 scheduler = function(options) {
-  var name, timeout, value;
+  var name, value;
 
   if (options == null) {
     options = {};
   }
-  timeout = null;
   for (name in options) {
     value = options[name];
     options[name] = {
@@ -10854,8 +10853,8 @@ scheduler = function(options) {
         deliver = function() {
           return _this.deliver();
         };
-        clearTimeout(timeout);
-        return timeout = setTimeout(deliver, 20 || options.wait);
+        clearTimeout(this.timer);
+        return this.timer = setTimeout(deliver, 20 || options.wait);
       }
     }
   });
@@ -10954,9 +10953,12 @@ schedulerable.augment = function(observable) {
     }
   };
   unobserve = observable.unobserve;
-  observable.unobserve = function() {
-    unobserve.apply(this, arguments);
-    return object.observation.scheduler.destroy();
+  observable.unobserve = function(object) {
+    if (!object.observation) {
+      return object;
+    }
+    object.observation.scheduler.destroy();
+    return unobserve.apply(this, arguments);
   };
   return jQuery.extend((function() {
     var object;
@@ -11016,13 +11018,21 @@ module.exports = lookup;
 });
 
 require.register("indefinido~observable@es6-modules/lib/observable.js", function (exports, module) {
-require("indefinido~observable@es6-modules/lib/platform.js");
-var jQuery = require("component~jquery@1.0.0");
-var observation = require("indefinido~observable@es6-modules/lib/observable/observation.js");
-var selection = require("indefinido~observable@es6-modules/lib/observable/selection.js");
-var KeypathObserver = require("indefinido~observable@es6-modules/lib/observable/keypath_observer.js");
-var SelfObserver = require("indefinido~observable@es6-modules/lib/observable/self_observer.js");
 var observable;
+
+Number.isNaN || (Number.isNaN = isNaN);
+
+require("indefinido~observable@es6-modules/lib/platform.js");
+
+var jQuery = require("component~jquery@1.0.0");
+
+var observation = require("indefinido~observable@es6-modules/lib/observable/observation.js");
+
+var selection = require("indefinido~observable@es6-modules/lib/observable/selection.js");
+
+var KeypathObserver = require("indefinido~observable@es6-modules/lib/observable/keypath_observer.js");
+
+var SelfObserver = require("indefinido~observable@es6-modules/lib/observable/self_observer.js");
 
 observable = function() {
   var object;
@@ -13527,7 +13537,7 @@ this.model = (function() {
     var after_initialize, after_mix, callback, instance, _i, _len, _ref;
 
     if (this === window) {
-      throw 'Model mixin called incorrectly call with model.call {} instead of model({})';
+      throw 'Model mixin called incorrectly! \n Call with model.call({}) instead of model({}) \n Also the first argument must be non null.';
     }
     if (!mixer.stale) {
       mixer.stale = true;
@@ -13950,7 +13960,7 @@ associable = {
       }
     },
     create_before_hooks: function(record) {
-      var association_proxy, definition, old_resource, resource, _i, _len, _ref, _results;
+      var association_proxy, definition, old_resource, old_resource_id, resource, _i, _len, _ref, _results;
 
       definition = this;
       if (definition.belongs_to) {
@@ -13964,13 +13974,14 @@ associable = {
             owner: record
           };
           old_resource = record[resource];
+          old_resource_id = record[resource + '_id'];
           Object.defineProperty(record, resource.toString(), {
             get: $.proxy(descriptors.belongs_to.resource.getter, association_proxy),
             set: $.proxy(descriptors.belongs_to.resource.setter, association_proxy),
             configurable: true
           });
           _results.push(record.after_initialize.push((function() {
-            return this[resource] = old_resource;
+            return this[resource] = old_resource || (this[resource + '_id'] = old_resource_id);
           })));
         }
         return _results;

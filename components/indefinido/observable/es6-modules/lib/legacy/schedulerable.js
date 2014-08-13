@@ -1,14 +1,13 @@
-import lookup from '../lookup.js';
-import jQuery from 'jquery';
+import lookup      from '../lookup.js';
+import jQuery      from 'jquery';
 var scheduler, schedulerable;
 
 scheduler = function(options) {
-  var name, timeout, value;
+  var name, value;
 
   if (options == null) {
     options = {};
   }
-  timeout = null;
   for (name in options) {
     value = options[name];
     options[name] = {
@@ -27,8 +26,8 @@ scheduler = function(options) {
         deliver = function() {
           return _this.deliver();
         };
-        clearTimeout(timeout);
-        return timeout = setTimeout(deliver, 20 || options.wait);
+        clearTimeout(this.timer);
+        return this.timer = setTimeout(deliver, 20 || options.wait);
       }
     }
   });
@@ -127,9 +126,12 @@ schedulerable.augment = function(observable) {
     }
   };
   unobserve = observable.unobserve;
-  observable.unobserve = function() {
-    unobserve.apply(this, arguments);
-    return object.observation.scheduler.destroy();
+  observable.unobserve = function(object) {
+    if (!object.observation) {
+      return object;
+    }
+    object.observation.scheduler.destroy();
+    return unobserve.apply(this, arguments);
   };
   return jQuery.extend((function() {
     var object;

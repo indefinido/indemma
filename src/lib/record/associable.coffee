@@ -376,7 +376,8 @@ associable =
           # TODO put deprecation warning on parent key
           association_proxy = resource: resource, parent_resource: @resource, owner: record
 
-          old_resource      = record[resource]
+          old_resource         = record[resource]
+          old_resource_id      = record[resource + '_id']
 
           Object.defineProperty record, resource.toString(),
             get: $.proxy descriptors.belongs_to.resource.getter, association_proxy
@@ -386,7 +387,7 @@ associable =
           # Execute setter in order to do the apropriate actions to
           # the previoulsy stored value in the association property
           # TODO fix the prototype chain and remove this code
-          record.after_initialize.push (-> @[resource] = old_resource)
+          record.after_initialize.push (-> @[resource] = old_resource or @[resource + '_id'] = old_resource_id)
 
   # @ = record
   record:

@@ -1,10 +1,18 @@
-import './platform.js';
-import jQuery          from 'jquery';
-import observation     from './observable/observation.js';
-import selection       from './observable/selection.js';
-import KeypathObserver from './observable/keypath_observer.js';
-import SelfObserver    from './observable/self_observer.js';
 var observable;
+
+Number.isNaN || (Number.isNaN = isNaN);
+
+import './platform.js';
+
+import jQuery          from 'jquery';
+
+import observation     from './observable/observation.js';
+
+import selection       from './observable/selection.js';
+
+import KeypathObserver from './observable/keypath_observer.js';
+
+import SelfObserver    from './observable/self_observer.js';
 
 observable = function() {
   var object;
