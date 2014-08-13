@@ -2,7 +2,7 @@
   "name": "observable",
   "repository": "indefinido/observable",
   "description": "Observable capabilities built upon observable shim.",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "keywords": [],
   "dependencies": {
     "component/jquery": "*"

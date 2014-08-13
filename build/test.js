@@ -15175,142 +15175,6 @@ require.modules["chaijs~chai"] = require.modules["chaijs~chai@1.9.1"];
 require.modules["chai"] = require.modules["chaijs~chai@1.9.1"];
 
 
-require.register("pluma~assimilate@0.4.0", Function("exports, module",
-"/*! assimilate 0.4.0 Original author Alan Plum <me@pluma.io>. Released into the Public Domain under the UNLICENSE. @preserve */\n\
-var slice = Array.prototype.slice;\n\
-\n\
-function bind(fn, self) {\n\
-    var args = slice.call(arguments, 2);\n\
-    if (typeof Function.prototype.bind === 'function') {\n\
-        return Function.prototype.bind.apply(fn, [self].concat(args));\n\
-    }\n\
-    return function() {\n\
-        return fn.apply(self, args.concat(slice.call(arguments, 0)));\n\
-    };\n\
-}\n\
-\n\
-function simpleCopy(target, name, source) {\n\
-    target[name] = source[name];\n\
-}\n\
-\n\
-function properCopy(target, name, source) {\n\
-    var descriptor = Object.getOwnPropertyDescriptor(source, name);\n\
-    Object.defineProperty(target, name, descriptor);\n\
-}\n\
-\n\
-function ownProperties(obj) {\n\
-    return Object.getOwnPropertyNames(obj);\n\
-}\n\
-\n\
-function allKeys(obj) {\n\
-    var keys = [];\n\
-    for (var name in obj) {\n\
-        keys.push(name);\n\
-    }\n\
-    return keys;\n\
-}\n\
-\n\
-function ownKeys(obj) {\n\
-    var keys = [];\n\
-    for (var name in obj) {\n\
-        if (obj.hasOwnProperty(name)) {\n\
-            keys.push(name);\n\
-        }\n\
-    }\n\
-    return keys;\n\
-}\n\
-\n\
-function assimilateWithStrategy(target) {\n\
-    var strategy = this,\n\
-    sources = slice.call(arguments, 1),\n\
-    i, source, names, j, name;\n\
-\n\
-    if (target === undefined || target === null) {\n\
-        target = {};\n\
-    }\n\
-\n\
-    for (i = 0; i < sources.length; i++) {\n\
-        source = sources[i];\n\
-        names = strategy.keysFn(source);\n\
-        for (j = 0; j < names.length; j++) {\n\
-            name = names[j];\n\
-            strategy.copyFn(target, name, source);\n\
-        }\n\
-    }\n\
-\n\
-    return target;\n\
-}\n\
-\n\
-var strategies = {\n\
-    DEFAULT: {\n\
-        keysFn: ownKeys,\n\
-        copyFn: simpleCopy\n\
-    },\n\
-    PROPER: {\n\
-        keysFn: ownProperties,\n\
-        copyFn: properCopy\n\
-    },\n\
-    INHERITED: {\n\
-        keysFn: allKeys,\n\
-        copyFn: simpleCopy\n\
-    },\n\
-    DEEP: {\n\
-        keysFn: ownKeys,\n\
-        copyFn: function recursiveCopy(target, name, source) {\n\
-            var val = source[name];\n\
-            var old = target[name];\n\
-            if (typeof val === 'object' && typeof old === 'object') {\n\
-                assimilateWithStrategy.call(strategies.DEEP, old, val);\n\
-            } else {\n\
-                simpleCopy(target, name, source);\n\
-            }\n\
-        }\n\
-    },\n\
-    STRICT: {\n\
-        keysFn: ownKeys,\n\
-        copyFn: function strictCopy(target, name, source) {\n\
-            if (source[name] !== undefined) {\n\
-                simpleCopy(target, name, source);\n\
-            }\n\
-        }\n\
-    },\n\
-    FALLBACK: {\n\
-        keysFn: function fallbackCopy(target, name, source) {\n\
-            if (target[name] === undefined) {\n\
-                simpleCopy(target, name, source);\n\
-            }\n\
-        },\n\
-        copyFn: simpleCopy\n\
-    }\n\
-};\n\
-\n\
-var assimilate = bind(assimilateWithStrategy, strategies.DEFAULT);\n\
-assimilate.strategies = strategies;\n\
-assimilate.withStrategy = function withStrategy(strategy) {\n\
-    if (typeof strategy === 'string') {\n\
-        strategy = strategies[strategy.toUpperCase()];\n\
-    }\n\
-    if (!strategy) {\n\
-        throw new Error('Unknwon or invalid strategy:' + strategy);\n\
-    }\n\
-    if (typeof strategy.copyFn !== 'function') {\n\
-        throw new Error('Strategy missing copy function:' + strategy);\n\
-    }\n\
-    if (typeof strategy.keysFn !== 'function') {\n\
-        throw new Error('Strategy missing keys function:' + strategy);\n\
-    }\n\
-    return bind(assimilateWithStrategy, strategy);\n\
-};\n\
-\n\
-module.exports = assimilate;\n\
-//# sourceURL=components/pluma/assimilate/0.4.0/dist/assimilate.js"
-));
-
-require.modules["pluma-assimilate"] = require.modules["pluma~assimilate@0.4.0"];
-require.modules["pluma~assimilate"] = require.modules["pluma~assimilate@0.4.0"];
-require.modules["assimilate"] = require.modules["pluma~assimilate@0.4.0"];
-
-
 require.register("indefinido~observable@es6-modules", Function("exports, module",
 "module.exports = require(\"indefinido~observable@es6-modules/lib/observable.js\");\n\
 \n\
@@ -15518,12 +15382,11 @@ var jQuery = require(\"component~jquery@1.0.0\");\n\
 var scheduler, schedulerable;\n\
 \n\
 scheduler = function(options) {\n\
-  var name, timeout, value;\n\
+  var name, value;\n\
 \n\
   if (options == null) {\n\
     options = {};\n\
   }\n\
-  timeout = null;\n\
   for (name in options) {\n\
     value = options[name];\n\
     options[name] = {\n\
@@ -15542,8 +15405,8 @@ scheduler = function(options) {\n\
         deliver = function() {\n\
           return _this.deliver();\n\
         };\n\
-        clearTimeout(timeout);\n\
-        return timeout = setTimeout(deliver, 20 || options.wait);\n\
+        clearTimeout(this.timer);\n\
+        return this.timer = setTimeout(deliver, 20 || options.wait);\n\
       }\n\
     }\n\
   });\n\
@@ -15642,9 +15505,12 @@ schedulerable.augment = function(observable) {\n\
     }\n\
   };\n\
   unobserve = observable.unobserve;\n\
-  observable.unobserve = function() {\n\
-    unobserve.apply(this, arguments);\n\
-    return object.observation.scheduler.destroy();\n\
+  observable.unobserve = function(object) {\n\
+    if (!object.observation) {\n\
+      return object;\n\
+    }\n\
+    object.observation.scheduler.destroy();\n\
+    return unobserve.apply(this, arguments);\n\
   };\n\
   return jQuery.extend((function() {\n\
     var object;\n\
@@ -15706,13 +15572,21 @@ module.exports = lookup;\n\
 ));
 
 require.register("indefinido~observable@es6-modules/lib/observable.js", Function("exports, module",
-"require(\"indefinido~observable@es6-modules/lib/platform.js\");\n\
+"var observable;\n\
+\n\
+Number.isNaN || (Number.isNaN = isNaN);\n\
+\n\
+require(\"indefinido~observable@es6-modules/lib/platform.js\");\n\
+\n\
 var jQuery = require(\"component~jquery@1.0.0\");\n\
+\n\
 var observation = require(\"indefinido~observable@es6-modules/lib/observable/observation.js\");\n\
+\n\
 var selection = require(\"indefinido~observable@es6-modules/lib/observable/selection.js\");\n\
+\n\
 var KeypathObserver = require(\"indefinido~observable@es6-modules/lib/observable/keypath_observer.js\");\n\
+\n\
 var SelfObserver = require(\"indefinido~observable@es6-modules/lib/observable/self_observer.js\");\n\
-var observable;\n\
 \n\
 observable = function() {\n\
   var object;\n\
@@ -18104,6 +17978,142 @@ require.modules["indefinido~observable"] = require.modules["indefinido~observabl
 require.modules["observable"] = require.modules["indefinido~observable@es6-modules"];
 
 
+require.register("pluma~assimilate@0.4.0", Function("exports, module",
+"/*! assimilate 0.4.0 Original author Alan Plum <me@pluma.io>. Released into the Public Domain under the UNLICENSE. @preserve */\n\
+var slice = Array.prototype.slice;\n\
+\n\
+function bind(fn, self) {\n\
+    var args = slice.call(arguments, 2);\n\
+    if (typeof Function.prototype.bind === 'function') {\n\
+        return Function.prototype.bind.apply(fn, [self].concat(args));\n\
+    }\n\
+    return function() {\n\
+        return fn.apply(self, args.concat(slice.call(arguments, 0)));\n\
+    };\n\
+}\n\
+\n\
+function simpleCopy(target, name, source) {\n\
+    target[name] = source[name];\n\
+}\n\
+\n\
+function properCopy(target, name, source) {\n\
+    var descriptor = Object.getOwnPropertyDescriptor(source, name);\n\
+    Object.defineProperty(target, name, descriptor);\n\
+}\n\
+\n\
+function ownProperties(obj) {\n\
+    return Object.getOwnPropertyNames(obj);\n\
+}\n\
+\n\
+function allKeys(obj) {\n\
+    var keys = [];\n\
+    for (var name in obj) {\n\
+        keys.push(name);\n\
+    }\n\
+    return keys;\n\
+}\n\
+\n\
+function ownKeys(obj) {\n\
+    var keys = [];\n\
+    for (var name in obj) {\n\
+        if (obj.hasOwnProperty(name)) {\n\
+            keys.push(name);\n\
+        }\n\
+    }\n\
+    return keys;\n\
+}\n\
+\n\
+function assimilateWithStrategy(target) {\n\
+    var strategy = this,\n\
+    sources = slice.call(arguments, 1),\n\
+    i, source, names, j, name;\n\
+\n\
+    if (target === undefined || target === null) {\n\
+        target = {};\n\
+    }\n\
+\n\
+    for (i = 0; i < sources.length; i++) {\n\
+        source = sources[i];\n\
+        names = strategy.keysFn(source);\n\
+        for (j = 0; j < names.length; j++) {\n\
+            name = names[j];\n\
+            strategy.copyFn(target, name, source);\n\
+        }\n\
+    }\n\
+\n\
+    return target;\n\
+}\n\
+\n\
+var strategies = {\n\
+    DEFAULT: {\n\
+        keysFn: ownKeys,\n\
+        copyFn: simpleCopy\n\
+    },\n\
+    PROPER: {\n\
+        keysFn: ownProperties,\n\
+        copyFn: properCopy\n\
+    },\n\
+    INHERITED: {\n\
+        keysFn: allKeys,\n\
+        copyFn: simpleCopy\n\
+    },\n\
+    DEEP: {\n\
+        keysFn: ownKeys,\n\
+        copyFn: function recursiveCopy(target, name, source) {\n\
+            var val = source[name];\n\
+            var old = target[name];\n\
+            if (typeof val === 'object' && typeof old === 'object') {\n\
+                assimilateWithStrategy.call(strategies.DEEP, old, val);\n\
+            } else {\n\
+                simpleCopy(target, name, source);\n\
+            }\n\
+        }\n\
+    },\n\
+    STRICT: {\n\
+        keysFn: ownKeys,\n\
+        copyFn: function strictCopy(target, name, source) {\n\
+            if (source[name] !== undefined) {\n\
+                simpleCopy(target, name, source);\n\
+            }\n\
+        }\n\
+    },\n\
+    FALLBACK: {\n\
+        keysFn: function fallbackCopy(target, name, source) {\n\
+            if (target[name] === undefined) {\n\
+                simpleCopy(target, name, source);\n\
+            }\n\
+        },\n\
+        copyFn: simpleCopy\n\
+    }\n\
+};\n\
+\n\
+var assimilate = bind(assimilateWithStrategy, strategies.DEFAULT);\n\
+assimilate.strategies = strategies;\n\
+assimilate.withStrategy = function withStrategy(strategy) {\n\
+    if (typeof strategy === 'string') {\n\
+        strategy = strategies[strategy.toUpperCase()];\n\
+    }\n\
+    if (!strategy) {\n\
+        throw new Error('Unknwon or invalid strategy:' + strategy);\n\
+    }\n\
+    if (typeof strategy.copyFn !== 'function') {\n\
+        throw new Error('Strategy missing copy function:' + strategy);\n\
+    }\n\
+    if (typeof strategy.keysFn !== 'function') {\n\
+        throw new Error('Strategy missing keys function:' + strategy);\n\
+    }\n\
+    return bind(assimilateWithStrategy, strategy);\n\
+};\n\
+\n\
+module.exports = assimilate;\n\
+//# sourceURL=components/pluma/assimilate/0.4.0/dist/assimilate.js"
+));
+
+require.modules["pluma-assimilate"] = require.modules["pluma~assimilate@0.4.0"];
+require.modules["pluma~assimilate"] = require.modules["pluma~assimilate@0.4.0"];
+require.modules["assimilate"] = require.modules["pluma~assimilate@0.4.0"];
+
+
 require.register("indemma", Function("exports, module",
 "module.exports = require(\"indemma/lib/record.js\");\n\
 \n\
@@ -18239,7 +18249,9 @@ this.model = (function() {\n\
     var after_initialize, after_mix, callback, instance, _i, _len, _ref;\n\
 \n\
     if (this === window) {\n\
-      throw 'Model mixin called incorrectly call with model.call {} instead of model({})';\n\
+      throw 'Model mixin called incorrectly! \\n\
+ Call with model.call({}) instead of model({}) \\n\
+ Also the first argument must be non null.';\n\
     }\n\
     if (!mixer.stale) {\n\
       mixer.stale = true;\n\
@@ -18666,7 +18678,7 @@ associable = {\n\
       }\n\
     },\n\
     create_before_hooks: function(record) {\n\
-      var association_proxy, definition, old_resource, resource, _i, _len, _ref, _results;\n\
+      var association_proxy, definition, old_resource, old_resource_id, resource, _i, _len, _ref, _results;\n\
 \n\
       definition = this;\n\
       if (definition.belongs_to) {\n\
@@ -18680,13 +18692,14 @@ associable = {\n\
             owner: record\n\
           };\n\
           old_resource = record[resource];\n\
+          old_resource_id = record[resource + '_id'];\n\
           Object.defineProperty(record, resource.toString(), {\n\
             get: $.proxy(descriptors.belongs_to.resource.getter, association_proxy),\n\
             set: $.proxy(descriptors.belongs_to.resource.setter, association_proxy),\n\
             configurable: true\n\
           });\n\
           _results.push(record.after_initialize.push((function() {\n\
-            return this[resource] = old_resource;\n\
+            return this[resource] = old_resource || (this[resource + '_id'] = old_resource_id);\n\
           })));\n\
         }\n\
         return _results;\n\
