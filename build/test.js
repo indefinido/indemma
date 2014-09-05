@@ -18500,6 +18500,13 @@ descriptors = {\n\
             object: this.owner\n\
           };\n\
           Object.getNotifier(this.owner).notify(change);\n\
+          change = {\n\
+            oldValue: associated != null ? associated._id : void 0,\n\
+            type: 'update',\n\
+            name: association_name + '_id',\n\
+            object: this.owner\n\
+          };\n\
+          Object.getNotifier(this.owner).notify(change);\n\
         }\n\
         return associated;\n\
       }\n\
