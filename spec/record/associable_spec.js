@@ -80,7 +80,27 @@ describe('model', function() {
           return corporation.should.have.property('name', radio.name);
         });
       });
-      return it('should notify changes on association properties', function() {
+      it('should notify changes', function() {
+        var subscribed, subscribed_id;
+
+        radio = corporation({
+          _id: 1,
+          name: 'Local Radio'
+        });
+        subscribed_id = sinon.spy();
+        subscribed = sinon.spy();
+        this.arthur.subscribe('corporation_id', subscribed_id);
+        this.arthur.subscribe('corporation', subscribed);
+        this.arthur.corporation_id = radio._id;
+        this.arthur.observation.deliver();
+        this.arthur.corporation_id = null;
+        this.arthur.observation.deliver();
+        subscribed.called.should.be["true"];
+        subscribed.callCount.should.be.eq(2);
+        subscribed_id.called.should.be["true"];
+        return subscribed_id.callCount.should.be.eq(2);
+      });
+      return it('should remove {associated} when nulifying', function() {
         var subscribed;
 
         radio = corporation({
@@ -91,7 +111,12 @@ describe('model', function() {
         this.arthur.subscribe('corporation_id', subscribed);
         this.arthur.corporation_id = radio._id;
         this.arthur.observation.deliver();
-        return subscribed.called.should.be["true"];
+        this.arthur.corporation_id = null;
+        this.arthur.observation.deliver();
+        subscribed.called.should.be["true"];
+        subscribed.callCount.should.be.eq(2);
+        this.arthur.should.have.property('corporation_id', null);
+        return this.arthur.should.have.property('corporation', null);
       });
     });
     describe("{associated}", function() {
@@ -102,7 +127,7 @@ describe('model', function() {
           return this.arthur.should.have.property('corporation', radio);
         });
       });
-      it('should update associated id and record when associated record changes', function() {
+      it('should update {associated_id} and record when associated record changes', function() {
         radio = corporation({
           _id: 1,
           name: 'Local Radio',
@@ -110,35 +135,33 @@ describe('model', function() {
         });
         expect(this.arthur.corporation).to.be["null"];
         this.arthur.corporation = radio;
-        this.arthur.should.to.have.property('corporation', radio);
-        return this.arthur.should.to.have.property('corporation_id', radio._id);
+        this.arthur.corporation_id;
+        this.arthur.should.have.property('corporation', radio);
+        this.arthur.should.have.property('corporation_id', radio._id);
+        this.arthur.corporation = null;
+        this.arthur.observation.deliver();
+        this.arthur.should.have.property('corporation', null);
+        return this.arthur.should.have.property('corporation_id', null);
       });
-      it('should notify only changes on associated', function() {
-        var subscribed;
+      return it('should notify changes', function() {
+        var subscribed, subscribed_id;
 
         radio = corporation({
           _id: 1,
           name: 'Local Radio'
         });
         subscribed = sinon.spy();
-        this.arthur.observation.deliver();
+        subscribed_id = sinon.spy();
         this.arthur.subscribe('corporation', subscribed);
-        this.arthur.corporation = void 0;
-        this.arthur.observation.deliver();
-        return subscribed.called.should.be["false"];
-      });
-      return it('should notify changes on association properties', function() {
-        var subscribed;
-
-        radio = corporation({
-          _id: 1,
-          name: 'Local Radio'
-        });
-        subscribed = sinon.spy();
-        this.arthur.subscribe('corporation', subscribed);
+        this.arthur.subscribe('corporation_id', subscribed_id);
         this.arthur.corporation = radio;
         this.arthur.observation.deliver();
-        return subscribed.called.should.be["true"];
+        this.arthur.corporation = null;
+        this.arthur.observation.deliver();
+        subscribed.called.should.be["true"];
+        subscribed.callCount.should.be.eq(2);
+        subscribed_id.called.should.be["true"];
+        return subscribed_id.callCount.should.be.eq(2);
       });
     });
     return describe("#build_{associated}", function() {

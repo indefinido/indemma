@@ -142,7 +142,7 @@ descriptors =
         # Do nothing if the values are not changing
         return if current_value == associated and !(current_value || associated)
 
-        @owner.observed[association_name        ] = associated
+        @owner.observed[association_name] = associated
         @owner.observed[association_name + '_id'] = if associated then associated._id else null
 
         # TODO implement notification api on observable
@@ -150,6 +150,9 @@ descriptors =
           @owner.observation.observers[association_name]?.check_()
         else
           change = oldValue: current_value, type: 'update', name: association_name, object: @owner
+          Object.getNotifier(@owner).notify change
+
+          change = oldValue: associated?._id, type: 'update', name: association_name + '_id', object: @owner
           Object.getNotifier(@owner).notify change
 
         associated

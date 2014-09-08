@@ -74,15 +74,44 @@ describe 'model',  ->
           corporation.should.have.property '_id' , radio.id
           corporation.should.have.property 'name', radio.name
 
-      it 'should notify changes on association properties', ->
+      it 'should notify changes', ->
+        radio      = corporation _id: 1, name: 'Local Radio'
+        subscribed_id = sinon.spy()
+        subscribed = sinon.spy()
+
+        @arthur.subscribe 'corporation_id', subscribed_id
+        @arthur.subscribe 'corporation'   , subscribed
+        @arthur.corporation_id = radio._id
+        @arthur.observation.deliver()
+
+        @arthur.corporation_id = null
+        @arthur.observation.deliver()
+
+        # Tests
+        subscribed.called.should.be.true
+        subscribed.callCount.should.be.eq 2
+        subscribed_id.called.should.be.true
+        subscribed_id.callCount.should.be.eq 2
+
+
+      it 'should remove {associated} when nulifying', ->
         radio      = corporation _id: 1, name: 'Local Radio'
         subscribed = sinon.spy()
 
+        # Associate arthur with a corporation through id
         @arthur.subscribe 'corporation_id', subscribed
         @arthur.corporation_id = radio._id
-
         @arthur.observation.deliver()
+
+        # Unassociate arthur with a corporation through id
+        @arthur.corporation_id = null
+        @arthur.observation.deliver()
+
         subscribed.called.should.be.true
+        subscribed.callCount.should.be.eq 2
+        @arthur.should.have.property 'corporation_id', null
+        @arthur.should.have.property 'corporation'   , null
+
 
     describe "{associated}", ->
 
@@ -94,7 +123,7 @@ describe 'model',  ->
           @arthur.should.have.property 'corporation', radio
 
 
-      it 'should update associated id and record when associated record changes', ->
+      it 'should update {associated_id} and record when associated record changes', ->
         radio = corporation
           _id: 1
           name: 'Local Radio'
@@ -104,31 +133,35 @@ describe 'model',  ->
 
         @arthur.corporation = radio
 
-        @arthur.should.to.have.property 'corporation', radio
-        @arthur.should.to.have.property 'corporation_id', radio._id
+        @arthur.corporation_id
+        @arthur.should.have.property 'corporation'   , radio
+        @arthur.should.have.property 'corporation_id', radio._id
 
-      it 'should notify only changes on associated', ->
-        radio      = corporation _id: 1, name: 'Local Radio'
-        subscribed = sinon.spy()
+        @arthur.corporation = null
         @arthur.observation.deliver()
 
-        @arthur.subscribe 'corporation', subscribed
+        @arthur.should.have.property 'corporation'   , null
+        @arthur.should.have.property 'corporation_id', null
 
-        @arthur.corporation = undefined
-        @arthur.observation.deliver()
+      it 'should notify changes', ->
+        radio         = corporation _id: 1, name: 'Local Radio'
+        subscribed    = sinon.spy()
+        subscribed_id = sinon.spy()
 
-        subscribed.called.should.be.false
-
-
-      it 'should notify changes on association properties', ->
-        radio      = corporation _id: 1, name: 'Local Radio'
-        subscribed = sinon.spy()
-
-        @arthur.subscribe 'corporation', subscribed
+        @arthur.subscribe 'corporation'   , subscribed
+        @arthur.subscribe 'corporation_id', subscribed_id
         @arthur.corporation = radio
-
         @arthur.observation.deliver()
+
+        @arthur.corporation = null
+        @arthur.observation.deliver()
+
+        # Tests
         subscribed.called.should.be.true
+        subscribed.callCount.should.be.eq 2
+
+        subscribed_id.called.should.be.true
+        subscribed_id.callCount.should.be.eq 2
 
     describe "#build_{associated}", ->
       it 'should add builded object to association named attribute', ->
