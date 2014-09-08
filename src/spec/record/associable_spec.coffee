@@ -76,17 +76,23 @@ describe 'model',  ->
 
       it 'should notify changes', ->
         radio      = corporation _id: 1, name: 'Local Radio'
+        subscribed_id = sinon.spy()
         subscribed = sinon.spy()
 
-        @arthur.subscribe 'corporation_id', subscribed
+        @arthur.subscribe 'corporation_id', subscribed_id
+        @arthur.subscribe 'corporation'   , subscribed
         @arthur.corporation_id = radio._id
         @arthur.observation.deliver()
 
         @arthur.corporation_id = null
         @arthur.observation.deliver()
 
+        # Tests
         subscribed.called.should.be.true
         subscribed.callCount.should.be.eq 2
+        subscribed_id.called.should.be.true
+        subscribed_id.callCount.should.be.eq 2
+
 
       it 'should remove {associated} when nulifying', ->
         radio      = corporation _id: 1, name: 'Local Radio'
@@ -138,17 +144,24 @@ describe 'model',  ->
         @arthur.should.have.property 'corporation_id', null
 
       it 'should notify changes', ->
-        radio      = corporation _id: 1, name: 'Local Radio'
-        subscribed = sinon.spy()
+        radio         = corporation _id: 1, name: 'Local Radio'
+        subscribed    = sinon.spy()
+        subscribed_id = sinon.spy()
 
-        @arthur.subscribe 'corporation', subscribed
+        @arthur.subscribe 'corporation'   , subscribed
+        @arthur.subscribe 'corporation_id', subscribed_id
         @arthur.corporation = radio
         @arthur.observation.deliver()
 
         @arthur.corporation = null
         @arthur.observation.deliver()
-        subscribed.callCount.should.be.eq 2
+
+        # Tests
         subscribed.called.should.be.true
+        subscribed.callCount.should.be.eq 2
+
+        subscribed_id.called.should.be.true
+        subscribed_id.callCount.should.be.eq 2
 
     describe "#build_{associated}", ->
       it 'should add builded object to association named attribute', ->

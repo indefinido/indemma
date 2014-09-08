@@ -81,20 +81,24 @@ describe('model', function() {
         });
       });
       it('should notify changes', function() {
-        var subscribed;
+        var subscribed, subscribed_id;
 
         radio = corporation({
           _id: 1,
           name: 'Local Radio'
         });
+        subscribed_id = sinon.spy();
         subscribed = sinon.spy();
-        this.arthur.subscribe('corporation_id', subscribed);
+        this.arthur.subscribe('corporation_id', subscribed_id);
+        this.arthur.subscribe('corporation', subscribed);
         this.arthur.corporation_id = radio._id;
         this.arthur.observation.deliver();
         this.arthur.corporation_id = null;
         this.arthur.observation.deliver();
         subscribed.called.should.be["true"];
-        return subscribed.callCount.should.be.eq(2);
+        subscribed.callCount.should.be.eq(2);
+        subscribed_id.called.should.be["true"];
+        return subscribed_id.callCount.should.be.eq(2);
       });
       return it('should remove {associated} when nulifying', function() {
         var subscribed;
@@ -140,20 +144,24 @@ describe('model', function() {
         return this.arthur.should.have.property('corporation_id', null);
       });
       return it('should notify changes', function() {
-        var subscribed;
+        var subscribed, subscribed_id;
 
         radio = corporation({
           _id: 1,
           name: 'Local Radio'
         });
         subscribed = sinon.spy();
+        subscribed_id = sinon.spy();
         this.arthur.subscribe('corporation', subscribed);
+        this.arthur.subscribe('corporation_id', subscribed_id);
         this.arthur.corporation = radio;
         this.arthur.observation.deliver();
         this.arthur.corporation = null;
         this.arthur.observation.deliver();
+        subscribed.called.should.be["true"];
         subscribed.callCount.should.be.eq(2);
-        return subscribed.called.should.be["true"];
+        subscribed_id.called.should.be["true"];
+        return subscribed_id.callCount.should.be.eq(2);
       });
     });
     return describe("#build_{associated}", function() {

@@ -4,14 +4,12 @@ indemma
 
   Indemma (mind picture → memory), client side, ES5 observable and REST, extensible modular data model.
 
-  Current version 0.1.9
-
 Summary
 -------
 
  - We are tired of calling .attr on our models.
- - We are tired of using templates
- - We want a decent kind of polyfill to view models and rest clients until polymer is out of beta
+ - We are tired of using templates instead of data bindings.
+ - We want a decent kind of polyfill to view models and rest clients until polymer is out of beta.
  - Requirements
    - ES5 Getters and Setters (Shim ships with component, IE 10+)
    - ES7 Observer            (Shim ships with component, IE ?+)
