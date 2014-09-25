@@ -10528,6 +10528,126 @@ require.modules["indefinido~advisable"] = require.modules["indefinido~advisable@
 require.modules["advisable"] = require.modules["indefinido~advisable@master"];
 
 
+require.register("chaijs~assertion-error@1.0.0", Function("exports, module",
+"/*!\n\
+ * assertion-error\n\
+ * Copyright(c) 2013 Jake Luer <jake@qualiancy.com>\n\
+ * MIT Licensed\n\
+ */\n\
+\n\
+/*!\n\
+ * Return a function that will copy properties from\n\
+ * one object to another excluding any originally\n\
+ * listed. Returned function will create a new `{}`.\n\
+ *\n\
+ * @param {String} excluded properties ...\n\
+ * @return {Function}\n\
+ */\n\
+\n\
+function exclude () {\n\
+  var excludes = [].slice.call(arguments);\n\
+\n\
+  function excludeProps (res, obj) {\n\
+    Object.keys(obj).forEach(function (key) {\n\
+      if (!~excludes.indexOf(key)) res[key] = obj[key];\n\
+    });\n\
+  }\n\
+\n\
+  return function extendExclude () {\n\
+    var args = [].slice.call(arguments)\n\
+      , i = 0\n\
+      , res = {};\n\
+\n\
+    for (; i < args.length; i++) {\n\
+      excludeProps(res, args[i]);\n\
+    }\n\
+\n\
+    return res;\n\
+  };\n\
+};\n\
+\n\
+/*!\n\
+ * Primary Exports\n\
+ */\n\
+\n\
+module.exports = AssertionError;\n\
+\n\
+/**\n\
+ * ### AssertionError\n\
+ *\n\
+ * An extension of the JavaScript `Error` constructor for\n\
+ * assertion and validation scenarios.\n\
+ *\n\
+ * @param {String} message\n\
+ * @param {Object} properties to include (optional)\n\
+ * @param {callee} start stack function (optional)\n\
+ */\n\
+\n\
+function AssertionError (message, _props, ssf) {\n\
+  var extend = exclude('name', 'message', 'stack', 'constructor', 'toJSON')\n\
+    , props = extend(_props || {});\n\
+\n\
+  // default values\n\
+  this.message = message || 'Unspecified AssertionError';\n\
+  this.showDiff = false;\n\
+\n\
+  // copy from properties\n\
+  for (var key in props) {\n\
+    this[key] = props[key];\n\
+  }\n\
+\n\
+  // capture stack trace\n\
+  ssf = ssf || arguments.callee;\n\
+  if (ssf && Error.captureStackTrace) {\n\
+    Error.captureStackTrace(this, ssf);\n\
+  }\n\
+}\n\
+\n\
+/*!\n\
+ * Inherit from Error.prototype\n\
+ */\n\
+\n\
+AssertionError.prototype = Object.create(Error.prototype);\n\
+\n\
+/*!\n\
+ * Statically set name\n\
+ */\n\
+\n\
+AssertionError.prototype.name = 'AssertionError';\n\
+\n\
+/*!\n\
+ * Ensure correct constructor\n\
+ */\n\
+\n\
+AssertionError.prototype.constructor = AssertionError;\n\
+\n\
+/**\n\
+ * Allow errors to be converted to JSON for static transfer.\n\
+ *\n\
+ * @param {Boolean} include stack (default: `true`)\n\
+ * @return {Object} object that can be `JSON.stringify`\n\
+ */\n\
+\n\
+AssertionError.prototype.toJSON = function (stack) {\n\
+  var extend = exclude('constructor', 'toJSON', 'stack')\n\
+    , props = extend({ name: this.name }, this);\n\
+\n\
+  // include stack if exists and not turned off\n\
+  if (false !== stack && this.stack) {\n\
+    props.stack = this.stack;\n\
+  }\n\
+\n\
+  return props;\n\
+};\n\
+\n\
+//# sourceURL=components/chaijs/assertion-error/1.0.0/index.js"
+));
+
+require.modules["chaijs-assertion-error"] = require.modules["chaijs~assertion-error@1.0.0"];
+require.modules["chaijs~assertion-error"] = require.modules["chaijs~assertion-error@1.0.0"];
+require.modules["assertion-error"] = require.modules["chaijs~assertion-error@1.0.0"];
+
+
 require.register("chaijs~type-detect@0.1.1", Function("exports, module",
 "/*!\n\
  * type-detect\n\
@@ -10945,126 +11065,6 @@ function objectEqual(a, b, m) {\n\
 require.modules["chaijs-deep-eql"] = require.modules["chaijs~deep-eql@0.1.3"];
 require.modules["chaijs~deep-eql"] = require.modules["chaijs~deep-eql@0.1.3"];
 require.modules["deep-eql"] = require.modules["chaijs~deep-eql@0.1.3"];
-
-
-require.register("chaijs~assertion-error@1.0.0", Function("exports, module",
-"/*!\n\
- * assertion-error\n\
- * Copyright(c) 2013 Jake Luer <jake@qualiancy.com>\n\
- * MIT Licensed\n\
- */\n\
-\n\
-/*!\n\
- * Return a function that will copy properties from\n\
- * one object to another excluding any originally\n\
- * listed. Returned function will create a new `{}`.\n\
- *\n\
- * @param {String} excluded properties ...\n\
- * @return {Function}\n\
- */\n\
-\n\
-function exclude () {\n\
-  var excludes = [].slice.call(arguments);\n\
-\n\
-  function excludeProps (res, obj) {\n\
-    Object.keys(obj).forEach(function (key) {\n\
-      if (!~excludes.indexOf(key)) res[key] = obj[key];\n\
-    });\n\
-  }\n\
-\n\
-  return function extendExclude () {\n\
-    var args = [].slice.call(arguments)\n\
-      , i = 0\n\
-      , res = {};\n\
-\n\
-    for (; i < args.length; i++) {\n\
-      excludeProps(res, args[i]);\n\
-    }\n\
-\n\
-    return res;\n\
-  };\n\
-};\n\
-\n\
-/*!\n\
- * Primary Exports\n\
- */\n\
-\n\
-module.exports = AssertionError;\n\
-\n\
-/**\n\
- * ### AssertionError\n\
- *\n\
- * An extension of the JavaScript `Error` constructor for\n\
- * assertion and validation scenarios.\n\
- *\n\
- * @param {String} message\n\
- * @param {Object} properties to include (optional)\n\
- * @param {callee} start stack function (optional)\n\
- */\n\
-\n\
-function AssertionError (message, _props, ssf) {\n\
-  var extend = exclude('name', 'message', 'stack', 'constructor', 'toJSON')\n\
-    , props = extend(_props || {});\n\
-\n\
-  // default values\n\
-  this.message = message || 'Unspecified AssertionError';\n\
-  this.showDiff = false;\n\
-\n\
-  // copy from properties\n\
-  for (var key in props) {\n\
-    this[key] = props[key];\n\
-  }\n\
-\n\
-  // capture stack trace\n\
-  ssf = ssf || arguments.callee;\n\
-  if (ssf && Error.captureStackTrace) {\n\
-    Error.captureStackTrace(this, ssf);\n\
-  }\n\
-}\n\
-\n\
-/*!\n\
- * Inherit from Error.prototype\n\
- */\n\
-\n\
-AssertionError.prototype = Object.create(Error.prototype);\n\
-\n\
-/*!\n\
- * Statically set name\n\
- */\n\
-\n\
-AssertionError.prototype.name = 'AssertionError';\n\
-\n\
-/*!\n\
- * Ensure correct constructor\n\
- */\n\
-\n\
-AssertionError.prototype.constructor = AssertionError;\n\
-\n\
-/**\n\
- * Allow errors to be converted to JSON for static transfer.\n\
- *\n\
- * @param {Boolean} include stack (default: `true`)\n\
- * @return {Object} object that can be `JSON.stringify`\n\
- */\n\
-\n\
-AssertionError.prototype.toJSON = function (stack) {\n\
-  var extend = exclude('constructor', 'toJSON', 'stack')\n\
-    , props = extend({ name: this.name }, this);\n\
-\n\
-  // include stack if exists and not turned off\n\
-  if (false !== stack && this.stack) {\n\
-    props.stack = this.stack;\n\
-  }\n\
-\n\
-  return props;\n\
-};\n\
-\n\
-//# sourceURL=components/chaijs/assertion-error/1.0.0/index.js"
-));
-
-require.modules["chaijs-assertion-error"] = require.modules["chaijs~assertion-error@1.0.0"];
-require.modules["chaijs~assertion-error"] = require.modules["chaijs~assertion-error@1.0.0"];
-require.modules["assertion-error"] = require.modules["chaijs~assertion-error@1.0.0"];
 
 
 require.register("chaijs~chai@1.9.1", Function("exports, module",
@@ -15175,6 +15175,142 @@ require.modules["chaijs~chai"] = require.modules["chaijs~chai@1.9.1"];
 require.modules["chai"] = require.modules["chaijs~chai@1.9.1"];
 
 
+require.register("pluma~assimilate@0.4.0", Function("exports, module",
+"/*! assimilate 0.4.0 Original author Alan Plum <me@pluma.io>. Released into the Public Domain under the UNLICENSE. @preserve */\n\
+var slice = Array.prototype.slice;\n\
+\n\
+function bind(fn, self) {\n\
+    var args = slice.call(arguments, 2);\n\
+    if (typeof Function.prototype.bind === 'function') {\n\
+        return Function.prototype.bind.apply(fn, [self].concat(args));\n\
+    }\n\
+    return function() {\n\
+        return fn.apply(self, args.concat(slice.call(arguments, 0)));\n\
+    };\n\
+}\n\
+\n\
+function simpleCopy(target, name, source) {\n\
+    target[name] = source[name];\n\
+}\n\
+\n\
+function properCopy(target, name, source) {\n\
+    var descriptor = Object.getOwnPropertyDescriptor(source, name);\n\
+    Object.defineProperty(target, name, descriptor);\n\
+}\n\
+\n\
+function ownProperties(obj) {\n\
+    return Object.getOwnPropertyNames(obj);\n\
+}\n\
+\n\
+function allKeys(obj) {\n\
+    var keys = [];\n\
+    for (var name in obj) {\n\
+        keys.push(name);\n\
+    }\n\
+    return keys;\n\
+}\n\
+\n\
+function ownKeys(obj) {\n\
+    var keys = [];\n\
+    for (var name in obj) {\n\
+        if (obj.hasOwnProperty(name)) {\n\
+            keys.push(name);\n\
+        }\n\
+    }\n\
+    return keys;\n\
+}\n\
+\n\
+function assimilateWithStrategy(target) {\n\
+    var strategy = this,\n\
+    sources = slice.call(arguments, 1),\n\
+    i, source, names, j, name;\n\
+\n\
+    if (target === undefined || target === null) {\n\
+        target = {};\n\
+    }\n\
+\n\
+    for (i = 0; i < sources.length; i++) {\n\
+        source = sources[i];\n\
+        names = strategy.keysFn(source);\n\
+        for (j = 0; j < names.length; j++) {\n\
+            name = names[j];\n\
+            strategy.copyFn(target, name, source);\n\
+        }\n\
+    }\n\
+\n\
+    return target;\n\
+}\n\
+\n\
+var strategies = {\n\
+    DEFAULT: {\n\
+        keysFn: ownKeys,\n\
+        copyFn: simpleCopy\n\
+    },\n\
+    PROPER: {\n\
+        keysFn: ownProperties,\n\
+        copyFn: properCopy\n\
+    },\n\
+    INHERITED: {\n\
+        keysFn: allKeys,\n\
+        copyFn: simpleCopy\n\
+    },\n\
+    DEEP: {\n\
+        keysFn: ownKeys,\n\
+        copyFn: function recursiveCopy(target, name, source) {\n\
+            var val = source[name];\n\
+            var old = target[name];\n\
+            if (typeof val === 'object' && typeof old === 'object') {\n\
+                assimilateWithStrategy.call(strategies.DEEP, old, val);\n\
+            } else {\n\
+                simpleCopy(target, name, source);\n\
+            }\n\
+        }\n\
+    },\n\
+    STRICT: {\n\
+        keysFn: ownKeys,\n\
+        copyFn: function strictCopy(target, name, source) {\n\
+            if (source[name] !== undefined) {\n\
+                simpleCopy(target, name, source);\n\
+            }\n\
+        }\n\
+    },\n\
+    FALLBACK: {\n\
+        keysFn: function fallbackCopy(target, name, source) {\n\
+            if (target[name] === undefined) {\n\
+                simpleCopy(target, name, source);\n\
+            }\n\
+        },\n\
+        copyFn: simpleCopy\n\
+    }\n\
+};\n\
+\n\
+var assimilate = bind(assimilateWithStrategy, strategies.DEFAULT);\n\
+assimilate.strategies = strategies;\n\
+assimilate.withStrategy = function withStrategy(strategy) {\n\
+    if (typeof strategy === 'string') {\n\
+        strategy = strategies[strategy.toUpperCase()];\n\
+    }\n\
+    if (!strategy) {\n\
+        throw new Error('Unknwon or invalid strategy:' + strategy);\n\
+    }\n\
+    if (typeof strategy.copyFn !== 'function') {\n\
+        throw new Error('Strategy missing copy function:' + strategy);\n\
+    }\n\
+    if (typeof strategy.keysFn !== 'function') {\n\
+        throw new Error('Strategy missing keys function:' + strategy);\n\
+    }\n\
+    return bind(assimilateWithStrategy, strategy);\n\
+};\n\
+\n\
+module.exports = assimilate;\n\
+//# sourceURL=components/pluma/assimilate/0.4.0/dist/assimilate.js"
+));
+
+require.modules["pluma-assimilate"] = require.modules["pluma~assimilate@0.4.0"];
+require.modules["pluma~assimilate"] = require.modules["pluma~assimilate@0.4.0"];
+require.modules["assimilate"] = require.modules["pluma~assimilate@0.4.0"];
+
+
 require.register("indefinido~observable@es6-modules", Function("exports, module",
 "module.exports = require(\"indefinido~observable@es6-modules/lib/observable.js\");\n\
 \n\
@@ -17978,142 +18114,6 @@ require.modules["indefinido~observable"] = require.modules["indefinido~observabl
 require.modules["observable"] = require.modules["indefinido~observable@es6-modules"];
 
 
-require.register("pluma~assimilate@0.4.0", Function("exports, module",
-"/*! assimilate 0.4.0 Original author Alan Plum <me@pluma.io>. Released into the Public Domain under the UNLICENSE. @preserve */\n\
-var slice = Array.prototype.slice;\n\
-\n\
-function bind(fn, self) {\n\
-    var args = slice.call(arguments, 2);\n\
-    if (typeof Function.prototype.bind === 'function') {\n\
-        return Function.prototype.bind.apply(fn, [self].concat(args));\n\
-    }\n\
-    return function() {\n\
-        return fn.apply(self, args.concat(slice.call(arguments, 0)));\n\
-    };\n\
-}\n\
-\n\
-function simpleCopy(target, name, source) {\n\
-    target[name] = source[name];\n\
-}\n\
-\n\
-function properCopy(target, name, source) {\n\
-    var descriptor = Object.getOwnPropertyDescriptor(source, name);\n\
-    Object.defineProperty(target, name, descriptor);\n\
-}\n\
-\n\
-function ownProperties(obj) {\n\
-    return Object.getOwnPropertyNames(obj);\n\
-}\n\
-\n\
-function allKeys(obj) {\n\
-    var keys = [];\n\
-    for (var name in obj) {\n\
-        keys.push(name);\n\
-    }\n\
-    return keys;\n\
-}\n\
-\n\
-function ownKeys(obj) {\n\
-    var keys = [];\n\
-    for (var name in obj) {\n\
-        if (obj.hasOwnProperty(name)) {\n\
-            keys.push(name);\n\
-        }\n\
-    }\n\
-    return keys;\n\
-}\n\
-\n\
-function assimilateWithStrategy(target) {\n\
-    var strategy = this,\n\
-    sources = slice.call(arguments, 1),\n\
-    i, source, names, j, name;\n\
-\n\
-    if (target === undefined || target === null) {\n\
-        target = {};\n\
-    }\n\
-\n\
-    for (i = 0; i < sources.length; i++) {\n\
-        source = sources[i];\n\
-        names = strategy.keysFn(source);\n\
-        for (j = 0; j < names.length; j++) {\n\
-            name = names[j];\n\
-            strategy.copyFn(target, name, source);\n\
-        }\n\
-    }\n\
-\n\
-    return target;\n\
-}\n\
-\n\
-var strategies = {\n\
-    DEFAULT: {\n\
-        keysFn: ownKeys,\n\
-        copyFn: simpleCopy\n\
-    },\n\
-    PROPER: {\n\
-        keysFn: ownProperties,\n\
-        copyFn: properCopy\n\
-    },\n\
-    INHERITED: {\n\
-        keysFn: allKeys,\n\
-        copyFn: simpleCopy\n\
-    },\n\
-    DEEP: {\n\
-        keysFn: ownKeys,\n\
-        copyFn: function recursiveCopy(target, name, source) {\n\
-            var val = source[name];\n\
-            var old = target[name];\n\
-            if (typeof val === 'object' && typeof old === 'object') {\n\
-                assimilateWithStrategy.call(strategies.DEEP, old, val);\n\
-            } else {\n\
-                simpleCopy(target, name, source);\n\
-            }\n\
-        }\n\
-    },\n\
-    STRICT: {\n\
-        keysFn: ownKeys,\n\
-        copyFn: function strictCopy(target, name, source) {\n\
-            if (source[name] !== undefined) {\n\
-                simpleCopy(target, name, source);\n\
-            }\n\
-        }\n\
-    },\n\
-    FALLBACK: {\n\
-        keysFn: function fallbackCopy(target, name, source) {\n\
-            if (target[name] === undefined) {\n\
-                simpleCopy(target, name, source);\n\
-            }\n\
-        },\n\
-        copyFn: simpleCopy\n\
-    }\n\
-};\n\
-\n\
-var assimilate = bind(assimilateWithStrategy, strategies.DEFAULT);\n\
-assimilate.strategies = strategies;\n\
-assimilate.withStrategy = function withStrategy(strategy) {\n\
-    if (typeof strategy === 'string') {\n\
-        strategy = strategies[strategy.toUpperCase()];\n\
-    }\n\
-    if (!strategy) {\n\
-        throw new Error('Unknwon or invalid strategy:' + strategy);\n\
-    }\n\
-    if (typeof strategy.copyFn !== 'function') {\n\
-        throw new Error('Strategy missing copy function:' + strategy);\n\
-    }\n\
-    if (typeof strategy.keysFn !== 'function') {\n\
-        throw new Error('Strategy missing keys function:' + strategy);\n\
-    }\n\
-    return bind(assimilateWithStrategy, strategy);\n\
-};\n\
-\n\
-module.exports = assimilate;\n\
-//# sourceURL=components/pluma/assimilate/0.4.0/dist/assimilate.js"
-));
-
-require.modules["pluma-assimilate"] = require.modules["pluma~assimilate@0.4.0"];
-require.modules["pluma~assimilate"] = require.modules["pluma~assimilate@0.4.0"];
-require.modules["assimilate"] = require.modules["pluma~assimilate@0.4.0"];
-
-
 require.register("indemma", Function("exports, module",
 "module.exports = require(\"indemma/lib/record.js\");\n\
 \n\
@@ -18706,7 +18706,7 @@ associable = {\n\
             configurable: true\n\
           });\n\
           _results.push(record.after_initialize.push((function() {\n\
-            return this[resource] = old_resource || (this[resource + '_id'] = old_resource_id);\n\
+            return (this[resource] = old_resource) || (this[resource + '_id'] = old_resource_id);\n\
           })));\n\
         }\n\
         return _results;\n\
