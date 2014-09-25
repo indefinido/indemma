@@ -18706,7 +18706,7 @@ associable = {\n\
             configurable: true\n\
           });\n\
           _results.push(record.after_initialize.push((function() {\n\
-            return this[resource] = old_resource || (this[resource + '_id'] = old_resource_id);\n\
+            return (this[resource] = old_resource) || (this[resource + '_id'] = old_resource_id);\n\
           })));\n\
         }\n\
         return _results;\n\

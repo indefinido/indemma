@@ -390,7 +390,7 @@ associable =
           # Execute setter in order to do the apropriate actions to
           # the previoulsy stored value in the association property
           # TODO fix the prototype chain and remove this code
-          record.after_initialize.push (-> @[resource] = old_resource or @[resource + '_id'] = old_resource_id)
+          record.after_initialize.push (-> (@[resource] = old_resource) or (@[resource + '_id'] = old_resource_id))
 
   # @ = record
   record:
