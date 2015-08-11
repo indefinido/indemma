@@ -24,9 +24,6 @@ describe 'dirtyable', ->
         @person = model.call resource: 'person'
         @arthur = @person    name    : 'Arthur Philip Dent'
 
-      xit 'should initialize unsaved records as dirty'
-
-
       describe '.dirty', ->
         it 'should exist after initialization', ->
           @arthur.should.have.property 'dirty'

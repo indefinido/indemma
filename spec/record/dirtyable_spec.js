@@ -30,7 +30,6 @@ describe('dirtyable', function() {
           name: 'Arthur Philip Dent'
         });
       });
-      xit('should initialize unsaved records as dirty');
       describe('.dirty', function() {
         it('should exist after initialization', function() {
           return this.arthur.should.have.property('dirty');
