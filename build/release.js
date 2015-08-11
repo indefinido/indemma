@@ -20,6 +20,89 @@ function require(name) {
 }
 
 /**
+ * Meta info, accessible in the global scope unless you use AMD option.
+ */
+
+require.loader = 'component';
+
+/**
+ * Internal helper object, contains a sorting function for semantiv versioning
+ */
+require.helper = {};
+require.helper.semVerSort = function(a, b) {
+  var aArray = a.version.split('.');
+  var bArray = b.version.split('.');
+  for (var i=0; i<aArray.length; ++i) {
+    var aInt = parseInt(aArray[i], 10);
+    var bInt = parseInt(bArray[i], 10);
+    if (aInt === bInt) {
+      var aLex = aArray[i].substr((""+aInt).length);
+      var bLex = bArray[i].substr((""+bInt).length);
+      if (aLex === '' && bLex !== '') return 1;
+      if (aLex !== '' && bLex === '') return -1;
+      if (aLex !== '' && bLex !== '') return aLex > bLex ? 1 : -1;
+      continue;
+    } else if (aInt > bInt) {
+      return 1;
+    } else {
+      return -1;
+    }
+  }
+  return 0;
+}
+
+/**
+ * Find and require a module which name starts with the provided name.
+ * If multiple modules exists, the highest semver is used. 
+ * This function can only be used for remote dependencies.
+
+ * @param {String} name - module name: `user~repo`
+ * @param {Boolean} returnPath - returns the canonical require path if true, 
+ *                               otherwise it returns the epxorted module
+ */
+require.latest = function (name, returnPath) {
+  function showError(name) {
+    throw new Error('failed to find latest module of "' + name + '"');
+  }
+  // only remotes with semvers, ignore local files conataining a '/'
+  var versionRegexp = /(.*)~(.*)@v?(\d+\.\d+\.\d+[^\/]*)$/;
+  var remoteRegexp = /(.*)~(.*)/;
+  if (!remoteRegexp.test(name)) showError(name);
+  var moduleNames = Object.keys(require.modules);
+  var semVerCandidates = [];
+  var otherCandidates = []; // for instance: name of the git branch
+  for (var i=0; i<moduleNames.length; i++) {
+    var moduleName = moduleNames[i];
+    if (new RegExp(name + '@').test(moduleName)) {
+        var version = moduleName.substr(name.length+1);
+        var semVerMatch = versionRegexp.exec(moduleName);
+        if (semVerMatch != null) {
+          semVerCandidates.push({version: version, name: moduleName});
+        } else {
+          otherCandidates.push({version: version, name: moduleName});
+        } 
+    }
+  }
+  if (semVerCandidates.concat(otherCandidates).length === 0) {
+    showError(name);
+  }
+  if (semVerCandidates.length > 0) {
+    var module = semVerCandidates.sort(require.helper.semVerSort).pop().name;
+    if (returnPath === true) {
+      return module;
+    }
+    return require(module);
+  }
+  // if the build contains more than one branch of the same module
+  // you should not use this funciton
+  var module = otherCandidates.sort(function(a, b) {return a.name > b.name})[0].name;
+  if (returnPath === true) {
+    return module;
+  }
+  return require(module);
+}
+
+/**
  * Registered modules.
  */
 
@@ -10428,14 +10511,14 @@ return jQuery;
 });
 
 require.register("indefinido~advisable@master", function (exports, module) {
-module.exports = require("indefinido~advisable@master/lib/advisable.js");
+module.exports = require('indefinido~advisable@master/lib/advisable.js');
 
 });
 
 require.register("indefinido~advisable@master/lib/advisable.js", function (exports, module) {
 var $, advice, mixin;
 
-$ = require("component~jquery@1.0.0");
+$ = require('component~jquery@1.0.0');
 
 advice = {
   around: function(base, wrapped) {
@@ -10627,7 +10710,7 @@ module.exports = assimilate;
 });
 
 require.register("indefinido~observable@es6-modules", function (exports, module) {
-module.exports = require("indefinido~observable@es6-modules/lib/observable.js");
+module.exports = require('indefinido~observable@es6-modules/lib/observable.js');
 
 });
 
@@ -10676,7 +10759,7 @@ module.exports = adapter;
 });
 
 require.register("indefinido~observable@es6-modules/lib/legacy/notifierable.js", function (exports, module) {
-var jQuery = require("component~jquery@1.0.0");
+var jQuery = require('component~jquery@1.0.0');
 var mutations, notifierable, subscribed_getter;
 
 notifierable = {
@@ -10825,8 +10908,8 @@ module.exports = notifierable;
 });
 
 require.register("indefinido~observable@es6-modules/lib/legacy/schedulerable.js", function (exports, module) {
-var lookup = require("indefinido~observable@es6-modules/lib/lookup.js");
-var jQuery = require("component~jquery@1.0.0");
+var lookup = require('indefinido~observable@es6-modules/lib/lookup.js');
+var jQuery = require('component~jquery@1.0.0');
 var scheduler, schedulerable;
 
 scheduler = function(options) {
@@ -10928,7 +11011,7 @@ schedulerable = function(observable) {
 schedulerable.storage_for = function(observable) {};
 
 schedulerable.schedulable_observers = function() {
-  var Path = require("indefinido~observable@es6-modules/vendor/observe-js/observe.js").Path;
+  var Path = require('indefinido~observable@es6-modules/vendor/observe-js/observe.js').Path;
   var original;
 
   original = Path.prototype.setValueFrom;
@@ -11022,17 +11105,17 @@ var observable;
 
 Number.isNaN || (Number.isNaN = isNaN);
 
-require("indefinido~observable@es6-modules/lib/platform.js");
+require('indefinido~observable@es6-modules/lib/platform.js');
 
-var jQuery = require("component~jquery@1.0.0");
+var jQuery = require('component~jquery@1.0.0');
 
-var observation = require("indefinido~observable@es6-modules/lib/observable/observation.js");
+var observation = require('indefinido~observable@es6-modules/lib/observable/observation.js');
 
-var selection = require("indefinido~observable@es6-modules/lib/observable/selection.js");
+var selection = require('indefinido~observable@es6-modules/lib/observable/selection.js');
 
-var KeypathObserver = require("indefinido~observable@es6-modules/lib/observable/keypath_observer.js");
+var KeypathObserver = require('indefinido~observable@es6-modules/lib/observable/keypath_observer.js');
 
-var SelfObserver = require("indefinido~observable@es6-modules/lib/observable/self_observer.js");
+var SelfObserver = require('indefinido~observable@es6-modules/lib/observable/self_observer.js');
 
 observable = function() {
   var object;
@@ -11108,7 +11191,7 @@ jQuery.extend(observable, {
 });
 
 if (!Object.observe) {
-  var schedulerable = require("indefinido~observable@es6-modules/lib/legacy/schedulerable.js");
+  var schedulerable = require('indefinido~observable@es6-modules/lib/legacy/schedulerable.js');
   observable = schedulerable(observable);
 }
 
@@ -11119,8 +11202,8 @@ module.exports = observable;
 });
 
 require.register("indefinido~observable@es6-modules/lib/observable/keypath_observer.js", function (exports, module) {
-var PathObserver = require("indefinido~observable@es6-modules/vendor/observe-js/observe.js").PathObserver;
-var Callbacks = require("component~jquery@1.0.0").Callbacks;
+var PathObserver = require('indefinido~observable@es6-modules/vendor/observe-js/observe.js').PathObserver;
+var Callbacks = require('component~jquery@1.0.0').Callbacks;
 var KeypathObserver,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
@@ -11210,7 +11293,7 @@ module.exports = observationable;
 });
 
 require.register("indefinido~observable@es6-modules/lib/observable/selection.js", function (exports, module) {
-var jQuery = require("component~jquery@1.0.0");
+var jQuery = require('component~jquery@1.0.0');
 var requiresDomElement, selection;
 
 requiresDomElement = Object.defineProperty.requiresDomElement;
@@ -11271,8 +11354,8 @@ module.exports = selection;
 });
 
 require.register("indefinido~observable@es6-modules/lib/observable/self_observer.js", function (exports, module) {
-var ObjectObserver = require("indefinido~observable@es6-modules/vendor/observe-js/observe.js").ObjectObserver;
-var Callbacks = require("component~jquery@1.0.0").Callbacks;
+var ObjectObserver = require('indefinido~observable@es6-modules/vendor/observe-js/observe.js').ObjectObserver;
+var Callbacks = require('component~jquery@1.0.0').Callbacks;
 var SelfObserver,
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
@@ -13405,7 +13488,7 @@ if (!Object.create) {
 });
 
 require.register("indemma", function (exports, module) {
-module.exports = require("indemma/lib/record.js");
+module.exports = require('indemma/lib/record.js');
 
 });
 
@@ -13440,19 +13523,19 @@ require.register("indemma/lib/record.js", function (exports, module) {
 var $, advisable, bind, extend, merge, observable, type,
   __slice = [].slice;
 
-$ = require("component~jquery@1.0.0");
+$ = require('component~jquery@1.0.0');
 
-type = require("component~type@1.0.0");
+type = require('component~type@1.0.0');
 
-bind = require("component~bind@1.0.0");
+bind = require('component~bind@1.0.0');
 
-observable = require("indefinido~observable@es6-modules");
+observable = require('indefinido~observable@es6-modules');
 
-advisable = require("indefinido~advisable@master").mixin;
+advisable = require('indefinido~advisable@master').mixin;
 
-extend = require("pluma~assimilate@0.4.0");
+extend = require('pluma~assimilate@0.4.0');
 
-merge = require("pluma~assimilate@0.4.0").withStrategy('deep');
+merge = require('pluma~assimilate@0.4.0').withStrategy('deep');
 
 this.model = (function() {
   var initialize_record, mixer, modelable;
@@ -13613,11 +13696,11 @@ var $, associable, callbacks, descriptors, extend, model, plural, root, singular
 
 root = window;
 
-$ = require("component~jquery@1.0.0");
+$ = require('component~jquery@1.0.0');
 
-extend = require("pluma~assimilate@0.4.0");
+extend = require('pluma~assimilate@0.4.0');
 
-require("indemma/lib/record/resource.js");
+require('indemma/lib/record/resource.js');
 
 plural = {
   add: function() {
@@ -13709,8 +13792,10 @@ descriptors = {
 
         association_name = this.resource.toString();
         if (resource_id == null) {
-          this.dirty = true;
-          this.owner[association_name] = null;
+          if (this.owner[association_name] || this.owner[association_name + '_id']) {
+            this.dirty = true;
+            this.owner[association_name] = null;
+          }
           return resource_id;
         }
         current_resource_id = (_ref = this.owner.observed[association_name]) != null ? _ref._id : void 0;
@@ -14032,7 +14117,7 @@ require.register("indemma/lib/record/dirtyable.js", function (exports, module) {
 var dirtyable, model, record;
 
 dirtyable = {
-  ignores: ['dirty', 'resource', 'route', 'initial_route', 'after_initialize', 'before_initialize', 'parent_resource', 'nested_attributes', 'reloading', 'ready', 'saving', 'salvation', 'sustained', 'element', 'default', 'lock', 'validated', 'validation', 'errors', 'dirty'],
+  ignores: ['dirty', 'resource', 'route', 'initial_route', 'after_initialize', 'before_initialize', 'parent_resource', 'nested_attributes', 'reloading', 'ready', 'saving', 'saved', 'failed', 'salvation', 'sustained', 'element', 'default', 'lock', 'validate', 'validated', 'validation', 'errors', 'dirty', 'json'],
   reserved_filter: function(name) {
     return this.ignores.indexOf(name) === -1;
   },
@@ -14121,7 +14206,7 @@ model.mix(function(modelable) {
 require.register("indemma/lib/record/persistable.js", function (exports, module) {
 var handlers, model, persistable, record;
 
-require("indemma/lib/record/queryable.js");
+require('indemma/lib/record/queryable.js');
 
 handlers = {
   store_after_saved: function() {
@@ -14164,11 +14249,11 @@ model.mix(function(modelable) {
 require.register("indemma/lib/record/queryable.js", function (exports, module) {
 var extend, model, queryable, record, stampit, storable;
 
-extend = require("pluma~assimilate@0.4.0");
+extend = require('pluma~assimilate@0.4.0');
 
-storable = require("indemma/lib/record/storable.js");
+storable = require('indemma/lib/record/storable.js');
 
-stampit = require("indemma/vendor/stampit.js");
+stampit = require('indemma/vendor/stampit.js');
 
 queryable = {
   storage: storable(),
@@ -14203,9 +14288,9 @@ model.mix(function(modelable) {
 require.register("indemma/lib/record/resource.js", function (exports, module) {
 var descriptors, model, resource, resourceable, stampit;
 
-stampit = require("indemma/vendor/stampit.js");
+stampit = require('indemma/vendor/stampit.js');
 
-require("indemma/vendor/owl/pluralize.js");
+require('indemma/vendor/owl/pluralize.js');
 
 resource = stampit({
   toString: function() {
@@ -14308,7 +14393,7 @@ model.pluralize = resourceable.pluralize;
 require.register("indemma/lib/record/rest.js", function (exports, module) {
 var $, data_for, request;
 
-$ = require("component~jquery@1.0.0");
+$ = require('component~jquery@1.0.0');
 
 module.exports = {
   get: function(data) {
@@ -14357,19 +14442,19 @@ require.register("indemma/lib/record/restfulable.js", function (exports, module)
 var $, merge, model, observable, record, rest, restful, root, type, util,
   __slice = [].slice;
 
-merge = require("pluma~assimilate@0.4.0").withStrategy('deep');
+merge = require('pluma~assimilate@0.4.0').withStrategy('deep');
 
-type = require("component~type@1.0.0");
+type = require('component~type@1.0.0');
 
-observable = require("indefinido~observable@es6-modules").mixin;
+observable = require('indefinido~observable@es6-modules').mixin;
 
-$ = require("component~jquery@1.0.0");
+$ = require('component~jquery@1.0.0');
 
-rest = require("indemma/lib/record/rest.js");
+rest = require('indemma/lib/record/rest.js');
 
 root = typeof exports !== "undefined" && exports !== null ? exports : this;
 
-require("indemma/lib/record/dirtyable.js");
+require('indemma/lib/record/dirtyable.js');
 
 util = {
   model: {
@@ -14839,21 +14924,21 @@ require.register("indemma/lib/record/scopable.js", function (exports, module) {
 var $, builders, defaults, extend, merge, model, observable, record, rest, scopable, stampit, util,
   __slice = [].slice;
 
-require("indemma/lib/record/restfulable.js");
+require('indemma/lib/record/restfulable.js');
 
-require("indemma/lib/record/resource.js");
+require('indemma/lib/record/resource.js');
 
-stampit = require("indemma/vendor/stampit.js");
+stampit = require('indemma/vendor/stampit.js');
 
-extend = require("pluma~assimilate@0.4.0");
+extend = require('pluma~assimilate@0.4.0');
 
-observable = require("indefinido~observable@es6-modules").mixin;
+observable = require('indefinido~observable@es6-modules').mixin;
 
 merge = extend.withStrategy('deep');
 
-$ = require("component~jquery@1.0.0");
+$ = require('component~jquery@1.0.0');
 
-rest = require("indemma/lib/record/rest.js");
+rest = require('indemma/lib/record/rest.js');
 
 util = {
   model: {
@@ -15146,11 +15231,11 @@ if (model.associable) {
 require.register("indemma/lib/record/storable.js", function (exports, module) {
 var extend, merge, model, record, stampit, storable;
 
-extend = require("pluma~assimilate@0.4.0");
+extend = require('pluma~assimilate@0.4.0');
 
 merge = extend.withStrategy('deep');
 
-stampit = require("indemma/vendor/stampit.js");
+stampit = require('indemma/vendor/stampit.js');
 
 Object.values || (Object.values = (typeof _ !== "undefined" && _ !== null ? _.values : void 0) || function(object) {
   var key, value, _results;
@@ -15211,7 +15296,7 @@ var extend, extensions, root;
 
 root = typeof exports !== "undefined" && exports !== null ? exports : window;
 
-extend = require("pluma~assimilate@0.4.0");
+extend = require('pluma~assimilate@0.4.0');
 
 extensions = {
   model: {
@@ -15232,15 +15317,15 @@ model.mix(function(modelable) {
 require.register("indemma/lib/record/validatable.js", function (exports, module) {
 var errorsable, extensions, initializers, manager, messages, observable, root, stampit, type;
 
-require("indemma/lib/record/translationable.js");
+require('indemma/lib/record/translationable.js');
 
 root = typeof exports !== "undefined" && exports !== null ? exports : this;
 
-stampit = require("indemma/vendor/stampit.js");
+stampit = require('indemma/vendor/stampit.js');
 
-observable = require("indefinido~observable@es6-modules");
+observable = require('indefinido~observable@es6-modules');
 
-type = require("component~type@1.0.0");
+type = require('component~type@1.0.0');
 
 messages = {
   blank: function(attribute_name) {
@@ -15466,24 +15551,24 @@ model.mix(function(modelable) {
   return model.validators = manager.validators;
 });
 
-manager.validators.confirmation = require("indemma/lib/record/validations/confirmation.js");
+manager.validators.confirmation = require('indemma/lib/record/validations/confirmation.js');
 
-manager.validators.associated = require("indemma/lib/record/validations/associated.js");
+manager.validators.associated = require('indemma/lib/record/validations/associated.js');
 
-manager.validators.presence = require("indemma/lib/record/validations/presence.js");
+manager.validators.presence = require('indemma/lib/record/validations/presence.js');
 
-manager.validators.remote = require("indemma/lib/record/validations/remote.js");
+manager.validators.remote = require('indemma/lib/record/validations/remote.js');
 
-manager.validators.type = require("indemma/lib/record/validations/type.js");
+manager.validators.type = require('indemma/lib/record/validations/type.js');
 
-manager.validators.cpf = require("indemma/lib/record/validations/cpf.js");
+manager.validators.cpf = require('indemma/lib/record/validations/cpf.js');
 
 });
 
 require.register("indemma/lib/record/validations/associated.js", function (exports, module) {
 var associationable, composed, stampit;
 
-stampit = require("indemma/vendor/stampit.js");
+stampit = require('indemma/vendor/stampit.js');
 
 associationable = stampit({
   validate_each: function(record, attribute, value) {
@@ -15505,7 +15590,7 @@ associationable = stampit({
   }
 });
 
-composed = stampit.compose(require("indemma/lib/record/validations/validatorable.js"), associationable);
+composed = stampit.compose(require('indemma/lib/record/validations/validatorable.js'), associationable);
 
 composed.definition_key = 'validates_associated';
 
@@ -15516,7 +15601,7 @@ module.exports = composed;
 require.register("indemma/lib/record/validations/confirmation.js", function (exports, module) {
 var composed, confirmationable, stampit;
 
-stampit = require("indemma/vendor/stampit.js");
+stampit = require('indemma/vendor/stampit.js');
 
 confirmationable = stampit({
   validate_each: function(record, attribute, value) {
@@ -15526,7 +15611,7 @@ confirmationable = stampit({
   }
 });
 
-composed = stampit.compose(require("indemma/lib/record/validations/validatorable.js"), confirmationable);
+composed = stampit.compose(require('indemma/lib/record/validations/validatorable.js'), confirmationable);
 
 composed.definition_key = 'validates_confirmation_of';
 
@@ -15537,7 +15622,7 @@ module.exports = composed;
 require.register("indemma/lib/record/validations/cpf.js", function (exports, module) {
 var composed, cpfable, stampit;
 
-stampit = require("indemma/vendor/stampit.js");
+stampit = require('indemma/vendor/stampit.js');
 
 cpfable = stampit({
   validate_format: function(value) {
@@ -15588,7 +15673,7 @@ cpfable = stampit({
   }
 });
 
-composed = stampit.compose(require("indemma/lib/record/validations/validatorable.js"), cpfable);
+composed = stampit.compose(require('indemma/lib/record/validations/validatorable.js'), cpfable);
 
 composed.definition_key = 'validates_cpf_format';
 
@@ -15599,7 +15684,7 @@ module.exports = composed;
 require.register("indemma/lib/record/validations/presence.js", function (exports, module) {
 var composed, presenceable, stampit;
 
-stampit = require("indemma/vendor/stampit.js");
+stampit = require('indemma/vendor/stampit.js');
 
 presenceable = stampit({
   validate_each: function(record, attribute, value) {
@@ -15609,7 +15694,7 @@ presenceable = stampit({
   }
 });
 
-composed = stampit.compose(require("indemma/lib/record/validations/validatorable.js"), presenceable);
+composed = stampit.compose(require('indemma/lib/record/validations/validatorable.js'), presenceable);
 
 composed.definition_key = 'validates_presence_of';
 
@@ -15620,9 +15705,9 @@ module.exports = composed;
 require.register("indemma/lib/record/validations/remote.js", function (exports, module) {
 var composed, remoteable, rest, stampit;
 
-rest = require("indemma/lib/record/rest.js");
+rest = require('indemma/lib/record/rest.js');
 
-stampit = require("indemma/vendor/stampit.js");
+stampit = require('indemma/vendor/stampit.js');
 
 remoteable = stampit({
   validate_each: function(record, attribute, value) {
@@ -15681,7 +15766,7 @@ remoteable = stampit({
   return this;
 });
 
-composed = stampit.compose(require("indemma/lib/record/validations/validatorable.js"), remoteable);
+composed = stampit.compose(require('indemma/lib/record/validations/validatorable.js'), remoteable);
 
 composed.definition_key = 'validates_remotely';
 
@@ -15692,9 +15777,9 @@ module.exports = composed;
 require.register("indemma/lib/record/validations/type.js", function (exports, module) {
 var composed, stampit, typeable, validations;
 
-validations = require("indemma/lib/record/validatable.js");
+validations = require('indemma/lib/record/validatable.js');
 
-stampit = require("indemma/vendor/stampit.js");
+stampit = require('indemma/vendor/stampit.js');
 
 typeable = stampit({
   validate_each: function(record, attribute, value) {
@@ -15714,7 +15799,7 @@ typeable = stampit({
   }
 });
 
-composed = stampit.compose(require("indemma/lib/record/validations/validatorable.js"), typeable);
+composed = stampit.compose(require('indemma/lib/record/validations/validatorable.js'), typeable);
 
 composed.definition_key = 'validates_type_of';
 
@@ -15725,7 +15810,7 @@ module.exports = composed;
 require.register("indemma/lib/record/validations/validatorable.js", function (exports, module) {
 var stampit;
 
-stampit = require("indemma/vendor/stampit.js");
+stampit = require('indemma/vendor/stampit.js');
 
 module.exports = stampit({
   validate: function() {
@@ -16653,4 +16738,4 @@ owl.pluralize = (function() {
 
 });
 
-require("indemma")
+require("indemma");

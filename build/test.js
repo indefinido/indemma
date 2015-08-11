@@ -20,6 +20,89 @@ function require(name) {
 }
 
 /**
+ * Meta info, accessible in the global scope unless you use AMD option.
+ */
+
+require.loader = 'component';
+
+/**
+ * Internal helper object, contains a sorting function for semantiv versioning
+ */
+require.helper = {};
+require.helper.semVerSort = function(a, b) {
+  var aArray = a.version.split('.');
+  var bArray = b.version.split('.');
+  for (var i=0; i<aArray.length; ++i) {
+    var aInt = parseInt(aArray[i], 10);
+    var bInt = parseInt(bArray[i], 10);
+    if (aInt === bInt) {
+      var aLex = aArray[i].substr((""+aInt).length);
+      var bLex = bArray[i].substr((""+bInt).length);
+      if (aLex === '' && bLex !== '') return 1;
+      if (aLex !== '' && bLex === '') return -1;
+      if (aLex !== '' && bLex !== '') return aLex > bLex ? 1 : -1;
+      continue;
+    } else if (aInt > bInt) {
+      return 1;
+    } else {
+      return -1;
+    }
+  }
+  return 0;
+}
+
+/**
+ * Find and require a module which name starts with the provided name.
+ * If multiple modules exists, the highest semver is used. 
+ * This function can only be used for remote dependencies.
+
+ * @param {String} name - module name: `user~repo`
+ * @param {Boolean} returnPath - returns the canonical require path if true, 
+ *                               otherwise it returns the epxorted module
+ */
+require.latest = function (name, returnPath) {
+  function showError(name) {
+    throw new Error('failed to find latest module of "' + name + '"');
+  }
+  // only remotes with semvers, ignore local files conataining a '/'
+  var versionRegexp = /(.*)~(.*)@v?(\d+\.\d+\.\d+[^\/]*)$/;
+  var remoteRegexp = /(.*)~(.*)/;
+  if (!remoteRegexp.test(name)) showError(name);
+  var moduleNames = Object.keys(require.modules);
+  var semVerCandidates = [];
+  var otherCandidates = []; // for instance: name of the git branch
+  for (var i=0; i<moduleNames.length; i++) {
+    var moduleName = moduleNames[i];
+    if (new RegExp(name + '@').test(moduleName)) {
+        var version = moduleName.substr(name.length+1);
+        var semVerMatch = versionRegexp.exec(moduleName);
+        if (semVerMatch != null) {
+          semVerCandidates.push({version: version, name: moduleName});
+        } else {
+          otherCandidates.push({version: version, name: moduleName});
+        } 
+    }
+  }
+  if (semVerCandidates.concat(otherCandidates).length === 0) {
+    showError(name);
+  }
+  if (semVerCandidates.length > 0) {
+    var module = semVerCandidates.sort(require.helper.semVerSort).pop().name;
+    if (returnPath === true) {
+      return module;
+    }
+    return require(module);
+  }
+  // if the build contains more than one branch of the same module
+  // you should not use this funciton
+  var module = otherCandidates.sort(function(a, b) {return a.name > b.name})[0].name;
+  if (returnPath === true) {
+    return module;
+  }
+  return require(module);
+}
+
+/**
  * Registered modules.
  */
 
@@ -10453,7 +10536,7 @@ require.modules["jquery"] = require.modules["component~jquery@1.0.0"];
 
 
 require.register("indefinido~advisable@master", Function("exports, module",
-"module.exports = require(\"indefinido~advisable@master/lib/advisable.js\");\n\
+"module.exports = require('indefinido~advisable@master/lib/advisable.js');\n\
 \n\
 //# sourceURL=components/indefinido/advisable/master/index.js"
 ));
@@ -10461,7 +10544,7 @@ require.register("indefinido~advisable@master", Function("exports, module",
 require.register("indefinido~advisable@master/lib/advisable.js", Function("exports, module",
 "var $, advice, mixin;\n\
 \n\
-$ = require(\"component~jquery@1.0.0\");\n\
+$ = require('component~jquery@1.0.0');\n\
 \n\
 advice = {\n\
   around: function(base, wrapped) {\n\
@@ -10811,14 +10894,14 @@ require.register("chaijs~deep-eql@0.1.3", Function("exports, module",
  * Module dependencies\n\
  */\n\
 \n\
-var type = require(\"chaijs~type-detect@0.1.1\");\n\
+var type = require('chaijs~type-detect@0.1.1');\n\
 \n\
 /*!\n\
  * Buffer.isBuffer browser shim\n\
  */\n\
 \n\
 var Buffer;\n\
-try { Buffer = require(\"buffer\").Buffer; }\n\
+try { Buffer = require('buffer').Buffer; }\n\
 catch(ex) {\n\
   Buffer = {};\n\
   Buffer.isBuffer = function() { return false; }\n\
@@ -11068,7 +11151,7 @@ require.modules["deep-eql"] = require.modules["chaijs~deep-eql@0.1.3"];
 
 
 require.register("chaijs~chai@1.9.1", Function("exports, module",
-"module.exports = require(\"chaijs~chai@1.9.1/lib/chai.js\");\n\
+"module.exports = require('chaijs~chai@1.9.1/lib/chai.js');\n\
 \n\
 //# sourceURL=components/chaijs/chai/1.9.1/index.js"
 ));
@@ -11093,13 +11176,13 @@ exports.version = '1.9.1';\n\
  * Assertion Error\n\
  */\n\
 \n\
-exports.AssertionError = require(\"chaijs~assertion-error@1.0.0\");\n\
+exports.AssertionError = require('chaijs~assertion-error@1.0.0');\n\
 \n\
 /*!\n\
  * Utils for plugins (not exported)\n\
  */\n\
 \n\
-var util = require(\"chaijs~chai@1.9.1/lib/chai/utils/index.js\");\n\
+var util = require('chaijs~chai@1.9.1/lib/chai/utils/index.js');\n\
 \n\
 /**\n\
  * # .use(function)\n\
@@ -11124,42 +11207,42 @@ exports.use = function (fn) {\n\
  * Configuration\n\
  */\n\
 \n\
-var config = require(\"chaijs~chai@1.9.1/lib/chai/config.js\");\n\
+var config = require('chaijs~chai@1.9.1/lib/chai/config.js');\n\
 exports.config = config;\n\
 \n\
 /*!\n\
  * Primary `Assertion` prototype\n\
  */\n\
 \n\
-var assertion = require(\"chaijs~chai@1.9.1/lib/chai/assertion.js\");\n\
+var assertion = require('chaijs~chai@1.9.1/lib/chai/assertion.js');\n\
 exports.use(assertion);\n\
 \n\
 /*!\n\
  * Core Assertions\n\
  */\n\
 \n\
-var core = require(\"chaijs~chai@1.9.1/lib/chai/core/assertions.js\");\n\
+var core = require('chaijs~chai@1.9.1/lib/chai/core/assertions.js');\n\
 exports.use(core);\n\
 \n\
 /*!\n\
  * Expect interface\n\
  */\n\
 \n\
-var expect = require(\"chaijs~chai@1.9.1/lib/chai/interface/expect.js\");\n\
+var expect = require('chaijs~chai@1.9.1/lib/chai/interface/expect.js');\n\
 exports.use(expect);\n\
 \n\
 /*!\n\
  * Should interface\n\
  */\n\
 \n\
-var should = require(\"chaijs~chai@1.9.1/lib/chai/interface/should.js\");\n\
+var should = require('chaijs~chai@1.9.1/lib/chai/interface/should.js');\n\
 exports.use(should);\n\
 \n\
 /*!\n\
  * Assert interface\n\
  */\n\
 \n\
-var assert = require(\"chaijs~chai@1.9.1/lib/chai/interface/assert.js\");\n\
+var assert = require('chaijs~chai@1.9.1/lib/chai/interface/assert.js');\n\
 exports.use(assert);\n\
 \n\
 //# sourceURL=components/chaijs/chai/1.9.1/lib/chai.js"
@@ -11173,7 +11256,7 @@ require.register("chaijs~chai@1.9.1/lib/chai/assertion.js", Function("exports, m
  * MIT Licensed\n\
  */\n\
 \n\
-var config = require(\"chaijs~chai@1.9.1/lib/chai/config.js\");\n\
+var config = require('chaijs~chai@1.9.1/lib/chai/config.js');\n\
 \n\
 module.exports = function (_chai, util) {\n\
   /*!\n\
@@ -13846,9 +13929,9 @@ require.register("chaijs~chai@1.9.1/lib/chai/utils/addChainableMethod.js", Funct
  * Module dependencies\n\
  */\n\
 \n\
-var transferFlags = require(\"chaijs~chai@1.9.1/lib/chai/utils/transferFlags.js\");\n\
-var flag = require(\"chaijs~chai@1.9.1/lib/chai/utils/flag.js\");\n\
-var config = require(\"chaijs~chai@1.9.1/lib/chai/config.js\");\n\
+var transferFlags = require('chaijs~chai@1.9.1/lib/chai/utils/transferFlags.js');\n\
+var flag = require('chaijs~chai@1.9.1/lib/chai/utils/flag.js');\n\
+var config = require('chaijs~chai@1.9.1/lib/chai/config.js');\n\
 \n\
 /*!\n\
  * Module variables\n\
@@ -13958,7 +14041,7 @@ require.register("chaijs~chai@1.9.1/lib/chai/utils/addMethod.js", Function("expo
  * MIT Licensed\n\
  */\n\
 \n\
-var config = require(\"chaijs~chai@1.9.1/lib/chai/config.js\");\n\
+var config = require('chaijs~chai@1.9.1/lib/chai/config.js');\n\
 \n\
 /**\n\
  * ### .addMethod (ctx, name, method)\n\
@@ -13984,7 +14067,7 @@ var config = require(\"chaijs~chai@1.9.1/lib/chai/config.js\");\n\
  * @name addMethod\n\
  * @api public\n\
  */\n\
-var flag = require(\"chaijs~chai@1.9.1/lib/chai/utils/flag.js\");\n\
+var flag = require('chaijs~chai@1.9.1/lib/chai/utils/flag.js');\n\
 \n\
 module.exports = function (ctx, name, method) {\n\
   ctx[name] = function () {\n\
@@ -14145,10 +14228,10 @@ require.register("chaijs~chai@1.9.1/lib/chai/utils/getMessage.js", Function("exp
  * Module dependancies\n\
  */\n\
 \n\
-var flag = require(\"chaijs~chai@1.9.1/lib/chai/utils/flag.js\")\n\
-  , getActual = require(\"chaijs~chai@1.9.1/lib/chai/utils/getActual.js\")\n\
-  , inspect = require(\"chaijs~chai@1.9.1/lib/chai/utils/inspect.js\")\n\
-  , objDisplay = require(\"chaijs~chai@1.9.1/lib/chai/utils/objDisplay.js\");\n\
+var flag = require('chaijs~chai@1.9.1/lib/chai/utils/flag.js')\n\
+  , getActual = require('chaijs~chai@1.9.1/lib/chai/utils/getActual.js')\n\
+  , inspect = require('chaijs~chai@1.9.1/lib/chai/utils/inspect.js')\n\
+  , objDisplay = require('chaijs~chai@1.9.1/lib/chai/utils/objDisplay.js');\n\
 \n\
 /**\n\
  * ### .getMessage(object, message, negateMessage)\n\
@@ -14377,103 +14460,103 @@ var exports = module.exports = {};\n\
  * test utility\n\
  */\n\
 \n\
-exports.test = require(\"chaijs~chai@1.9.1/lib/chai/utils/test.js\");\n\
+exports.test = require('chaijs~chai@1.9.1/lib/chai/utils/test.js');\n\
 \n\
 /*!\n\
  * type utility\n\
  */\n\
 \n\
-exports.type = require(\"chaijs~chai@1.9.1/lib/chai/utils/type.js\");\n\
+exports.type = require('chaijs~chai@1.9.1/lib/chai/utils/type.js');\n\
 \n\
 /*!\n\
  * message utility\n\
  */\n\
 \n\
-exports.getMessage = require(\"chaijs~chai@1.9.1/lib/chai/utils/getMessage.js\");\n\
+exports.getMessage = require('chaijs~chai@1.9.1/lib/chai/utils/getMessage.js');\n\
 \n\
 /*!\n\
  * actual utility\n\
  */\n\
 \n\
-exports.getActual = require(\"chaijs~chai@1.9.1/lib/chai/utils/getActual.js\");\n\
+exports.getActual = require('chaijs~chai@1.9.1/lib/chai/utils/getActual.js');\n\
 \n\
 /*!\n\
  * Inspect util\n\
  */\n\
 \n\
-exports.inspect = require(\"chaijs~chai@1.9.1/lib/chai/utils/inspect.js\");\n\
+exports.inspect = require('chaijs~chai@1.9.1/lib/chai/utils/inspect.js');\n\
 \n\
 /*!\n\
  * Object Display util\n\
  */\n\
 \n\
-exports.objDisplay = require(\"chaijs~chai@1.9.1/lib/chai/utils/objDisplay.js\");\n\
+exports.objDisplay = require('chaijs~chai@1.9.1/lib/chai/utils/objDisplay.js');\n\
 \n\
 /*!\n\
  * Flag utility\n\
  */\n\
 \n\
-exports.flag = require(\"chaijs~chai@1.9.1/lib/chai/utils/flag.js\");\n\
+exports.flag = require('chaijs~chai@1.9.1/lib/chai/utils/flag.js');\n\
 \n\
 /*!\n\
  * Flag transferring utility\n\
  */\n\
 \n\
-exports.transferFlags = require(\"chaijs~chai@1.9.1/lib/chai/utils/transferFlags.js\");\n\
+exports.transferFlags = require('chaijs~chai@1.9.1/lib/chai/utils/transferFlags.js');\n\
 \n\
 /*!\n\
  * Deep equal utility\n\
  */\n\
 \n\
-exports.eql = require(\"chaijs~deep-eql@0.1.3\");\n\
+exports.eql = require('chaijs~deep-eql@0.1.3');\n\
 \n\
 /*!\n\
  * Deep path value\n\
  */\n\
 \n\
-exports.getPathValue = require(\"chaijs~chai@1.9.1/lib/chai/utils/getPathValue.js\");\n\
+exports.getPathValue = require('chaijs~chai@1.9.1/lib/chai/utils/getPathValue.js');\n\
 \n\
 /*!\n\
  * Function name\n\
  */\n\
 \n\
-exports.getName = require(\"chaijs~chai@1.9.1/lib/chai/utils/getName.js\");\n\
+exports.getName = require('chaijs~chai@1.9.1/lib/chai/utils/getName.js');\n\
 \n\
 /*!\n\
  * add Property\n\
  */\n\
 \n\
-exports.addProperty = require(\"chaijs~chai@1.9.1/lib/chai/utils/addProperty.js\");\n\
+exports.addProperty = require('chaijs~chai@1.9.1/lib/chai/utils/addProperty.js');\n\
 \n\
 /*!\n\
  * add Method\n\
  */\n\
 \n\
-exports.addMethod = require(\"chaijs~chai@1.9.1/lib/chai/utils/addMethod.js\");\n\
+exports.addMethod = require('chaijs~chai@1.9.1/lib/chai/utils/addMethod.js');\n\
 \n\
 /*!\n\
  * overwrite Property\n\
  */\n\
 \n\
-exports.overwriteProperty = require(\"chaijs~chai@1.9.1/lib/chai/utils/overwriteProperty.js\");\n\
+exports.overwriteProperty = require('chaijs~chai@1.9.1/lib/chai/utils/overwriteProperty.js');\n\
 \n\
 /*!\n\
  * overwrite Method\n\
  */\n\
 \n\
-exports.overwriteMethod = require(\"chaijs~chai@1.9.1/lib/chai/utils/overwriteMethod.js\");\n\
+exports.overwriteMethod = require('chaijs~chai@1.9.1/lib/chai/utils/overwriteMethod.js');\n\
 \n\
 /*!\n\
  * Add a chainable method\n\
  */\n\
 \n\
-exports.addChainableMethod = require(\"chaijs~chai@1.9.1/lib/chai/utils/addChainableMethod.js\");\n\
+exports.addChainableMethod = require('chaijs~chai@1.9.1/lib/chai/utils/addChainableMethod.js');\n\
 \n\
 /*!\n\
  * Overwrite chainable method\n\
  */\n\
 \n\
-exports.overwriteChainableMethod = require(\"chaijs~chai@1.9.1/lib/chai/utils/overwriteChainableMethod.js\");\n\
+exports.overwriteChainableMethod = require('chaijs~chai@1.9.1/lib/chai/utils/overwriteChainableMethod.js');\n\
 \n\
 \n\
 //# sourceURL=components/chaijs/chai/1.9.1/lib/chai/utils/index.js"
@@ -14483,9 +14566,9 @@ require.register("chaijs~chai@1.9.1/lib/chai/utils/inspect.js", Function("export
 "// This is (almost) directly from Node.js utils\n\
 // https://github.com/joyent/node/blob/f8c335d0caf47f16d31413f89aa28eda3878e3aa/lib/util.js\n\
 \n\
-var getName = require(\"chaijs~chai@1.9.1/lib/chai/utils/getName.js\");\n\
-var getProperties = require(\"chaijs~chai@1.9.1/lib/chai/utils/getProperties.js\");\n\
-var getEnumerableProperties = require(\"chaijs~chai@1.9.1/lib/chai/utils/getEnumerableProperties.js\");\n\
+var getName = require('chaijs~chai@1.9.1/lib/chai/utils/getName.js');\n\
+var getProperties = require('chaijs~chai@1.9.1/lib/chai/utils/getProperties.js');\n\
+var getEnumerableProperties = require('chaijs~chai@1.9.1/lib/chai/utils/getEnumerableProperties.js');\n\
 \n\
 module.exports = inspect;\n\
 \n\
@@ -14824,8 +14907,8 @@ require.register("chaijs~chai@1.9.1/lib/chai/utils/objDisplay.js", Function("exp
  * Module dependancies\n\
  */\n\
 \n\
-var inspect = require(\"chaijs~chai@1.9.1/lib/chai/utils/inspect.js\");\n\
-var config = require(\"chaijs~chai@1.9.1/lib/chai/config.js\");\n\
+var inspect = require('chaijs~chai@1.9.1/lib/chai/utils/inspect.js');\n\
+var config = require('chaijs~chai@1.9.1/lib/chai/config.js');\n\
 \n\
 /**\n\
  * ### .objDisplay (object)\n\
@@ -15051,7 +15134,7 @@ require.register("chaijs~chai@1.9.1/lib/chai/utils/test.js", Function("exports, 
  * Module dependancies\n\
  */\n\
 \n\
-var flag = require(\"chaijs~chai@1.9.1/lib/chai/utils/flag.js\");\n\
+var flag = require('chaijs~chai@1.9.1/lib/chai/utils/flag.js');\n\
 \n\
 /**\n\
  * # test(object, expression)\n\
@@ -15312,7 +15395,7 @@ require.modules["assimilate"] = require.modules["pluma~assimilate@0.4.0"];
 
 
 require.register("indefinido~observable@es6-modules", Function("exports, module",
-"module.exports = require(\"indefinido~observable@es6-modules/lib/observable.js\");\n\
+"module.exports = require('indefinido~observable@es6-modules/lib/observable.js');\n\
 \n\
 //# sourceURL=components/indefinido/observable/es6-modules/index.js"
 ));
@@ -15363,7 +15446,7 @@ module.exports = adapter;\n\
 ));
 
 require.register("indefinido~observable@es6-modules/lib/legacy/notifierable.js", Function("exports, module",
-"var jQuery = require(\"component~jquery@1.0.0\");\n\
+"var jQuery = require('component~jquery@1.0.0');\n\
 var mutations, notifierable, subscribed_getter;\n\
 \n\
 notifierable = {\n\
@@ -15513,8 +15596,8 @@ module.exports = notifierable;\n\
 ));
 
 require.register("indefinido~observable@es6-modules/lib/legacy/schedulerable.js", Function("exports, module",
-"var lookup = require(\"indefinido~observable@es6-modules/lib/lookup.js\");\n\
-var jQuery = require(\"component~jquery@1.0.0\");\n\
+"var lookup = require('indefinido~observable@es6-modules/lib/lookup.js');\n\
+var jQuery = require('component~jquery@1.0.0');\n\
 var scheduler, schedulerable;\n\
 \n\
 scheduler = function(options) {\n\
@@ -15616,7 +15699,7 @@ schedulerable = function(observable) {\n\
 schedulerable.storage_for = function(observable) {};\n\
 \n\
 schedulerable.schedulable_observers = function() {\n\
-  var Path = require(\"indefinido~observable@es6-modules/vendor/observe-js/observe.js\").Path;\n\
+  var Path = require('indefinido~observable@es6-modules/vendor/observe-js/observe.js').Path;\n\
   var original;\n\
 \n\
   original = Path.prototype.setValueFrom;\n\
@@ -15712,17 +15795,17 @@ require.register("indefinido~observable@es6-modules/lib/observable.js", Function
 \n\
 Number.isNaN || (Number.isNaN = isNaN);\n\
 \n\
-require(\"indefinido~observable@es6-modules/lib/platform.js\");\n\
+require('indefinido~observable@es6-modules/lib/platform.js');\n\
 \n\
-var jQuery = require(\"component~jquery@1.0.0\");\n\
+var jQuery = require('component~jquery@1.0.0');\n\
 \n\
-var observation = require(\"indefinido~observable@es6-modules/lib/observable/observation.js\");\n\
+var observation = require('indefinido~observable@es6-modules/lib/observable/observation.js');\n\
 \n\
-var selection = require(\"indefinido~observable@es6-modules/lib/observable/selection.js\");\n\
+var selection = require('indefinido~observable@es6-modules/lib/observable/selection.js');\n\
 \n\
-var KeypathObserver = require(\"indefinido~observable@es6-modules/lib/observable/keypath_observer.js\");\n\
+var KeypathObserver = require('indefinido~observable@es6-modules/lib/observable/keypath_observer.js');\n\
 \n\
-var SelfObserver = require(\"indefinido~observable@es6-modules/lib/observable/self_observer.js\");\n\
+var SelfObserver = require('indefinido~observable@es6-modules/lib/observable/self_observer.js');\n\
 \n\
 observable = function() {\n\
   var object;\n\
@@ -15798,7 +15881,7 @@ jQuery.extend(observable, {\n\
 });\n\
 \n\
 if (!Object.observe) {\n\
-  var schedulerable = require(\"indefinido~observable@es6-modules/lib/legacy/schedulerable.js\");\n\
+  var schedulerable = require('indefinido~observable@es6-modules/lib/legacy/schedulerable.js');\n\
   observable = schedulerable(observable);\n\
 }\n\
 \n\
@@ -15810,8 +15893,8 @@ module.exports = observable;\n\
 ));
 
 require.register("indefinido~observable@es6-modules/lib/observable/keypath_observer.js", Function("exports, module",
-"var PathObserver = require(\"indefinido~observable@es6-modules/vendor/observe-js/observe.js\").PathObserver;\n\
-var Callbacks = require(\"component~jquery@1.0.0\").Callbacks;\n\
+"var PathObserver = require('indefinido~observable@es6-modules/vendor/observe-js/observe.js').PathObserver;\n\
+var Callbacks = require('component~jquery@1.0.0').Callbacks;\n\
 var KeypathObserver,\n\
   __hasProp = {}.hasOwnProperty,\n\
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };\n\
@@ -15903,7 +15986,7 @@ module.exports = observationable;\n\
 ));
 
 require.register("indefinido~observable@es6-modules/lib/observable/selection.js", Function("exports, module",
-"var jQuery = require(\"component~jquery@1.0.0\");\n\
+"var jQuery = require('component~jquery@1.0.0');\n\
 var requiresDomElement, selection;\n\
 \n\
 requiresDomElement = Object.defineProperty.requiresDomElement;\n\
@@ -15965,8 +16048,8 @@ module.exports = selection;\n\
 ));
 
 require.register("indefinido~observable@es6-modules/lib/observable/self_observer.js", Function("exports, module",
-"var ObjectObserver = require(\"indefinido~observable@es6-modules/vendor/observe-js/observe.js\").ObjectObserver;\n\
-var Callbacks = require(\"component~jquery@1.0.0\").Callbacks;\n\
+"var ObjectObserver = require('indefinido~observable@es6-modules/vendor/observe-js/observe.js').ObjectObserver;\n\
+var Callbacks = require('component~jquery@1.0.0').Callbacks;\n\
 var SelfObserver,\n\
   __hasProp = {}.hasOwnProperty,\n\
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };\n\
@@ -18115,7 +18198,7 @@ require.modules["observable"] = require.modules["indefinido~observable@es6-modul
 
 
 require.register("indemma", Function("exports, module",
-"module.exports = require(\"indemma/lib/record.js\");\n\
+"module.exports = require('indemma/lib/record.js');\n\
 \n\
 //# sourceURL=index.js"
 ));
@@ -18152,19 +18235,19 @@ require.register("indemma/lib/record.js", Function("exports, module",
 "var $, advisable, bind, extend, merge, observable, type,\n\
   __slice = [].slice;\n\
 \n\
-$ = require(\"component~jquery@1.0.0\");\n\
+$ = require('component~jquery@1.0.0');\n\
 \n\
-type = require(\"component~type@1.0.0\");\n\
+type = require('component~type@1.0.0');\n\
 \n\
-bind = require(\"component~bind@1.0.0\");\n\
+bind = require('component~bind@1.0.0');\n\
 \n\
-observable = require(\"indefinido~observable@es6-modules\");\n\
+observable = require('indefinido~observable@es6-modules');\n\
 \n\
-advisable = require(\"indefinido~advisable@master\").mixin;\n\
+advisable = require('indefinido~advisable@master').mixin;\n\
 \n\
-extend = require(\"pluma~assimilate@0.4.0\");\n\
+extend = require('pluma~assimilate@0.4.0');\n\
 \n\
-merge = require(\"pluma~assimilate@0.4.0\").withStrategy('deep');\n\
+merge = require('pluma~assimilate@0.4.0').withStrategy('deep');\n\
 \n\
 this.model = (function() {\n\
   var initialize_record, mixer, modelable;\n\
@@ -18329,11 +18412,11 @@ require.register("indemma/lib/record/associable.js", Function("exports, module",
 \n\
 root = window;\n\
 \n\
-$ = require(\"component~jquery@1.0.0\");\n\
+$ = require('component~jquery@1.0.0');\n\
 \n\
-extend = require(\"pluma~assimilate@0.4.0\");\n\
+extend = require('pluma~assimilate@0.4.0');\n\
 \n\
-require(\"indemma/lib/record/resource.js\");\n\
+require('indemma/lib/record/resource.js');\n\
 \n\
 plural = {\n\
   add: function() {\n\
@@ -18425,8 +18508,10 @@ descriptors = {\n\
 \n\
         association_name = this.resource.toString();\n\
         if (resource_id == null) {\n\
-          this.dirty = true;\n\
-          this.owner[association_name] = null;\n\
+          if (this.owner[association_name] || this.owner[association_name + '_id']) {\n\
+            this.dirty = true;\n\
+            this.owner[association_name] = null;\n\
+          }\n\
           return resource_id;\n\
         }\n\
         current_resource_id = (_ref = this.owner.observed[association_name]) != null ? _ref._id : void 0;\n\
@@ -18751,7 +18836,7 @@ require.register("indemma/lib/record/dirtyable.js", Function("exports, module",
 var dirtyable, model, record;\n\
 \n\
 dirtyable = {\n\
-  ignores: ['dirty', 'resource', 'route', 'initial_route', 'after_initialize', 'before_initialize', 'parent_resource', 'nested_attributes', 'reloading', 'ready', 'saving', 'salvation', 'sustained', 'element', 'default', 'lock', 'validated', 'validation', 'errors', 'dirty'],\n\
+  ignores: ['dirty', 'resource', 'route', 'initial_route', 'after_initialize', 'before_initialize', 'parent_resource', 'nested_attributes', 'reloading', 'ready', 'saving', 'saved', 'failed', 'salvation', 'sustained', 'element', 'default', 'lock', 'validate', 'validated', 'validation', 'errors', 'dirty', 'json'],\n\
   reserved_filter: function(name) {\n\
     return this.ignores.indexOf(name) === -1;\n\
   },\n\
@@ -18843,7 +18928,7 @@ model.mix(function(modelable) {\n\
 require.register("indemma/lib/record/persistable.js", Function("exports, module",
 "var handlers, model, persistable, record;\n\
 \n\
-require(\"indemma/lib/record/queryable.js\");\n\
+require('indemma/lib/record/queryable.js');\n\
 \n\
 handlers = {\n\
   store_after_saved: function() {\n\
@@ -18887,11 +18972,11 @@ model.mix(function(modelable) {\n\
 require.register("indemma/lib/record/queryable.js", Function("exports, module",
 "var extend, model, queryable, record, stampit, storable;\n\
 \n\
-extend = require(\"pluma~assimilate@0.4.0\");\n\
+extend = require('pluma~assimilate@0.4.0');\n\
 \n\
-storable = require(\"indemma/lib/record/storable.js\");\n\
+storable = require('indemma/lib/record/storable.js');\n\
 \n\
-stampit = require(\"indemma/vendor/stampit.js\");\n\
+stampit = require('indemma/vendor/stampit.js');\n\
 \n\
 queryable = {\n\
   storage: storable(),\n\
@@ -18927,9 +19012,9 @@ model.mix(function(modelable) {\n\
 require.register("indemma/lib/record/resource.js", Function("exports, module",
 "var descriptors, model, resource, resourceable, stampit;\n\
 \n\
-stampit = require(\"indemma/vendor/stampit.js\");\n\
+stampit = require('indemma/vendor/stampit.js');\n\
 \n\
-require(\"indemma/vendor/owl/pluralize.js\");\n\
+require('indemma/vendor/owl/pluralize.js');\n\
 \n\
 resource = stampit({\n\
   toString: function() {\n\
@@ -19033,7 +19118,7 @@ model.pluralize = resourceable.pluralize;\n\
 require.register("indemma/lib/record/rest.js", Function("exports, module",
 "var $, data_for, request;\n\
 \n\
-$ = require(\"component~jquery@1.0.0\");\n\
+$ = require('component~jquery@1.0.0');\n\
 \n\
 module.exports = {\n\
   get: function(data) {\n\
@@ -19083,19 +19168,19 @@ require.register("indemma/lib/record/restfulable.js", Function("exports, module"
 "var $, merge, model, observable, record, rest, restful, root, type, util,\n\
   __slice = [].slice;\n\
 \n\
-merge = require(\"pluma~assimilate@0.4.0\").withStrategy('deep');\n\
+merge = require('pluma~assimilate@0.4.0').withStrategy('deep');\n\
 \n\
-type = require(\"component~type@1.0.0\");\n\
+type = require('component~type@1.0.0');\n\
 \n\
-observable = require(\"indefinido~observable@es6-modules\").mixin;\n\
+observable = require('indefinido~observable@es6-modules').mixin;\n\
 \n\
-$ = require(\"component~jquery@1.0.0\");\n\
+$ = require('component~jquery@1.0.0');\n\
 \n\
-rest = require(\"indemma/lib/record/rest.js\");\n\
+rest = require('indemma/lib/record/rest.js');\n\
 \n\
 root = typeof exports !== \"undefined\" && exports !== null ? exports : this;\n\
 \n\
-require(\"indemma/lib/record/dirtyable.js\");\n\
+require('indemma/lib/record/dirtyable.js');\n\
 \n\
 util = {\n\
   model: {\n\
@@ -19575,21 +19660,21 @@ require.register("indemma/lib/record/scopable.js", Function("exports, module",
 "var $, builders, defaults, extend, merge, model, observable, record, rest, scopable, stampit, util,\n\
   __slice = [].slice;\n\
 \n\
-require(\"indemma/lib/record/restfulable.js\");\n\
+require('indemma/lib/record/restfulable.js');\n\
 \n\
-require(\"indemma/lib/record/resource.js\");\n\
+require('indemma/lib/record/resource.js');\n\
 \n\
-stampit = require(\"indemma/vendor/stampit.js\");\n\
+stampit = require('indemma/vendor/stampit.js');\n\
 \n\
-extend = require(\"pluma~assimilate@0.4.0\");\n\
+extend = require('pluma~assimilate@0.4.0');\n\
 \n\
-observable = require(\"indefinido~observable@es6-modules\").mixin;\n\
+observable = require('indefinido~observable@es6-modules').mixin;\n\
 \n\
 merge = extend.withStrategy('deep');\n\
 \n\
-$ = require(\"component~jquery@1.0.0\");\n\
+$ = require('component~jquery@1.0.0');\n\
 \n\
-rest = require(\"indemma/lib/record/rest.js\");\n\
+rest = require('indemma/lib/record/rest.js');\n\
 \n\
 util = {\n\
   model: {\n\
@@ -19886,11 +19971,11 @@ if (model.associable) {\n\
 require.register("indemma/lib/record/storable.js", Function("exports, module",
 "var extend, merge, model, record, stampit, storable;\n\
 \n\
-extend = require(\"pluma~assimilate@0.4.0\");\n\
+extend = require('pluma~assimilate@0.4.0');\n\
 \n\
 merge = extend.withStrategy('deep');\n\
 \n\
-stampit = require(\"indemma/vendor/stampit.js\");\n\
+stampit = require('indemma/vendor/stampit.js');\n\
 \n\
 Object.values || (Object.values = (typeof _ !== \"undefined\" && _ !== null ? _.values : void 0) || function(object) {\n\
   var key, value, _results;\n\
@@ -19952,7 +20037,7 @@ require.register("indemma/lib/record/translationable.js", Function("exports, mod
 \n\
 root = typeof exports !== \"undefined\" && exports !== null ? exports : window;\n\
 \n\
-extend = require(\"pluma~assimilate@0.4.0\");\n\
+extend = require('pluma~assimilate@0.4.0');\n\
 \n\
 extensions = {\n\
   model: {\n\
@@ -19974,15 +20059,15 @@ model.mix(function(modelable) {\n\
 require.register("indemma/lib/record/validatable.js", Function("exports, module",
 "var errorsable, extensions, initializers, manager, messages, observable, root, stampit, type;\n\
 \n\
-require(\"indemma/lib/record/translationable.js\");\n\
+require('indemma/lib/record/translationable.js');\n\
 \n\
 root = typeof exports !== \"undefined\" && exports !== null ? exports : this;\n\
 \n\
-stampit = require(\"indemma/vendor/stampit.js\");\n\
+stampit = require('indemma/vendor/stampit.js');\n\
 \n\
-observable = require(\"indefinido~observable@es6-modules\");\n\
+observable = require('indefinido~observable@es6-modules');\n\
 \n\
-type = require(\"component~type@1.0.0\");\n\
+type = require('component~type@1.0.0');\n\
 \n\
 messages = {\n\
   blank: function(attribute_name) {\n\
@@ -20208,17 +20293,17 @@ model.mix(function(modelable) {\n\
   return model.validators = manager.validators;\n\
 });\n\
 \n\
-manager.validators.confirmation = require(\"indemma/lib/record/validations/confirmation.js\");\n\
+manager.validators.confirmation = require('indemma/lib/record/validations/confirmation.js');\n\
 \n\
-manager.validators.associated = require(\"indemma/lib/record/validations/associated.js\");\n\
+manager.validators.associated = require('indemma/lib/record/validations/associated.js');\n\
 \n\
-manager.validators.presence = require(\"indemma/lib/record/validations/presence.js\");\n\
+manager.validators.presence = require('indemma/lib/record/validations/presence.js');\n\
 \n\
-manager.validators.remote = require(\"indemma/lib/record/validations/remote.js\");\n\
+manager.validators.remote = require('indemma/lib/record/validations/remote.js');\n\
 \n\
-manager.validators.type = require(\"indemma/lib/record/validations/type.js\");\n\
+manager.validators.type = require('indemma/lib/record/validations/type.js');\n\
 \n\
-manager.validators.cpf = require(\"indemma/lib/record/validations/cpf.js\");\n\
+manager.validators.cpf = require('indemma/lib/record/validations/cpf.js');\n\
 \n\
 //# sourceURL=lib/record/validatable.js"
 ));
@@ -20226,7 +20311,7 @@ manager.validators.cpf = require(\"indemma/lib/record/validations/cpf.js\");\n\
 require.register("indemma/lib/record/validations/associated.js", Function("exports, module",
 "var associationable, composed, stampit;\n\
 \n\
-stampit = require(\"indemma/vendor/stampit.js\");\n\
+stampit = require('indemma/vendor/stampit.js');\n\
 \n\
 associationable = stampit({\n\
   validate_each: function(record, attribute, value) {\n\
@@ -20248,7 +20333,7 @@ associationable = stampit({\n\
   }\n\
 });\n\
 \n\
-composed = stampit.compose(require(\"indemma/lib/record/validations/validatorable.js\"), associationable);\n\
+composed = stampit.compose(require('indemma/lib/record/validations/validatorable.js'), associationable);\n\
 \n\
 composed.definition_key = 'validates_associated';\n\
 \n\
@@ -20260,7 +20345,7 @@ module.exports = composed;\n\
 require.register("indemma/lib/record/validations/confirmation.js", Function("exports, module",
 "var composed, confirmationable, stampit;\n\
 \n\
-stampit = require(\"indemma/vendor/stampit.js\");\n\
+stampit = require('indemma/vendor/stampit.js');\n\
 \n\
 confirmationable = stampit({\n\
   validate_each: function(record, attribute, value) {\n\
@@ -20270,7 +20355,7 @@ confirmationable = stampit({\n\
   }\n\
 });\n\
 \n\
-composed = stampit.compose(require(\"indemma/lib/record/validations/validatorable.js\"), confirmationable);\n\
+composed = stampit.compose(require('indemma/lib/record/validations/validatorable.js'), confirmationable);\n\
 \n\
 composed.definition_key = 'validates_confirmation_of';\n\
 \n\
@@ -20282,7 +20367,7 @@ module.exports = composed;\n\
 require.register("indemma/lib/record/validations/cpf.js", Function("exports, module",
 "var composed, cpfable, stampit;\n\
 \n\
-stampit = require(\"indemma/vendor/stampit.js\");\n\
+stampit = require('indemma/vendor/stampit.js');\n\
 \n\
 cpfable = stampit({\n\
   validate_format: function(value) {\n\
@@ -20333,7 +20418,7 @@ cpfable = stampit({\n\
   }\n\
 });\n\
 \n\
-composed = stampit.compose(require(\"indemma/lib/record/validations/validatorable.js\"), cpfable);\n\
+composed = stampit.compose(require('indemma/lib/record/validations/validatorable.js'), cpfable);\n\
 \n\
 composed.definition_key = 'validates_cpf_format';\n\
 \n\
@@ -20345,7 +20430,7 @@ module.exports = composed;\n\
 require.register("indemma/lib/record/validations/presence.js", Function("exports, module",
 "var composed, presenceable, stampit;\n\
 \n\
-stampit = require(\"indemma/vendor/stampit.js\");\n\
+stampit = require('indemma/vendor/stampit.js');\n\
 \n\
 presenceable = stampit({\n\
   validate_each: function(record, attribute, value) {\n\
@@ -20355,7 +20440,7 @@ presenceable = stampit({\n\
   }\n\
 });\n\
 \n\
-composed = stampit.compose(require(\"indemma/lib/record/validations/validatorable.js\"), presenceable);\n\
+composed = stampit.compose(require('indemma/lib/record/validations/validatorable.js'), presenceable);\n\
 \n\
 composed.definition_key = 'validates_presence_of';\n\
 \n\
@@ -20367,9 +20452,9 @@ module.exports = composed;\n\
 require.register("indemma/lib/record/validations/remote.js", Function("exports, module",
 "var composed, remoteable, rest, stampit;\n\
 \n\
-rest = require(\"indemma/lib/record/rest.js\");\n\
+rest = require('indemma/lib/record/rest.js');\n\
 \n\
-stampit = require(\"indemma/vendor/stampit.js\");\n\
+stampit = require('indemma/vendor/stampit.js');\n\
 \n\
 remoteable = stampit({\n\
   validate_each: function(record, attribute, value) {\n\
@@ -20428,7 +20513,7 @@ remoteable = stampit({\n\
   return this;\n\
 });\n\
 \n\
-composed = stampit.compose(require(\"indemma/lib/record/validations/validatorable.js\"), remoteable);\n\
+composed = stampit.compose(require('indemma/lib/record/validations/validatorable.js'), remoteable);\n\
 \n\
 composed.definition_key = 'validates_remotely';\n\
 \n\
@@ -20440,9 +20525,9 @@ module.exports = composed;\n\
 require.register("indemma/lib/record/validations/type.js", Function("exports, module",
 "var composed, stampit, typeable, validations;\n\
 \n\
-validations = require(\"indemma/lib/record/validatable.js\");\n\
+validations = require('indemma/lib/record/validatable.js');\n\
 \n\
-stampit = require(\"indemma/vendor/stampit.js\");\n\
+stampit = require('indemma/vendor/stampit.js');\n\
 \n\
 typeable = stampit({\n\
   validate_each: function(record, attribute, value) {\n\
@@ -20462,7 +20547,7 @@ typeable = stampit({\n\
   }\n\
 });\n\
 \n\
-composed = stampit.compose(require(\"indemma/lib/record/validations/validatorable.js\"), typeable);\n\
+composed = stampit.compose(require('indemma/lib/record/validations/validatorable.js'), typeable);\n\
 \n\
 composed.definition_key = 'validates_type_of';\n\
 \n\
@@ -20474,7 +20559,7 @@ module.exports = composed;\n\
 require.register("indemma/lib/record/validations/validatorable.js", Function("exports, module",
 "var stampit;\n\
 \n\
-stampit = require(\"indemma/vendor/stampit.js\");\n\
+stampit = require('indemma/vendor/stampit.js');\n\
 \n\
 module.exports = stampit({\n\
   validate: function() {\n\
@@ -26035,4 +26120,4 @@ XMLHttpRequest = sinon.xhr.XMLHttpRequest || undefined;\n\
 require.modules["indemma"] = require.modules["indemma"];
 
 
-require("indemma")
+require("indemma");

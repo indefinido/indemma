@@ -68,8 +68,11 @@ descriptors =
         # TODO check if its usefull to only allow disassociating with null
         # TODO notify nullification of associations
         unless resource_id?
-          @dirty = true
-          @owner[association_name] = null
+          # If there is anything to nullify, undefine or falsify, do it
+          if @owner[association_name] or @owner[association_name + '_id']
+            @dirty = true
+            @owner[association_name] = null
+            
           return resource_id
 
         # TODO Discover and update inverse side of association

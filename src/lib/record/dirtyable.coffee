@@ -2,13 +2,14 @@
 
 dirtyable =
   # TODO move ignored diryifing properties to the record
-  ignores: ['dirty', 'resource', 'route', 'initial_route', 'after_initialize', 'before_initialize', 'parent_resource', 'nested_attributes', 'reloading', 'ready', 'saving', 'salvation', 'sustained', 'element', 'default', 'lock', 'validated', 'validation', 'errors', 'dirty']
+  ignores: ['dirty', 'resource', 'route', 'initial_route', 'after_initialize', 'before_initialize', 'parent_resource', 'nested_attributes', 'reloading', 'ready', 'saving', 'saved', 'failed', 'salvation', 'sustained', 'element', 'default', 'lock', 'validate', 'validated', 'validation', 'errors', 'dirty', 'json']
   reserved_filter: (name) -> @ignores.indexOf(name) == -1
   record:
     after_initialize: [ ->
       @subscribe (added, removed, changed, past) ->
         @dirty ||= !!Object.keys($.extend {}, added, removed, changed).filter(dirtyable.reserved_filter, dirtyable).length
     ]
+    
 # Shim browsers without Object.observe
 unless Object.observe
 
